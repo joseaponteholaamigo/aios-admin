@@ -2,7 +2,7 @@
 
 - **Fecha:** 2026-10-21
 - **Origen:** idea interna. El plan (`2026-10-20-plan-superadmin-aws.md`, versión 3, fase M1 en su §13) y su auditoría (`2026-10-21-auditoria-plan-superadmin.md`) viven en `docs/` de la raíz del workspace, fuera de este repo, porque nombran clientes reales.
-- **Estado:** borrador
+- **Estado:** backend implementado en `aios-backend` (`feat/backend-superadmin-m1`, 2026-10-21); panel e infraestructura del panel, pendientes
 - **Dónde se implementa:** la parte del panel y su infraestructura, en este repo. La del backend, en `aios-backend`, rama `feat/backend-superadmin-m1` (worktree `aios-backend-superadmin`, en la raíz del workspace).
 - **Proyectos:** `aios-backend` (los CA marcados **[backend]**), `aios-admin` (**[panel]**) y la infraestructura de `aios-admin` (**[infra]**).
 
@@ -64,9 +64,10 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 
 ## Vocabulario de la API
 
-- **Módulos** (identificadores del backend, en español): `vista-general`, `empresas`, `entrevistas`, `documentos`, `skills`, `usuarios`, `consumo`, `gobernanza`, `upsell`. «Equipo ensō» no se asigna: es solo del superadministrador.
-- **Niveles:** `ver`, `editar` y, solo en `documentos`, `leer-texto`. Sin fila para un módulo = sin acceso.
-- **En el panel** se traducen a inglés en `app/shared/api/` (`companies`, `view`, `edit`…).
+- **Módulos** (identificadores del backend, en español): `vista-general`, `empresas`, `entrevistas`, `documentos`, `documentos-texto`, `skills`, `usuarios`, `consumo`, `gobernanza`, `upsell`. «Equipo ensō» no se asigna: es solo del superadministrador.
+- **Niveles:** `ver` y `editar`; `editar` incluye `ver`. `vista-general`, `gobernanza` y `documentos-texto` solo admiten `ver`. Sin fila para un módulo = sin acceso.
+- **«Leer texto» va aparte** (decisión 10): es el módulo `documentos-texto` con `ver`. Editar Documentos no lo da, y tenerlo no da editar.
+- **En el panel** se traducen a inglés en `app/shared/api/` (`companies`, `documentText`, `view`, `edit`…).
 
 ## Criterios de aceptación
 
@@ -92,12 +93,12 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
   - tiene los scopes `openid` y `admin/acceso`;
   - tiene la dirección de retorno `https://dxxxx.cloudfront.net/auth/callback` y la de cierre `https://dxxxx.cloudfront.net/`;
   - no tiene ninguna dirección con `localhost`.
-- **Y** sin `AIOS_ADMIN_URLS`, el stack crea el pool, el servidor de recursos y los parámetros, pero no el cliente del panel, y el synth lo avisa. Esa es la primera de las dos pasadas del primer despliegue.
+- **Y** sin `AIOS_ADMIN_URLS`, el stack crea el pool, el servidor de recursos y el parámetro con el id del pool, pero no el cliente del panel, ni el dominio del login, ni la API de admin, y el synth lo avisa. Esa es la primera de las dos pasadas del primer despliegue.
 
 #### CA-3: Los stacks se conectan por SSM, no por exports [backend]
 - **Dado** el stack sintetizado
 - **Cuando** se inspecciona la plantilla
-- **Entonces** hay parámetros de SSM con el id del pool del equipo, el id del cliente del panel y la URL de la API de admin.
+- **Entonces** hay parámetros de SSM: `/aios/equipo/pool-id` en las dos pasadas, y además `/aios/equipo/cliente-id`, `/aios/equipo/login-url` y `/aios/admin/api-url` en la segunda.
 - **Y** ninguna salida del stack tiene `Export`.
 
 #### CA-4: La API de admin es aparte y exige el scope [backend]
@@ -133,24 +134,24 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
   - (e) un token vencido;
   - (f) un token firmado con otra clave;
   - (g) ningún token
-- **Entonces** responde 200 en (a), 403 en (d) y 401 en (b), (c), (e), (f) y (g).
+- **Entonces** responde 200 en (a) y 401 en todos los demás. La puerta no distingue «sin scope» de «inválido»: en los dos casos el token no sirve para la API de admin.
 - **Y** el verificador de los ID tokens (`crearVerificador` con su comportamiento de hoy) sigue pasando `tests/verificador-de-token.test.js` sin cambios.
 
 #### CA-8: `/yo` dice quién es y qué puede usar [backend]
-- **Dado** una persona activa en la tabla de permisos, con `{ empresas: 'ver', documentos: 'leer-texto' }` y sin la marca de superadministrador
+- **Dado** una persona activa en la tabla de permisos, con `{ empresas: 'ver', 'documentos-texto': 'ver' }` y sin la marca de superadministrador
 - **Cuando** pide `GET /v1/admin/yo` con su token
-- **Entonces** recibe 200 con `cache-control: no-store` y `{ actor: 'equipo:<sub>', nombre, superadmin: false, estado: 'activa', permisos: { empresas: 'ver', documentos: 'leer-texto' } }`.
+- **Entonces** recibe 200 con `cache-control: no-store` y `{ actor: 'equipo:<sub>', correo, nombre, superadmin: false, estado: 'activa', permisos: { empresas: 'ver', 'documentos-texto': 'ver' } }`.
 - **Y** la respuesta no trae ningún token ni secreto.
 
 #### CA-9: Matriz de niveles [backend]
 - **Dado** `exigirPermiso(pedido, módulo, nivel)`
-- **Cuando** se prueba cada combinación de nivel concedido (ausente, `ver`, `editar`, `leer-texto`, superadministrador) contra cada nivel pedido
+- **Cuando** se prueba cada combinación de nivel concedido (ausente, `ver`, `editar`, superadministrador) contra cada nivel pedido
 - **Entonces**:
-  - `ver` lo cumplen `ver`, `editar` y `leer-texto`;
+  - `ver` lo cumplen `ver` y `editar`;
   - `editar` lo cumple solo `editar`;
-  - `leer-texto` lo cumple solo `leer-texto`;
+  - `documentos: 'editar'` no da `documentos-texto`, y `documentos-texto` no da `editar` en Documentos;
   - el superadministrador cumple todo;
-  - sin nivel, se niega con 403.
+  - sin nivel, o con un módulo o un nivel que no existen (también para el superadministrador), se niega con 403.
 - **Y** la tabla completa de combinaciones está escrita en la prueba.
 
 #### CA-10: Cambiar permisos exige superadministrador, MFA reciente y motivo [backend]
@@ -158,7 +159,7 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Cuando** pide `PUT /v1/admin/equipo/{sub}/permisos` con permisos válidos y `motivo`
 - **Entonces** responde 200 con los permisos nuevos.
 - **Y** la fila de permisos y un evento (`actor: equipo:<sub>`, canal `api`, motivo) se escriben en la misma transacción (`escribirConEvento`).
-- **Y** con `auth_time` de hace 16 minutos, o sin `acr` de nivel 4, responde 401 con `code: 'mfa-reciente'` y no escribe nada.
+- **Y** con `auth_time` de hace 16 minutos, o sin `acr` de nivel 4, responde 401 con `codigo: 'mfa-reciente'` y no escribe nada.
 - **Y** quien no es superadministrador recibe 403, aunque su MFA sea reciente.
 - **Y** sin `motivo` responde 422.
 
@@ -168,7 +169,8 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
   - (a) un superadministrador intenta editar sus propios permisos;
   - (b) se quita la marca de superadministrador al único que queda;
   - (c) se manda un módulo o un nivel que no existen
-- **Entonces** responde 409 en (a), 409 en (b) y 422 en (c), y no escribe ni fila ni evento.
+- **Entonces** responde 409 en (a) y 422 en (c), y no escribe ni fila ni evento.
+- **Y** (b) no puede pasar por esta ruta: quien pide ya es superadministrador y no puede cambiarse a sí mismo, así que siempre queda él. Lo cubre (a).
 
 #### CA-12: Alta del primer superadministrador por comando [backend]
 - **Dado** el comando de alta del equipo
@@ -177,7 +179,7 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Y** con `--si`:
   - crea la persona en el pool del equipo (Cognito le manda su contraseña temporal);
   - escribe su fila de permisos con clave `sub` y la marca de superadministrador;
-  - escribe un evento con canal `comando` y el actor que da la sesión de AWS (STS).
+  - escribe un evento con canal `comando`, en la misma escritura que la fila. El actor es la identidad de AWS (STS) contra producción, y `local:<usuario>` en local.
 - **Y** si se repite con el mismo correo, no duplica a la persona: dice que ya existe.
 
 #### CA-13: A0 mínimo, traído sin aplicar el stash [backend]
@@ -268,7 +270,7 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Y** si después se pide cualquier página, hay que volver a pasar por Cognito con MFA.
 
 #### CA-23: Volver a pedir el MFA [panel]
-- **Dado** una *action* que llama al backend y recibe 401 con `code: 'mfa-reciente'`
+- **Dado** una *action* que llama al backend y recibe 401 con `codigo: 'mfa-reciente'`
 - **Cuando** el servidor del panel responde
 - **Entonces** es un 302 a `authorize` con `acr_values=urn:cognito:loa:4` y `max_age=900`, y con `state` que guarda la página de origen.
 - **Y** al volver, la persona queda en esa página (la acción no se repite sola).
@@ -318,9 +320,9 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Y** el build falla si algún archivo de `app/` importa de `dev/`.
 
 #### CA-30: El cliente de la API traduce en un solo lugar [panel]
-- **Dado** la respuesta del backend `{ actor, nombre, superadmin, estado, permisos: { empresas: 'ver', documentos: 'leer-texto' } }`
+- **Dado** la respuesta del backend `{ actor, correo, nombre, superadmin, estado, permisos: { empresas: 'ver', 'documentos-texto': 'ver' } }`
 - **Cuando** pasa por `app/shared/api/`
-- **Entonces** el panel recibe `{ actor, name, isSuperadmin, status, permissions: { companies: 'view', documents: 'readText' } }`.
+- **Entonces** el panel recibe `{ actor, email, name, isSuperadmin, status, permissions: { companies: 'view', documentText: 'view' } }`.
 - **Y** un módulo o un nivel desconocido se descarta y queda en el log, sin romper la página.
 
 #### CA-31: Página de inicio [panel]
@@ -454,11 +456,6 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Cuando** arranca la Web Function
 - **Entonces** el servidor empieza a escuchar antes de esas lecturas (que van después de `listen`), dentro de los 10 s que da Lambda, y los pedidos que llegan antes de tener la configuración responden 503.
 
-### CB-13: Quitarle la marca al último superadministrador desde el comando
-- **Dado** un solo superadministrador
-- **Cuando** el comando intenta suspenderlo o quitarle la marca
-- **Entonces** se niega, con el mismo motivo que CA-11 (b).
-
 ### CB-14: Fila de sesión vencida que DynamoDB todavía no borró
 - **Dado** una fila con el TTL vencido pero aún presente
 - **Cuando** llega un pedido con su cookie
@@ -468,13 +465,12 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 
 | Criterio | Tipo de test | Dónde |
 |---|---|---|
-| CA-1, CA-2, CA-3, CA-4, CA-6 | unit (plantilla sintetizada) | `aios-backend/tests/infra-equipo.test.js` (nuevo) |
-| CA-5 | unit (plantilla + `RUTAS`) | `aios-backend/tests/infra-stack.test.js` (ajuste) + `tests/infra-pools-no-se-mezclan.test.js` (nuevo) |
+| CA-1, CA-2, CA-3, CA-4, CA-5, CA-6 | unit (plantilla sintetizada, una vez por pasada) | `aios-backend/tests/infra-equipo.test.js` + ajustes en `tests/infra-stack.test.js` |
 | CA-7, CB-1, CB-10 | unit, con claves inyectadas | `aios-backend/tests/puerta-del-equipo.test.js` (nuevo) |
 | CA-8 | unit (handler como función) | `aios-backend/tests/admin-yo-endpoint.test.js` (nuevo) |
 | CA-9 | unit (matriz) | `aios-backend/tests/permisos-del-equipo.test.js` (nuevo) |
 | CA-10, CA-11, CB-7, CB-8, CB-9 | integration (motor de tablas en memoria) | `aios-backend/tests/admin-equipo-permisos-endpoint.test.js` (nuevo) |
-| CA-12, CB-13 | integration (Cognito y tablas dobles) | `aios-backend/tests/equipo-comando.test.js` (nuevo) |
+| CA-12 | integration (Cognito y tablas dobles) + el comando real sin `--si` | `aios-backend/tests/equipo-alta.test.js` |
 | CA-13 | unit + inspección | `tests/eventos.test.js`, `tests/actores.test.js` (del stash) + un caso nuevo para `AIOS_ENTORNO=produccion` |
 | CA-14 | inspección + suite | `npm test` de `aios-backend`, comparando nombres fallidos antes y después |
 | CA-15 | integration (servidor local) | `aios-backend/tests/dev-local-admin.test.js` (nuevo) |
