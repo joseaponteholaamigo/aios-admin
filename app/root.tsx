@@ -6,14 +6,17 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration, isRouteErrorResponse, 
 import type { Route } from './+types/root';
 import { nonceContext, securityHeadersMiddleware } from './middleware/security-headers.server';
 import { csrfMiddleware } from './middleware/csrf.server';
+import { sessionMiddleware } from './middleware/session.server';
 
 /**
- * En orden: las cabeceras envuelven todo (también un rechazo de CSRF), y después la protección
- * CSRF, antes de que corra cualquier *action*. La CSP no va en `npm run dev` (ver el middleware).
+ * En orden: las cabeceras envuelven todo (también un rechazo de CSRF); después la protección
+ * CSRF, antes de que corra cualquier *action*; y después la sesión, que deja en el contexto quién
+ * pide. La CSP no va en `npm run dev` (ver el middleware).
  */
 export const middleware: Route.MiddlewareFunction[] = [
   securityHeadersMiddleware({ csp: !import.meta.env.DEV }),
   csrfMiddleware(),
+  sessionMiddleware(),
 ];
 
 /** El nonce de la CSP de este pedido, para marcar los scripts del documento. */
