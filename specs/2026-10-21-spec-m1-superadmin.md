@@ -2,8 +2,8 @@
 
 - **Fecha:** 2026-10-21
 - **Origen:** idea interna. El plan (`2026-10-20-plan-superadmin-aws.md`, versión 3, fase M1 en su §13) y su auditoría (`2026-10-21-auditoria-plan-superadmin.md`) viven en `docs/` de la raíz del workspace, fuera de este repo, porque nombran clientes reales.
-- **Estado:** backend implementado en `aios-backend` (`feat/backend-superadmin-m1`, 2026-10-21); panel e infraestructura del panel, pendientes
-- **Dónde se implementa:** la parte del panel y su infraestructura, en este repo. La del backend, en `aios-backend`, rama `feat/backend-superadmin-m1` (worktree `aios-backend-superadmin`, en la raíz del workspace).
+- **Estado:** backend implementado en `aios-backend` (2026-10-21); panel en construcción; infraestructura del panel, pendiente
+- **Dónde se implementa:** todo el superadmin va en la rama `superadmin_v2` de los dos repos (decisión de Jose, 2026-10-22). El panel y su infraestructura, en este repo; el backend, en `aios-backend` (worktree `aios-backend-superadmin`, en la raíz del workspace).
 - **Proyectos:** `aios-backend` (los CA marcados **[backend]**), `aios-admin` (**[panel]**) y la infraestructura de `aios-admin` (**[infra]**).
 
 ## Objetivo

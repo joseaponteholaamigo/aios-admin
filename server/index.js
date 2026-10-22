@@ -1,6 +1,6 @@
 // El servidor del panel en producción (`npm start`, después de `npm run build`). El mismo archivo
 // corre en una Lambda Web Function, en la Lambda clásica con Web Adapter y en la máquina de quien
-// lo prueba: la diferencia es solo dónde escucha (`direccion.js`).
+// lo prueba: la diferencia es solo dónde escucha (`listen-address.js`).
 //
 // Hace dos cosas, y nada más: servir los archivos estáticos del build y pasarle todo lo demás a
 // React Router. La sesión, los permisos, la protección CSRF y las cabeceras viven en el
