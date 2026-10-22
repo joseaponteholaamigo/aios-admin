@@ -3,9 +3,10 @@
 // EL DEFECTO QUE PREVIENE. Con un servidor intermedio, un script inyectado actúa como la persona
 // que tiene la sesión. Sin CSP con nonce nada lo frena; sin `frame-ancestors 'none'` el panel se
 // puede meter en un iframe ajeno para engañar clics; sin HSTS, el primer pedido puede ir por http.
-import { describe, expect, test } from 'vitest';
-import { RouterContextProvider } from 'react-router';
+import { describe, expect, test, vi } from 'vitest';
+import { RouterContextProvider, type EntryContext } from 'react-router';
 import { nonceContext, securityHeadersMiddleware } from '../app/middleware/security-headers.server';
+import { TEST_ENV } from './helpers/fake-cognito';
 
 async function run(response: Response, csp = true) {
   const middleware = securityHeadersMiddleware({ csp });
@@ -45,5 +46,17 @@ describe('securityHeadersMiddleware', () => {
   test('en desarrollo no pone CSP, para no bloquear la recarga de Vite', async () => {
     const { result } = await run(html(), false);
     expect(result.headers.get('content-security-policy')).toBeNull();
+  });
+});
+
+describe('entry.server', () => {
+  test('⛔ una página que no pasó por el middleware (el 404 de una ruta que no existe) también lleva las cabeceras', async () => {
+    for (const [name, value] of Object.entries(TEST_ENV)) vi.stubEnv(name, value);
+    const { default: handleRequest } = await import('../app/entry.server');
+    const request = new Request('https://dxxxx.cloudfront.net/no-existe', { method: 'HEAD' });
+    const response = await handleRequest(request, 404, new Headers(), {} as EntryContext, new RouterContextProvider());
+    expect(response.status).toBe(404);
+    expect(response.headers.get('strict-transport-security')).toMatch(/max-age=\d+/);
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
   });
 });

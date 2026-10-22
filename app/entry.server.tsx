@@ -1,7 +1,9 @@
-// El render del servidor. Es el de React Router para Node, con dos cambios:
+// El render del servidor. Es el de React Router para Node, con tres cambios:
 //   1. Los scripts que mete React Router llevan el nonce de la CSP de este pedido
 //      (`security-headers.server.ts`); sin él, la CSP los bloquearía.
-//   2. La configuración se valida al cargar el build: un panel mal configurado no arranca, en vez
+//   2. Una página que no pasó por el middleware (una ruta que no existe: React Router responde el
+//      404 sin correrlo) recibe aquí las mismas cabeceras de seguridad (CA-28).
+//   3. La configuración se valida al cargar el build: un panel mal configurado no arranca, en vez
 //      de arrancar y aceptar de más (CB-11). En producción, `server/index.js` carga el build antes
 //      de escuchar.
 import { PassThrough } from 'node:stream';
@@ -12,7 +14,7 @@ import { isbot } from 'isbot';
 import type { RenderToPipeableStreamOptions } from 'react-dom/server';
 import { renderToPipeableStream } from 'react-dom/server';
 import { getConfig } from './shared/config/config.server';
-import { nonceContext } from './middleware/security-headers.server';
+import { CSP_ENABLED, applySecurityHeaders, createNonce, nonceContext } from './middleware/security-headers.server';
 
 getConfig();
 
@@ -25,10 +27,12 @@ export default function handleRequest(
   routerContext: EntryContext,
   loadContext: RouterContextProvider,
 ) {
+  const middlewareNonce = loadContext.get(nonceContext);
+  const nonce = middlewareNonce || createNonce();
+  if (!middlewareNonce) applySecurityHeaders(responseHeaders, { nonce, csp: CSP_ENABLED, html: true });
   if (request.method.toUpperCase() === 'HEAD') {
     return new Response(null, { status: responseStatusCode, headers: responseHeaders });
   }
-  const nonce = loadContext.get(nonceContext) || undefined;
 
   return new Promise<Response>((resolve, reject) => {
     let shellRendered = false;

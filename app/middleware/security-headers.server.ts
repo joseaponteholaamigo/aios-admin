@@ -35,21 +35,32 @@ const ALWAYS = {
 };
 
 /**
- * El middleware. `csp: false` solo para `npm run dev`: el servidor de Vite mete scripts propios
- * para la recarga instantánea, y la CSP los bloquearía.
+ * La CSP va en todo menos `npm run dev`: el servidor de Vite mete scripts propios para la recarga
+ * instantánea, y la CSP los bloquearía.
+ */
+export const CSP_ENABLED = !import.meta.env.DEV;
+
+export const createNonce = () => randomBytes(16).toString('base64');
+
+/** Pone las cabeceras de seguridad en `headers`; la CSP, solo en una página HTML y con `csp`. */
+export function applySecurityHeaders(headers: Headers, { nonce, csp, html }: { nonce: string; csp: boolean; html: boolean }) {
+  for (const [name, value] of Object.entries(ALWAYS)) headers.set(name, value);
+  if (csp && html) headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+}
+
+/**
+ * El middleware. ⚠️ Una ruta que no existe (404) la responde React Router sin correr ningún
+ * middleware: para esa página, `entry.server.tsx` pone las mismas cabeceras.
  */
 export function securityHeadersMiddleware({ csp }: { csp: boolean }): MiddlewareFunction<Response> {
   return async ({ context }, next) => {
-    const nonce = randomBytes(16).toString('base64');
+    const nonce = createNonce();
     context.set(nonceContext, nonce);
     const response = await next();
 
     // Copia y no modificación: las cabeceras de algunas respuestas (un redirect) son de solo lectura.
     const headers = new Headers(response.headers);
-    for (const [name, value] of Object.entries(ALWAYS)) headers.set(name, value);
-    if (csp && headers.get('content-type')?.startsWith('text/html')) {
-      headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
-    }
+    applySecurityHeaders(headers, { nonce, csp, html: headers.get('content-type')?.startsWith('text/html') ?? false });
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   };
 }

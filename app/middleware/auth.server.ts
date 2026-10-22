@@ -1,22 +1,22 @@
 // El acceso al panel: sin sesión no se entra, y el access token se renueva en el servidor.
 //
-// Todo pide sesión salvo el login mismo (`/auth/*`). Si el refresh token ya no sirve (revocado,
+// Todo pide sesión salvo las rutas que la tabla declara públicas (el login y «sin acceso»); una
+// ruta que no está en la tabla también la pide. Si el refresh token ya no sirve (revocado,
 // vencido), la sesión se cierra y se vuelve al login. Los tokens nunca llegan al navegador.
 import type { MiddlewareFunction } from 'react-router';
 import { sessionContext } from './session.server';
 import { getLoginFlow } from '../shared/auth/login-flow-service.server';
 import { loginRedirect, type LoginFlow } from '../shared/auth/login-flow.server';
+import { accessFor } from '../shared/routing/route-access';
 import { getSessionService } from '../shared/session/session-service.server';
 import type { SessionService } from '../shared/session/session.server';
-
-const PUBLIC_PREFIX = '/auth/';
 
 export function authMiddleware(
   flow: () => LoginFlow = getLoginFlow,
   sessions: () => SessionService = getSessionService,
 ): MiddlewareFunction<Response> {
   return async ({ request, context }, next) => {
-    if (new URL(request.url).pathname.startsWith(PUBLIC_PREFIX)) return next();
+    if (accessFor(new URL(request.url)) === 'public') return next();
     const session = context.get(sessionContext);
     if (!session) throw loginRedirect(request);
     const fresh = await flow().refreshIfNeeded(session);

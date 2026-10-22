@@ -37,10 +37,14 @@ describe('authMiddleware', () => {
     expect(dataRequest.thrown?.headers.get('location')).toBe('/auth/login?returnTo=%2Fempresas');
   });
 
-  test('el login no pide sesión', async () => {
-    for (const path of ['/auth/login', '/auth/callback?code=x', '/auth/logout']) {
+  test('el login y «sin acceso» no piden sesión', async () => {
+    for (const path of ['/auth/login', '/auth/callback?code=x', '/auth/logout', '/auth/no-access']) {
       expect((await run(path)).reached, path).toBe(true);
     }
+  });
+
+  test('⛔ una dirección inventada bajo /auth/ sí pide sesión: lo público lo dice la tabla', async () => {
+    expect((await run('/auth/inventada')).thrown?.headers.get('location')).toContain('/auth/login');
   });
 
   test('con sesión pasa, con los tokens renovados en el contexto', async () => {

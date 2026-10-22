@@ -36,6 +36,8 @@ export type PanelConfig = {
    */
   sessionStore: SessionStoreConfig;
   cognito: CognitoConfig;
+  /** La base de la API del backend, sin `/v1` (`https://<id>.execute-api.us-east-2.amazonaws.com`). */
+  adminApiUrl: string;
 };
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
@@ -115,7 +117,12 @@ export function readConfig(env: Record<string, string | undefined>): PanelConfig
   if (raw.length === 0) {
     throw new Error('Falta PUBLIC_ORIGINS: los orígenes del panel, separados por coma (https://<id>.cloudfront.net)');
   }
-  return { publicOrigins: raw.map(parseOrigin), sessionStore: readSessionStore(env), cognito: readCognito(env) };
+  return {
+    publicOrigins: raw.map(parseOrigin),
+    sessionStore: readSessionStore(env),
+    cognito: readCognito(env),
+    adminApiUrl: baseUrl(env, 'ADMIN_API_URL', 'la base de la API del backend (el parámetro /aios/admin/api-url)'),
+  };
 }
 
 let cached: PanelConfig | null = null;

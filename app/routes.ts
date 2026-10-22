@@ -1,10 +1,6 @@
-// El mapa de rutas del panel. Cada módulo aporta sus rutas desde `app/modules/<módulo>/routes/`;
-// las pantallas que juntan varios módulos (la ficha de una empresa) se componen solo aquí.
+// El mapa de rutas de React Router, armado desde la tabla de rutas (`shared/routing/route-table.ts`),
+// que dice además qué acceso exige cada una. Una ruta nueva se agrega allá, nunca aquí.
 import { type RouteConfig, index, route } from '@react-router/dev/routes';
+import { ROUTE_TABLE } from './shared/routing/route-table';
 
-export default [
-  index('modules/home/routes/home.tsx'),
-  route('auth/login', 'modules/auth/routes/login.tsx'),
-  route('auth/callback', 'modules/auth/routes/callback.tsx'),
-  route('auth/logout', 'modules/auth/routes/logout.tsx'),
-] satisfies RouteConfig;
+export default ROUTE_TABLE.map((r) => (r.path === '' ? index(r.file) : route(r.path, r.file))) satisfies RouteConfig;

@@ -14,6 +14,7 @@ const BASE = {
   COGNITO_ISSUER: 'https://cognito-idp.us-east-2.amazonaws.com/us-east-2_equipo',
   COGNITO_CLIENT_ID: 'cliente-del-panel',
   COGNITO_POOL_ID: 'us-east-2_equipo',
+  ADMIN_API_URL: 'https://abc.execute-api.us-east-2.amazonaws.com',
 };
 
 describe('readConfig', () => {

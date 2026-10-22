@@ -10,14 +10,18 @@ export const ISSUER = 'https://cognito-idp.us-east-2.amazonaws.com/us-east-2_equ
 export const CLIENT_ID = 'cliente-del-panel';
 export const CLIENT_SECRET = 'secreto-del-panel';
 
-export const testConfig = (): PanelConfig => readConfig({
+/** Un entorno completo y válido, como el que lee el servidor del panel. */
+export const TEST_ENV = {
   PUBLIC_ORIGINS: ORIGIN,
   SESSION_STORE: 'memory',
   COGNITO_LOGIN_URL: LOGIN_URL,
   COGNITO_ISSUER: ISSUER,
   COGNITO_CLIENT_ID: CLIENT_ID,
   COGNITO_CLIENT_SECRET: CLIENT_SECRET,
-});
+  ADMIN_API_URL: 'https://api.example',
+};
+
+export const testConfig = (): PanelConfig => readConfig(TEST_ENV);
 
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const jwt = (claims: Record<string, unknown>) => `${b64({ alg: 'RS256', kid: 'k' })}.${b64(claims)}.firma`;
