@@ -24,7 +24,7 @@ npm run typecheck    # los tipos
 npm run build && npm start   # el servidor de producción, en http://127.0.0.1:3000 (o en PORT)
 ```
 
-En una Lambda Web Function el servidor escucha donde dice `AWS_LAMBDA_HTTP_ENDPOINT` (`server/direccion.js`).
+En una Lambda Web Function el servidor escucha donde dice `AWS_LAMBDA_HTTP_ENDPOINT` (`server/listen-address.js`).
 
 ## Estado
 

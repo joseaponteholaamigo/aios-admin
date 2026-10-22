@@ -9,54 +9,54 @@ import { join, relative, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 
-const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const app = join(raiz, 'app');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const appDir = join(root, 'app');
 
-function archivos(dir: string): string[] {
-  return readdirSync(dir).flatMap((n) => {
-    const p = join(dir, n);
-    return statSync(p).isDirectory() ? archivos(p) : [p];
+function filesUnder(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? filesUnder(path) : [path];
   });
 }
 
-/** Las importaciones de un archivo, resueltas a rutas relativas a `app/` cuando son locales. */
-function importaciones(archivo: string): string[] {
-  const fuente = readFileSync(archivo, 'utf8');
-  const crudas = [...fuente.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1] ?? '');
-  return crudas.map((i) => (i.startsWith('.') ? relative(app, resolve(dirname(archivo), i)).split(sep).join('/') : i));
+/** Las importaciones de un archivo; las locales, resueltas a rutas relativas a `app/`. */
+function importsOf(file: string): string[] {
+  const source = readFileSync(file, 'utf8');
+  const raw = [...source.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1] ?? '');
+  return raw.map((i) => (i.startsWith('.') ? relative(appDir, resolve(dirname(file), i)).split(sep).join('/') : i));
 }
 
-const todos = archivos(app).filter((a) => /\.(tsx?|jsx?|css)$/.test(a));
-const rel = (a: string) => relative(app, a).split(sep).join('/');
-const moduloDe = (r: string) => (r.startsWith('modules/') ? r.split('/')[1] : null);
+const files = filesUnder(appDir).filter((f) => /\.(tsx?|jsx?|css)$/.test(f));
+const rel = (f: string) => relative(appDir, f).split(sep).join('/');
+const moduleOf = (r: string) => (r.startsWith('modules/') ? r.split('/')[1] : null);
 
 test('hay archivos que revisar', () => {
-  expect(todos.length).toBeGreaterThan(0);
+  expect(files.length).toBeGreaterThan(0);
 });
 
 test('los archivos de app/ van en kebab-case', () => {
-  const mal = todos.map(rel).filter((r) => r.split('/').some((parte) => !/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(parte)));
-  expect(mal).toEqual([]);
+  const wrong = files.map(rel).filter((r) => r.split('/').some((part) => !/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(part)));
+  expect(wrong).toEqual([]);
 });
 
 test('un módulo nunca importa de otro módulo', () => {
-  const cruces = todos.flatMap((a) => {
-    const propio = moduloDe(rel(a));
-    if (!propio) return [];
-    return importaciones(a)
-      .filter((i) => moduloDe(i) && moduloDe(i) !== propio)
-      .map((i) => `${rel(a)} → ${i}`);
+  const crossings = files.flatMap((f) => {
+    const own = moduleOf(rel(f));
+    if (!own) return [];
+    return importsOf(f)
+      .filter((i) => moduleOf(i) && moduleOf(i) !== own)
+      .map((i) => `${rel(f)} → ${i}`);
   });
-  expect(cruces).toEqual([]);
+  expect(crossings).toEqual([]);
 });
 
 test('shared/ y domain/ nunca importan de un módulo, y domain/ no usa React', () => {
-  const malas = todos.flatMap((a) => {
-    const r = rel(a);
+  const wrong = files.flatMap((f) => {
+    const r = rel(f);
     if (!r.startsWith('shared/') && !r.startsWith('domain/')) return [];
-    return importaciones(a)
-      .filter((i) => moduloDe(i) || (r.startsWith('domain/') && /^react(-dom|-router)?(\/|$)/.test(i)))
+    return importsOf(f)
+      .filter((i) => moduleOf(i) || (r.startsWith('domain/') && /^react(-dom|-router)?(\/|$)/.test(i)))
       .map((i) => `${r} → ${i}`);
   });
-  expect(malas).toEqual([]);
+  expect(wrong).toEqual([]);
 });

@@ -7,7 +7,7 @@
 // middleware de React Router (`app/middleware/`), para que corran igual en `npm run dev`.
 import express from 'express';
 import { createRequestHandler } from '@react-router/express';
-import { direccionDeEscucha } from './direccion.js';
+import { listenAddress } from './listen-address.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -17,13 +17,13 @@ app.use('/assets', express.static('build/client/assets', { immutable: true, maxA
 app.use(express.static('build/client', { maxAge: '1h', index: false }));
 
 // Por variable y no literal: así TypeScript no revisa el build, que es código generado.
-const BUILD_DEL_SERVIDOR = '../build/server/index.js';
+const SERVER_BUILD = '../build/server/index.js';
 /** @type {() => Promise<import('react-router').ServerBuild>} */
-const build = () => import(BUILD_DEL_SERVIDOR);
+const build = () => import(SERVER_BUILD);
 app.all('*splat', createRequestHandler({ build }));
 
-const { host, port } = direccionDeEscucha(process.env);
-const servidor = app.listen(port, host, () => {
-  const { port: real } = /** @type {import('node:net').AddressInfo} */ (servidor.address());
-  console.log(`aios-admin escuchando en http://${host}:${real}`);
+const { host, port } = listenAddress(process.env);
+const server = app.listen(port, host, () => {
+  const { port: actual } = /** @type {import('node:net').AddressInfo} */ (server.address());
+  console.log(`aios-admin escuchando en http://${host}:${actual}`);
 });
