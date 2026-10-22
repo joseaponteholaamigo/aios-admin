@@ -6,7 +6,7 @@
 // «sin permisos todavía», una persona suspendida seguiría adentro.
 import { describe, expect, test } from 'vitest';
 import { AdminApiUnavailableError, createAdminApi } from '../app/shared/api/admin-api.server';
-import { TeamMemberContractError, toTeamMember } from '../app/shared/api/team-member-mapping';
+import { TeamMemberContractError, toApiPermissions, toTeamMember } from '../app/shared/api/team-member-mapping';
 
 const API_BODY = {
   actor: 'equipo:sub-ana',
@@ -66,6 +66,15 @@ describe('toTeamMember', () => {
     for (const body of [null, 'ok', { ...API_BODY, actor: undefined }, { ...API_BODY, permisos: ['empresas'] }]) {
       expect(() => toTeamMember(body, collectLog().log), JSON.stringify(body)).toThrow(TeamMemberContractError);
     }
+  });
+});
+
+describe('toApiPermissions', () => {
+  test('lo que el panel manda vuelve igual al pasar por la traducción de ida', () => {
+    const permissions = { overview: 'view', companies: 'edit', documentText: 'view', clientUsers: 'edit', usage: 'view' } as const;
+    const api = toApiPermissions(permissions);
+    expect(api).toEqual({ 'vista-general': 'ver', empresas: 'editar', 'documentos-texto': 'ver', usuarios: 'editar', consumo: 'ver' });
+    expect(toTeamMember({ ...API_BODY, permisos: api }, collectLog().log).permissions).toEqual(permissions);
   });
 });
 

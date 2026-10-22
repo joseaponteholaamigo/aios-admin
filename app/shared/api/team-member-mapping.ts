@@ -24,6 +24,9 @@ const LEVEL_FROM_API = new Map<string, Level>([
   ['editar', 'edit'],
 ]);
 
+const MODULE_TO_API = new Map([...MODULE_FROM_API].map(([api, module]) => [module, api]));
+const LEVEL_TO_API = new Map([...LEVEL_FROM_API].map(([api, level]) => [level, api]));
+
 const ACTIVE_STATUS = 'activa';
 
 /** La respuesta no es la de `/yo`: el contrato con el backend se rompió. */
@@ -44,6 +47,17 @@ function mapPermissions(raw: unknown, log: (message: string) => void): TeamMembe
     permissions[module] = level;
   }
   return permissions;
+}
+
+/** Los permisos del panel con los nombres del backend: lo que el panel le manda. */
+export function toApiPermissions(permissions: TeamMember['permissions']): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(permissions).flatMap(([module, level]) => {
+      const apiModule = MODULE_TO_API.get(module as Module);
+      const apiLevel = level ? LEVEL_TO_API.get(level) : undefined;
+      return apiModule && apiLevel ? [[apiModule, apiLevel]] : [];
+    }),
+  );
 }
 
 /** La persona del equipo, en el idioma del panel. **Lanza** si la respuesta no tiene la forma de `/yo`. */

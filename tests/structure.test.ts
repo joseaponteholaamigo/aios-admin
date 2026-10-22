@@ -50,6 +50,11 @@ test('un módulo nunca importa de otro módulo', () => {
   expect(crossings).toEqual([]);
 });
 
+test('⛔ nada de app/ importa de dev/: la identidad falsa no llega al build (CA-29)', () => {
+  const wrong = files.flatMap((f) => importsOf(f).filter((i) => i === '../dev' || i.startsWith('../dev/')).map((i) => `${rel(f)} → ${i}`));
+  expect(wrong).toEqual([]);
+});
+
 test('shared/ y domain/ nunca importan de un módulo, y domain/ no usa React', () => {
   const wrong = files.flatMap((f) => {
     const r = rel(f);
