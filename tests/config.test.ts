@@ -7,7 +7,14 @@
 import { describe, expect, test } from 'vitest';
 import { readConfig } from '../app/shared/config/config.server';
 
-const BASE = { PUBLIC_ORIGINS: 'https://d1.cloudfront.net', SESSION_STORE: 'memory' };
+const BASE = {
+  PUBLIC_ORIGINS: 'https://d1.cloudfront.net',
+  SESSION_STORE: 'memory',
+  COGNITO_LOGIN_URL: 'https://equipo.auth.us-east-2.amazoncognito.com',
+  COGNITO_ISSUER: 'https://cognito-idp.us-east-2.amazonaws.com/us-east-2_equipo',
+  COGNITO_CLIENT_ID: 'cliente-del-panel',
+  COGNITO_POOL_ID: 'us-east-2_equipo',
+};
 
 describe('readConfig', () => {
   test('lee los orígenes, sin barra final', () => {
@@ -29,6 +36,23 @@ describe('readConfig', () => {
   test('⛔ dónde viven las sesiones se escribe a propósito: sin SESSION_STORE no arranca', () => {
     expect(() => readConfig({ PUBLIC_ORIGINS: BASE.PUBLIC_ORIGINS })).toThrow(/SESSION_STORE/);
     expect(() => readConfig({ ...BASE, SESSION_STORE: 'redis' })).toThrow(/SESSION_STORE/);
+  });
+
+  test('⛔ en AWS el secreto del cliente sale del pool: nunca las dos fuentes, nunca ninguna', () => {
+    expect(readConfig(BASE).cognito.clientSecret).toEqual({ from: 'pool', poolId: 'us-east-2_equipo' });
+    expect(() => readConfig({ ...BASE, COGNITO_CLIENT_SECRET: 's' })).toThrow(/excluyentes/);
+    expect(() => readConfig({ ...BASE, COGNITO_POOL_ID: undefined })).toThrow(/COGNITO_POOL_ID/);
+    expect(readConfig({ ...BASE, COGNITO_POOL_ID: undefined, COGNITO_CLIENT_SECRET: 's' }).cognito.clientSecret)
+      .toEqual({ from: 'env', value: 's' });
+  });
+
+  test('el login de Cognito va por https, salvo en la máquina local', () => {
+    expect(() => readConfig({ ...BASE, COGNITO_LOGIN_URL: 'http://equipo.auth.example' })).toThrow(/COGNITO_LOGIN_URL/);
+    expect(readConfig({ ...BASE, COGNITO_LOGIN_URL: 'http://localhost:5173/dev/identity/' }).cognito.loginUrl)
+      .toBe('http://localhost:5173/dev/identity');
+    for (const name of ['COGNITO_LOGIN_URL', 'COGNITO_ISSUER', 'COGNITO_CLIENT_ID']) {
+      expect(() => readConfig({ ...BASE, [name]: undefined }), name).toThrow(new RegExp(name));
+    }
   });
 
   test('con DynamoDB exige la tabla y la llave KMS', () => {

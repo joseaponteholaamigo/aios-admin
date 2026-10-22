@@ -7,16 +7,19 @@ import type { Route } from './+types/root';
 import { nonceContext, securityHeadersMiddleware } from './middleware/security-headers.server';
 import { csrfMiddleware } from './middleware/csrf.server';
 import { sessionMiddleware } from './middleware/session.server';
+import { authMiddleware } from './middleware/auth.server';
 
 /**
  * En orden: las cabeceras envuelven todo (también un rechazo de CSRF); después la protección
- * CSRF, antes de que corra cualquier *action*; y después la sesión, que deja en el contexto quién
- * pide. La CSP no va en `npm run dev` (ver el middleware).
+ * CSRF, antes de que corra cualquier *action*; la sesión, que deja en el contexto quién pide; y
+ * el acceso, que manda al login a quien no tiene sesión y renueva el access token. La CSP no va
+ * en `npm run dev` (ver el middleware).
  */
 export const middleware: Route.MiddlewareFunction[] = [
   securityHeadersMiddleware({ csp: !import.meta.env.DEV }),
   csrfMiddleware(),
   sessionMiddleware(),
+  authMiddleware(),
 ];
 
 /** El nonce de la CSP de este pedido, para marcar los scripts del documento. */
