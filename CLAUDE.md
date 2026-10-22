@@ -37,6 +37,7 @@ Usa Node 24: corre `nvm use` en la carpeta antes de cualquier comando.
 | Build y servidor como en AWS | `npm run build` y `npm start`, con las variables de `.env.example` en el entorno |
 
 - `/yo` lo responde el backend: en local, `npm run dev` en `aios-backend`, y su dirección va en `ADMIN_API_URL`.
+- Para entrar en local, el backend corre contra DynamoDB Local (`npm run dev:aws`) y con `EQUIPO_ISSUER=http://localhost:5173/dev/identity EQUIPO_CLIENTE_ID=panel-local npm run dev`. El login lleva a la pantalla «entrar como» de la identidad falsa (`dev/`), que solo existe en `npm run dev`: nada de `app/` importa de `dev/`.
 - Antes de commitear corre `npm test`, `npm run typecheck` y `npm run build`. Si algo falla, no commitees.
 
 ## Specs
