@@ -11,6 +11,21 @@ Reemplaza al panel `/administrador` de beenso. Corre en AWS (cuenta `enso`, us-e
 - Login con el pool de Cognito del equipo, con MFA. Ese pool vive en el stack de `aios-backend`.
 - El código va en inglés; los textos de la pantalla y la documentación, en español.
 
+## Cómo correr
+
+Pide Node 24 (`.nvmrc`):
+
+```bash
+nvm use
+npm install
+npm run dev          # desarrollo, con recarga instantánea
+npm test             # las pruebas
+npm run typecheck    # los tipos
+npm run build && npm start   # el servidor de producción, en http://127.0.0.1:3000 (o en PORT)
+```
+
+En una Lambda Web Function el servidor escucha donde dice `AWS_LAMBDA_HTTP_ENDPOINT` (`server/direccion.js`).
+
 ## Estado
 
 En especificación. La fase M1 (login con MFA y API de admin) está en `specs/2026-10-21-spec-m1-superadmin.md`.
