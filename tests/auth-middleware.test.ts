@@ -9,12 +9,19 @@ import { authMiddleware } from '../app/middleware/auth.server';
 import { sessionContext } from '../app/middleware/session.server';
 import type { ActiveSession, SessionService } from '../app/shared/session/session.server';
 import type { LoginFlow } from '../app/shared/auth/login-flow.server';
+import { IdentityProviderError } from '../app/shared/auth/cognito-client.server';
 
 const SESSION = { id: 'id', sub: 'sub-jose', tokens: {}, record: {} } as unknown as ActiveSession;
 
-async function run(path: string, { session = null as ActiveSession | null, refreshed = SESSION as ActiveSession | null } = {}) {
-  const flow = { refreshIfNeeded: async () => refreshed } as unknown as LoginFlow;
-  const sessions = { destroy: async () => ({ cookie: 'muerta=; Max-Age=0', session: null }) } as unknown as SessionService;
+let destroyed = 0;
+
+async function run(
+  path: string,
+  { session = null as ActiveSession | null, refreshed = SESSION as ActiveSession | null, failsWith = null as unknown } = {},
+) {
+  destroyed = 0;
+  const flow = { refreshIfNeeded: async () => { if (failsWith) throw failsWith; return refreshed; } } as unknown as LoginFlow;
+  const sessions = { destroy: async () => { destroyed += 1; return { cookie: 'muerta=; Max-Age=0', session: null }; } } as unknown as SessionService;
   const middleware = authMiddleware(() => flow, () => sessions);
   const context = new RouterContextProvider();
   context.set(sessionContext, session);
@@ -52,6 +59,13 @@ describe('authMiddleware', () => {
     const r = await run('/', { session: SESSION, refreshed });
     expect(r.reached).toBe(true);
     expect(r.context.get(sessionContext)?.id).toBe('renovada');
+  });
+
+  test('si Cognito no responde al renovar, responde 503 y no cierra la sesión', async () => {
+    const r = await run('/', { session: SESSION, failsWith: new IdentityProviderError(502, 'sin respuesta') });
+    expect(r.reached).toBe(false);
+    expect((r.thrown as unknown as { init?: { status?: number } })?.init?.status).toBe(503);
+    expect(destroyed).toBe(0);
   });
 
   test('⛔ si ya no se pueden renovar los tokens, cierra la sesión y manda al login', async () => {

@@ -14,10 +14,31 @@ import { expiredLoginCookie, type PendingLogins } from './pending-login.server';
 /** Se renueva el access token cuando le queda menos de esto. */
 export const REFRESH_MARGIN_MS = 60 * 1000;
 
-/** Una ruta del propio panel a la que volver, o `/`. Nunca otro sitio: no es una redirección abierta. */
+/** Un origen que no existe: sirve para resolver la vuelta como lo haría el navegador. */
+const RETURN_BASE = 'https://panel.invalid';
+
+/**
+ * Una ruta del propio panel a la que volver, o `/`. Nunca otro sitio: no es una redirección abierta.
+ *
+ * ⚠️ Se resuelve con el analizador de URL, como el navegador, en vez de mirar el texto: el
+ * navegador quita tabuladores y saltos de línea, así que `/\t/evil.example` termina siendo
+ * `//evil.example`, otro sitio. Por eso se rechazan los caracteres de control y la barra
+ * invertida, y la vuelta tiene que quedar en el mismo origen.
+ *
+ * ⚠️ Y se revisa también la ruta ya normalizada, que es lo que va en la redirección: los puntos
+ * se resuelven, así que `/.//evil.example` queda en el panel al entrar pero sale `//evil.example`.
+ */
 export function safeReturnTo(value: string | null | undefined): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return '/';
-  return value;
+  if (!value || !value.startsWith('/') || /[\u0000-\u001f\u007f\\]/.test(value)) return '/';
+  let url: URL;
+  try {
+    url = new URL(value, RETURN_BASE);
+  } catch {
+    return '/';
+  }
+  const path = `${url.pathname}${url.search}${url.hash}`;
+  const staysInPanel = url.origin === RETURN_BASE && new URL(path, RETURN_BASE).origin === RETURN_BASE;
+  return staysInPanel ? path : '/';
 }
 
 /** La ruta que pidió el navegador. En un pedido de datos (`.data`) se quita el sufijo y la consulta interna. */
@@ -99,7 +120,8 @@ export function createLoginFlow({
       const headers = new Headers();
       headers.append('Set-Cookie', cookie);
       headers.append('Set-Cookie', expiredLoginCookie());
-      return { ok: true, response: redirect(login.returnTo, { headers }) };
+      // Se vuelve a limpiar aunque ya se limpió al empezar: la fila del login pendiente es dato guardado.
+      return { ok: true, response: redirect(safeReturnTo(login.returnTo), { headers }) };
     },
 
     async logout(request: Request): Promise<Response> {
@@ -112,14 +134,26 @@ export function createLoginFlow({
       return redirect(cognito.logoutUrl(`${origin}/`), { headers: { 'Set-Cookie': cookie } });
     },
 
-    /** La sesión con un access token vigente, renovándolo si hace falta; `null` si ya no se puede. */
+    /**
+     * La sesión con un access token vigente, renovándolo si hace falta; `null` si el refresh token
+     * ya no sirve (revocado o vencido: Cognito responde `invalid_grant`).
+     *
+     * ⚠️ Una falla pasajera de Cognito (sin respuesta, un 5xx) NO cierra la sesión: si el access
+     * token todavía vale, se sigue con él; si ya venció, **lanza** `IdentityProviderError` y el
+     * middleware responde 503. Tratarla como revocación sacaba a todos al login en cada tropiezo.
+     */
     async refreshIfNeeded(session: ActiveSession): Promise<ActiveSession | null> {
       if (session.tokens.accessTokenExpiresAt - now() > REFRESH_MARGIN_MS) return session;
+      let tokens;
       try {
-        return await sessions.saveTokens(session, await cognito.refresh(session.tokens.refreshToken));
-      } catch {
-        return null;
+        tokens = await cognito.refresh(session.tokens.refreshToken);
+      } catch (e) {
+        if (e instanceof IdentityProviderError && e.status === 400 && e.reason === 'invalid_grant') return null;
+        log(`No se pudo renovar el access token: ${e instanceof IdentityProviderError ? `${e.status} ${e.reason}` : 'error'}`);
+        if (session.tokens.accessTokenExpiresAt > now()) return session;
+        throw e;
       }
+      return sessions.saveTokens(session, tokens);
     },
   };
 }

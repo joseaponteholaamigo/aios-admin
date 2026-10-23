@@ -27,18 +27,27 @@ export function contentSecurityPolicy(nonce: string): string {
   ].join('; ');
 }
 
-/** Las que van en toda respuesta, HTML o no. */
+/**
+ * Las que van en toda respuesta, HTML o no. `no-store` porque todo lo que responde el panel es
+ * de la persona que entró: ni el navegador (el «atrás» después de salir, en un computador
+ * compartido) ni nada en el camino debe guardarlo. Los estáticos con hash no pasan por aquí.
+ */
 const ALWAYS = {
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
   'Referrer-Policy': 'no-referrer',
   'X-Content-Type-Options': 'nosniff',
+  'Cache-Control': 'no-store',
 };
 
 /**
  * La CSP va en todo menos `npm run dev`: el servidor de Vite mete scripts propios para la recarga
  * instantánea, y la CSP los bloquearía.
+ *
+ * ⚠️ No sale de `import.meta.env.DEV`: ese valor lo decide `NODE_ENV` al construir, y un build
+ * hecho con `NODE_ENV=development` (o `test`) saldría a AWS sin CSP y sin aviso. La marca
+ * `__PANEL_DEV_SERVER__` la define solo el servidor de desarrollo (`vite.config.ts`).
  */
-export const CSP_ENABLED = !import.meta.env.DEV;
+export const CSP_ENABLED = typeof __PANEL_DEV_SERVER__ === 'undefined';
 
 export const createNonce = () => randomBytes(16).toString('base64');
 

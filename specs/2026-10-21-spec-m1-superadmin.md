@@ -483,7 +483,7 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 | CA-26 | integration (concurrencia) | `aios-admin/tests/concurrent-requests.test.ts` |
 | CA-27, CB-11 | unit | `aios-admin/tests/csrf.test.ts` |
 | CA-28 | unit (cabeceras) | `aios-admin/tests/security-headers.test.ts` |
-| CA-29 | unit (build) | `aios-admin/tests/dev-identity-excluded.test.ts` |
+| CA-29 | unit (build) | `aios-admin/tests/production-build.test.ts` (también exige la CSP del build real, CA-28) |
 | CA-30 | unit | `aios-admin/tests/api-client-mapping.test.ts` |
 | CA-31 | unit (*loader* + componente) | `aios-admin/tests/home.test.ts` |
 | CA-32, CA-37, CA-38 | manual (en AWS, lo despliega Jose) | resultado escrito en esta spec |

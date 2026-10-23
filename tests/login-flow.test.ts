@@ -11,7 +11,7 @@ import { createSessionService, SESSION_COOKIE, type SessionService } from '../ap
 import { createMemorySessionStore } from '../app/shared/session/memory-store.server';
 import { createLocalCipher } from '../app/shared/session/local-cipher.server';
 import { createPendingLogins, LOGIN_COOKIE, LOGIN_TTL_MS } from '../app/shared/auth/pending-login.server';
-import { createCognitoClient, FRESH_MFA } from '../app/shared/auth/cognito-client.server';
+import { createCognitoClient, FRESH_MFA, IdentityProviderError } from '../app/shared/auth/cognito-client.server';
 import { createLoginFlow, safeReturnTo, type LoginFlow } from '../app/shared/auth/login-flow.server';
 import { freshMfaRedirect, needsFreshMfa } from '../app/shared/auth/fresh-mfa.server';
 import { CLIENT_ID, CLIENT_SECRET, LOGIN_URL, ORIGIN, fakeCognito, testConfig } from './helpers/fake-cognito';
@@ -87,6 +87,28 @@ describe('empezar', () => {
       expect(safeReturnTo(bad), String(bad)).toBe('/');
     }
     expect(safeReturnTo('/empresas?filtro=activas')).toBe('/empresas?filtro=activas');
+  });
+
+  test('⛔ ni con tabuladores o saltos de línea, que el navegador quita y dejan «//otro-sitio»', () => {
+    for (const bad of ['/\t/evil.example/phish', '/\n/evil.example', '/\r/evil.example', '/\u0000/evil.example', '/./\\evil.example']) {
+      expect(safeReturnTo(bad), JSON.stringify(bad)).toBe('/');
+    }
+    // Codificado no es un truco: el navegador no lo decodifica al resolver, y queda dentro del panel.
+    expect(safeReturnTo('/%09/evil.example')).toBe('/%09/evil.example');
+  });
+
+  test('⛔ ni con puntos que, al normalizarse, dejan «//otro-sitio» en la redirección', () => {
+    for (const bad of ['/.//evil.example/x', '/a/..//evil.example', '/%2e//evil.example', '//evil.example/robar']) {
+      expect(safeReturnTo(bad), bad).toBe('/');
+    }
+    expect(safeReturnTo('/empresas/../usuarios')).toBe('/usuarios');
+  });
+
+  test('⛔ el login real con un tabulador en la vuelta termina en el panel, no en otro sitio', async () => {
+    const { location, cookie } = await start('/auth/login?returnTo=%2F%09%2Fevil.example%2Fphish');
+    const { code, state } = cognito.authorize(location, 'sub-nati');
+    const result = await callback(`code=${code}&state=${state}`, cookie);
+    expect(result.ok && result.response.headers.get('location')).toBe('/');
   });
 });
 
@@ -192,6 +214,21 @@ describe('renovar', () => {
     cognito.revoked.push(session.tokens.refreshToken);
     t += 15 * 60 * 1000;
     expect(await flow.refreshIfNeeded(session)).toBeNull();
+  });
+
+  test('si Cognito no responde, la sesión no se cierra: sigue con el token vigente y lo deja en el log', async () => {
+    const { session } = await loggedIn();
+    cognito.setDown(true);
+    t += 14.5 * 60 * 1000;
+    expect(await flow.refreshIfNeeded(session)).toBe(session);
+    expect(logs.join('\n')).toContain('No se pudo renovar');
+  });
+
+  test('si Cognito no responde y el token ya venció, lanza en vez de cerrar la sesión', async () => {
+    const { session } = await loggedIn();
+    cognito.setDown(true);
+    t += 16 * 60 * 1000;
+    await expect(flow.refreshIfNeeded(session)).rejects.toBeInstanceOf(IdentityProviderError);
   });
 });
 

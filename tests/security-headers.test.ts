@@ -43,6 +43,12 @@ describe('securityHeadersMiddleware', () => {
     expect(result.headers.get('x-content-type-options')).toBe('nosniff');
   });
 
+  test('⛔ nada de lo que responde el panel se guarda en caché: «atrás» después de salir no muestra datos', async () => {
+    for (const response of [html(), Response.redirect('https://x/login', 302), Response.json({ empresa: 'x' })]) {
+      expect((await run(response)).result.headers.get('cache-control')).toBe('no-store');
+    }
+  });
+
   test('en desarrollo no pone CSP, para no bloquear la recarga de Vite', async () => {
     const { result } = await run(html(), false);
     expect(result.headers.get('content-security-policy')).toBeNull();

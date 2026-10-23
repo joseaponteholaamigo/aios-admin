@@ -72,6 +72,7 @@ const ERROR_MESSAGES: Record<number, { title: string; detail: string }> = {
     detail: 'Si crees que deberías tenerlo, pídeselo a quien administra el panel.',
   },
   404: { title: 'No encontramos esa página', detail: 'Revisa la dirección o vuelve al inicio.' },
+  503: { title: 'El ingreso no responde', detail: 'Tu sesión sigue abierta. Vuelve a intentarlo en un momento.' },
 };
 const GENERIC_ERROR = { title: 'Algo salió mal', detail: 'Vuelve a intentarlo. Si sigue pasando, avísale al equipo.' };
 
