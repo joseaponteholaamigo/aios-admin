@@ -9,13 +9,20 @@
     "dev": "react-router dev",
     "build": "react-router build",
     "start": "node server/index.js",
-    "typecheck": "react-router typegen && tsc",
-    "test": "vitest run"
+    "typecheck": "react-router typegen && tsc && tsc -p infra/tsconfig.json",
+    "test": "vitest run",
+    "lambda:asset": "npm run build && node scripts/build-lambda-asset.mjs",
+    "infra:synth": "npm run lambda:asset && cdk synth",
+    "infra:diff": "npm run lambda:asset && cdk diff",
+    "infra:deploy": "npm run lambda:asset && cdk deploy",
+    "smoke": "node scripts/smoke.mjs",
+    "probe": "node scripts/probe.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1155.0",
     "@aws-sdk/client-dynamodb": "^3.1155.0",
     "@aws-sdk/client-kms": "^3.1155.0",
+    "@aws-sdk/client-ssm": "^3.1155.0",
     "@aws-sdk/lib-dynamodb": "^3.1155.0",
     "@react-router/express": "8.5.0",
     "@react-router/node": "8.5.0",
@@ -31,6 +38,9 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "aws-cdk": "2.1146.1",
+    "aws-cdk-lib": "2.274.0",
+    "constructs": "^10.5.0",
     "typescript": "^5.9.3",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"

@@ -6,3 +6,4 @@ build/
 !.env.example
 cdk.out/
 coverage/
+.lambda-asset/

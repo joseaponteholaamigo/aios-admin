@@ -51,9 +51,17 @@ describe('readConfig', () => {
     expect(() => readConfig({ ...BASE, COGNITO_LOGIN_URL: 'http://equipo.auth.example' })).toThrow(/COGNITO_LOGIN_URL/);
     expect(readConfig({ ...BASE, COGNITO_LOGIN_URL: 'http://localhost:5173/dev/identity/' }).cognito.loginUrl)
       .toBe('http://localhost:5173/dev/identity');
-    for (const name of ['COGNITO_LOGIN_URL', 'COGNITO_ISSUER', 'COGNITO_CLIENT_ID']) {
+    for (const name of ['COGNITO_LOGIN_URL', 'COGNITO_CLIENT_ID']) {
       expect(() => readConfig({ ...BASE, [name]: undefined }), name).toThrow(new RegExp(name));
     }
+  });
+
+  test('en AWS el emisor sale del id del pool; sin pool (desarrollo) hay que darlo', () => {
+    const fromPool = readConfig({ ...BASE, COGNITO_ISSUER: undefined, COGNITO_POOL_ID: 'us-east-2_AbC123' });
+    expect(fromPool.cognito.issuer).toBe('https://cognito-idp.us-east-2.amazonaws.com/us-east-2_AbC123');
+    expect(() => readConfig({ ...BASE, COGNITO_ISSUER: undefined, COGNITO_POOL_ID: 'equipo' })).toThrow(/COGNITO_POOL_ID/);
+    expect(() => readConfig({ ...BASE, COGNITO_ISSUER: undefined, COGNITO_POOL_ID: undefined, COGNITO_CLIENT_SECRET: 's' }))
+      .toThrow(/COGNITO_ISSUER/);
   });
 
   test('con DynamoDB exige la tabla y la llave KMS', () => {

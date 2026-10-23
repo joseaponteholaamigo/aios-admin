@@ -8,14 +8,17 @@
 // ⏱ Pasa el techo de 1 s a propósito: corre `react-router build` de verdad (unos segundos), porque
 // lo que se prueba es la salida del build y no ninguna función suelta.
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { once } from 'node:events';
+import { createServer, type IncomingMessage, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import type { Plugin } from 'vite';
 import { DEV_IDENTITY_MARKER } from '../dev/identity/login-page';
 import { forbidDevImports } from '../tooling/forbid-dev-imports';
-import { ORIGIN, TEST_ENV } from './helpers/fake-cognito';
+import { CLIENT_ID, CLIENT_SECRET, ISSUER, LOGIN_URL, ORIGIN, TEST_ENV } from './helpers/fake-cognito';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REACT_ROUTER_CLI = join(root, 'node_modules', '@react-router', 'dev', 'bin.cjs');
@@ -96,4 +99,89 @@ test('⛔ el build se detiene si un archivo de app/ importa de dev/', () => {
   expect(from('app/shared/api/x.ts', '../../domain/permissions')()).toBeNull();
   expect(from('dev/identity/x.ts', '../../app/domain/permissions')()).toBeNull();
   expect((plugin as Plugin).apply).toBe('build');
+});
+
+describe('el servidor construido, arrancando como en AWS (CB-12)', () => {
+  /** Lo que el servidor lee de SSM en esta prueba; el resto de la configuración va en el entorno. */
+  const SSM_VALUES: Record<string, string> = { '/aios-admin/public-origins': ORIGIN, '/aios/admin/api-url': 'https://api.example' };
+  const SSM_MAP = { PUBLIC_ORIGINS: '/aios-admin/public-origins', ADMIN_API_URL: '/aios/admin/api-url' };
+  /** Arrancar el proceso y cargar el build tarda; con esto de margen, uno colgado no cuelga la suite. */
+  const DEADLINE_MS = 10_000;
+
+  const bodyOf = async (req: IncomingMessage) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    return Buffer.concat(chunks).toString('utf8');
+  };
+
+  /** Un SSM falso que retiene su respuesta hasta `release()`: así se ve qué hace el servidor mientras espera. */
+  async function heldSsm() {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const asked: string[][] = [];
+    const server: Server = createServer(async (req, res) => {
+      const { Names } = JSON.parse(await bodyOf(req)) as { Names: string[] };
+      asked.push(Names);
+      await held;
+      res.writeHead(200, { 'content-type': 'application/x-amz-json-1.1' });
+      res.end(JSON.stringify({ Parameters: Names.map((Name) => ({ Name, Value: SSM_VALUES[Name] })), InvalidParameters: [] }));
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    return { asked, release, server, url: `http://127.0.0.1:${(server.address() as AddressInfo).port}` };
+  }
+
+  /** La dirección en la que quedó escuchando. **Lanza** si no escucha antes del plazo. */
+  function listeningAt(child: ChildProcessWithoutNullStreams): Promise<string> {
+    return new Promise((resolvePromise, reject) => {
+      const timer = setTimeout(() => reject(new Error(`el servidor no escuchó en ${DEADLINE_MS} ms`)), DEADLINE_MS);
+      let output = '';
+      child.stdout.on('data', (chunk) => {
+        output += chunk;
+        const address = /escuchando en (http:\/\/127\.0\.0\.1:\d+)/.exec(output)?.[1];
+        if (address) { clearTimeout(timer); resolvePromise(address); }
+      });
+      child.once('exit', (code) => { clearTimeout(timer); reject(new Error(`el servidor terminó con ${code}`)); });
+    });
+  }
+
+  /** Pide `url` hasta que responda 200. **Lanza** si no pasa antes del plazo. */
+  async function untilReady(url: string): Promise<Response> {
+    const deadline = Date.now() + DEADLINE_MS;
+    while (Date.now() < deadline) {
+      const response = await fetch(url);
+      if (response.status === 200) return response;
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 50));
+    }
+    throw new Error(`${url} no respondió 200 en ${DEADLINE_MS} ms`);
+  }
+
+  test('⛔ escucha antes de leer SSM, responde 503 mientras tanto, y entra en servicio con lo que leyó', async () => {
+    const ssm = await heldSsm();
+    // Un entorno mínimo, sin heredar el de quien corre la prueba: ninguna credencial ni perfil de AWS
+    // real puede colarse. El SDK habla con el SSM falso por su variable de endpoint.
+    const child = spawn(process.execPath, [join(root, 'server', 'index.js')], {
+      env: {
+        PANEL_BUILD_DIR: outDir, PORT: '0', NODE_ENV: 'production', SESSION_STORE: 'memory',
+        COGNITO_LOGIN_URL: LOGIN_URL, COGNITO_ISSUER: ISSUER, COGNITO_CLIENT_ID: CLIENT_ID, COGNITO_CLIENT_SECRET: CLIENT_SECRET,
+        PANEL_SSM_PARAMETERS: JSON.stringify(SSM_MAP), AWS_ENDPOINT_URL_SSM: ssm.url, AWS_REGION: 'us-east-2',
+        AWS_ACCESS_KEY_ID: 'test', AWS_SECRET_ACCESS_KEY: 'test',
+        AWS_CONFIG_FILE: join(outDir, 'sin-config'), AWS_SHARED_CREDENTIALS_FILE: join(outDir, 'sin-credenciales'),
+      },
+    });
+    try {
+      const base = await listeningAt(child);
+      const waiting = await fetch(`${base}/auth/no-access`);
+      expect(waiting.status).toBe(503);
+      expect(waiting.headers.get('retry-after')).toBe('5');
+      ssm.release();
+      const ready = await untilReady(`${base}/auth/no-access`);
+      expect(ready.headers.get('content-security-policy')).toContain("'nonce-");
+      expect(ssm.asked).toEqual([Object.values(SSM_MAP)]);
+    } finally {
+      child.kill();
+      if (child.exitCode === null) await once(child, 'exit');
+      ssm.server.close();
+    }
+  }, DEADLINE_MS * 2);
 });

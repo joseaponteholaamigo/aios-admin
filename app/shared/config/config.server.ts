@@ -94,6 +94,16 @@ function baseUrl(env: Record<string, string | undefined>, name: string, what: st
   return value;
 }
 
+/**
+ * El emisor de los tokens de un pool de Cognito. La región va en el prefijo del id del pool
+ * (`us-east-2_AbC`): en AWS, el backend publica el id y no la URL del emisor.
+ */
+export function issuerFromPoolId(poolId: string): string {
+  const region = /^([a-z]{2}(?:-[a-z]+)+-\d)_[A-Za-z0-9]+$/.exec(poolId)?.[1];
+  if (!region) throw new Error(`COGNITO_POOL_ID: «${poolId}» no tiene la forma <región>_<id>`);
+  return `https://cognito-idp.${region}.amazonaws.com/${poolId}`;
+}
+
 function readCognito(env: Record<string, string | undefined>): CognitoConfig {
   const poolId = env.COGNITO_POOL_ID?.trim();
   const secret = env.COGNITO_CLIENT_SECRET?.trim();
@@ -105,7 +115,10 @@ function readCognito(env: Record<string, string | undefined>): CognitoConfig {
   }
   return {
     loginUrl: baseUrl(env, 'COGNITO_LOGIN_URL', 'la base del login del pool del equipo'),
-    issuer: baseUrl(env, 'COGNITO_ISSUER', 'el emisor de los tokens del pool del equipo'),
+    // En AWS no hace falta: sale del pool. En desarrollo, la identidad falsa tiene el suyo.
+    issuer: env.COGNITO_ISSUER?.trim() || !poolId
+      ? baseUrl(env, 'COGNITO_ISSUER', 'el emisor de los tokens del pool del equipo')
+      : issuerFromPoolId(poolId),
     clientId: required(env, 'COGNITO_CLIENT_ID', 'el cliente del panel en el pool del equipo'),
     clientSecret: poolId ? { from: 'pool', poolId } : { from: 'env', value: secret! },
   };

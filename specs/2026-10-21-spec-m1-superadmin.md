@@ -351,7 +351,7 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
   - CloudFront sin web ACL, con dos comportamientos: `/assets/*` con caché, y el resto con `AllViewerExceptHostHeader` + `CachingDisabled`;
   - la tabla de sesiones con TTL, `DeletionProtectionEnabled` y `DeletionPolicy: Retain`;
   - una llave KMS de sesiones que solo el rol del panel puede usar para descifrar;
-  - un secreto con la llave de la cookie;
+  - ~~un secreto con la llave de la cookie~~: no se crea en M1, porque nada lo usaría (la cookie lleva solo un id al azar). Llega con su primer uso: las claves de Mappi (M3) o el login pendiente sin escritura en la tabla (observación #7 del `quality-gate`);
   - los grupos de logs `/aws/lambda/web/<fn>` y `<fn>.local`, con 30 días de retención;
   - alarmas de errores 5xx y de throttles del endpoint (`AWS/Lambda/Web`) que avisan al tema de alarmas del backend, pasado por ARN;
   - `terminationProtection` activado y una política del stack.
@@ -373,8 +373,9 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Dado** una URL desplegada
 - **Cuando** se corre `npm run smoke -- <url>`
 - **Entonces** comprueba que:
-  - `GET /` responde 302 a `authorize` del pool del equipo;
-  - un archivo de `/assets/` responde 200;
+  - `GET /` responde 302 a `/auth/login`, y `/auth/login` responde 302 a `authorize` del pool del equipo, con PKCE (son dos saltos: el primero guarda la vuelta);
+  - una página responde con CSP y `Cache-Control: no-store`, y un archivo de `/assets/` que ella nombra responde 200;
+  - un POST a `/auth/logout` con el `Origin` del panel llega al servidor (302 con `no-store`): es el criterio 1 de CA-32;
   - `GET <api>/v1/admin/yo` sin token responde 401.
 - **Y** termina con un código distinto de 0 si falla cualquiera.
 
@@ -455,6 +456,8 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Dado** que leer el secreto o SSM tarda
 - **Cuando** arranca la Web Function
 - **Entonces** el servidor empieza a escuchar antes de esas lecturas (que van después de `listen`), dentro de los 10 s que da Lambda, y los pedidos que llegan antes de tener la configuración responden 503.
+- **Y** si falta un parámetro (el backend todavía no hizo su segunda pasada) o SSM no responde, el primer pedido que llega 15 s después dispara otro intento: el panel entra en servicio sin volver a desplegarse.
+- **Y** si la configuración se leyó pero no carga (una variable mal escrita), el proceso termina con el nombre de la variable: no hay nada que reintentar.
 
 ### CB-14: Fila de sesión vencida que DynamoDB todavía no borró
 - **Dado** una fila con el TTL vencido pero aún presente
@@ -487,9 +490,11 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 | CA-30 | unit | `aios-admin/tests/api-client-mapping.test.ts` |
 | CA-31 | unit (*loader* + componente) | `aios-admin/tests/home.test.ts` |
 | CA-32, CA-37, CA-38 | manual (en AWS, lo despliega Jose) | resultado escrito en esta spec |
-| CA-33, CA-35, CB-12 | unit (plantilla sintetizada) | `aios-admin/infra/tests/stack.test.ts` |
-| CA-34 | unit | `aios-admin/infra/tests/account-guard.test.ts` |
-| CA-36 | manual + script | `aios-admin/scripts/smoke.mjs`, después de cada despliegue |
+| CA-33, CA-35 | unit (plantilla sintetizada) | `aios-admin/tests/infra-stack.test.ts` (también la política del stack) |
+| CB-12 | unit + integración (el servidor construido, con un SSM falso que tarda) | `aios-admin/tests/startup.test.ts`, `aios-admin/tests/runtime-config.test.ts`, `aios-admin/tests/production-build.test.ts` |
+| CA-34 | unit | `aios-admin/tests/infra-accounts.test.ts` |
+| CA-36 | unit + script, después de cada despliegue | `aios-admin/tests/smoke.test.ts`, `npm run smoke` |
+| CA-32 | script, durante la prueba técnica | `npm run probe` (arranque en frío y continuidad durante el despliegue) |
 
 Presupuesto de las pruebas: ≤ 100 ms cada una y 1 s de techo, según el `CLAUDE.md` global. Las de concurrencia (CA-26) y las del build (CA-16, CA-29) llevan escrito al lado qué esperan, si pasan el techo.
 
@@ -524,7 +529,8 @@ Presupuesto de las pruebas: ≤ 100 ms cada una y 1 s de techo, según el `CLAUD
 - `server/`: el servidor Express de React Router, que escucha en `AWS_LAMBDA_HTTP_ENDPOINT || PORT`.
 - `dev/`: la identidad falsa.
 - `infra/`: el stack, la guarda de cuenta y sus pruebas.
-- `scripts/smoke.mjs`.
+- `scripts/smoke.mjs`, `scripts/probe.mjs` y `scripts/build-lambda-asset.mjs` (el paquete del servidor, por allow-list).
+- `server/runtime-config.js` y `server/startup.js`: la configuración de SSM y el arranque en dos tiempos (CB-12).
 - `tests/`.
 
 ## Resultado de la prueba técnica

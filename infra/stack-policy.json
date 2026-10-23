@@ -1,0 +1,22 @@
+{
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "Update:*",
+      "Principal": "*",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Deny",
+      "Action": ["Update:Replace", "Update:Delete"],
+      "Principal": "*",
+      "Resource": [
+        "LogicalResourceId/SessionsTable7C302024",
+        "LogicalResourceId/SessionsKeyB983BD01",
+        "LogicalResourceId/CodeBucketFF4C7AD6",
+        "LogicalResourceId/StaticBucket92253581",
+        "LogicalResourceId/WebFunction"
+      ]
+    }
+  ]
+}
