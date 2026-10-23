@@ -45,8 +45,8 @@ const startup = createStartup({
   },
 });
 
-app.all('*splat', (req, res, next) => {
-  const handle = startup.handler();
+app.all('*splat', async (req, res, next) => {
+  const handle = await startup.waitForHandler();
   if (handle) return handle(req, res, next);
   res
     .status(503)

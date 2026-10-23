@@ -65,3 +65,30 @@ describe('createStartup', () => {
     expect(environmentCalls()).toBe(1);
   });
 });
+
+describe('waitForHandler', () => {
+  const quiet = { onFatal: () => {}, log: () => {} };
+
+  test('⛔ un pedido que llega mientras la app se prepara espera y la recibe: el arranque en frío no da 503', async () => {
+    let finish = () => {};
+    const startup = createStartup({ ...quiet, loadEnvironment: () => new Promise<void>((resolve) => { finish = resolve; }), loadApp: async () => 'app' });
+    void startup.start();
+    const waiting = startup.waitForHandler(1000);
+    finish();
+    expect(await waiting).toBe('app');
+  });
+
+  test('si leer la configuración falló, responde enseguida, sin esperar el plazo', async () => {
+    const startup = createStartup({ ...quiet, loadEnvironment: async () => { throw new Error('Faltan parámetros'); }, loadApp: async () => 'app' });
+    await startup.start();
+    const startedAt = Date.now();
+    expect(await startup.waitForHandler(5000)).toBeNull();
+    expect(Date.now() - startedAt).toBeLessThan(100);
+  });
+
+  test('no espera más que el plazo', async () => {
+    const startup = createStartup({ ...quiet, loadEnvironment: () => new Promise<void>(() => {}), loadApp: async () => 'app' });
+    void startup.start();
+    expect(await startup.waitForHandler(20)).toBeNull();
+  });
+});

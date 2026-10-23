@@ -455,7 +455,9 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 ### CB-12: El servidor tarda en arrancar
 - **Dado** que leer el secreto o SSM tarda
 - **Cuando** arranca la Web Function
-- **Entonces** el servidor empieza a escuchar antes de esas lecturas (que van después de `listen`), dentro de los 10 s que da Lambda, y los pedidos que llegan antes de tener la configuración responden 503.
+- **Entonces** el servidor empieza a escuchar antes de esas lecturas (que van después de `listen`), dentro de los 10 s que da Lambda.
+- **Y** un pedido que llega mientras la app se prepara espera a que termine, hasta 8 s, y recibe su página. Es el primer pedido después de cada rato sin uso, porque la Web Function apaga sus entornos (lo encontró la prueba rápida en AWS: responderle 503 hacía fallar la primera visita).
+- **Y** si leer la configuración falló, el pedido responde 503 enseguida, sin esperar.
 - **Y** si falta un parámetro (el backend todavía no hizo su segunda pasada) o SSM no responde, el primer pedido que llega 15 s después dispara otro intento: el panel entra en servicio sin volver a desplegarse.
 - **Y** si la configuración se leyó pero no carga (una variable mal escrita), el proceso termina con el nombre de la variable: no hay nada que reintentar.
 

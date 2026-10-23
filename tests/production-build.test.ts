@@ -114,21 +114,48 @@ describe('el servidor construido, arrancando como en AWS (CB-12)', () => {
     return Buffer.concat(chunks).toString('utf8');
   };
 
-  /** Un SSM falso que retiene su respuesta hasta `release()`: así se ve qué hace el servidor mientras espera. */
-  async function heldSsm() {
+  /**
+   * Un SSM falso que retiene su respuesta hasta `release()`: así se ve qué hace el servidor mientras
+   * espera. Con `missing`, responde que los parámetros no existen (el backend sin su segunda pasada).
+   */
+  async function fakeSsm({ missing = false } = {}) {
     let release = () => {};
-    const held = new Promise<void>((resolve) => { release = resolve; });
+    const held = missing ? Promise.resolve() : new Promise<void>((resolve) => { release = resolve; });
     const asked: string[][] = [];
     const server: Server = createServer(async (req, res) => {
       const { Names } = JSON.parse(await bodyOf(req)) as { Names: string[] };
       asked.push(Names);
       await held;
       res.writeHead(200, { 'content-type': 'application/x-amz-json-1.1' });
-      res.end(JSON.stringify({ Parameters: Names.map((Name) => ({ Name, Value: SSM_VALUES[Name] })), InvalidParameters: [] }));
+      res.end(JSON.stringify(missing
+        ? { Parameters: [], InvalidParameters: Names }
+        : { Parameters: Names.map((Name) => ({ Name, Value: SSM_VALUES[Name] })), InvalidParameters: [] }));
     });
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     return { asked, release, server, url: `http://127.0.0.1:${(server.address() as AddressInfo).port}` };
+  }
+
+  /**
+   * Arranca el servidor construido contra el SSM falso. Con un entorno mínimo, sin heredar el de
+   * quien corre la prueba: ninguna credencial ni perfil de AWS real puede colarse.
+   */
+  function startServer(ssmUrl: string): ChildProcessWithoutNullStreams {
+    return spawn(process.execPath, [join(root, 'server', 'index.js')], {
+      env: {
+        PANEL_BUILD_DIR: outDir, PORT: '0', NODE_ENV: 'production', SESSION_STORE: 'memory',
+        COGNITO_LOGIN_URL: LOGIN_URL, COGNITO_ISSUER: ISSUER, COGNITO_CLIENT_ID: CLIENT_ID, COGNITO_CLIENT_SECRET: CLIENT_SECRET,
+        PANEL_SSM_PARAMETERS: JSON.stringify(SSM_MAP), AWS_ENDPOINT_URL_SSM: ssmUrl, AWS_REGION: 'us-east-2',
+        AWS_ACCESS_KEY_ID: 'test', AWS_SECRET_ACCESS_KEY: 'test',
+        AWS_CONFIG_FILE: join(outDir, 'sin-config'), AWS_SHARED_CREDENTIALS_FILE: join(outDir, 'sin-credenciales'),
+      },
+    });
+  }
+
+  async function stop(child: ChildProcessWithoutNullStreams, ssm: { server: Server }) {
+    child.kill();
+    if (child.exitCode === null) await once(child, 'exit');
+    ssm.server.close();
   }
 
   /** La dirección en la que quedó escuchando. **Lanza** si no escucha antes del plazo. */
@@ -145,43 +172,45 @@ describe('el servidor construido, arrancando como en AWS (CB-12)', () => {
     });
   }
 
-  /** Pide `url` hasta que responda 200. **Lanza** si no pasa antes del plazo. */
-  async function untilReady(url: string): Promise<Response> {
+  /** Espera a que `condition` se cumpla. **Lanza** si no pasa antes del plazo. */
+  async function until(condition: () => boolean, what: string) {
     const deadline = Date.now() + DEADLINE_MS;
-    while (Date.now() < deadline) {
-      const response = await fetch(url);
-      if (response.status === 200) return response;
-      await new Promise((resolvePromise) => setTimeout(resolvePromise, 50));
+    while (!condition()) {
+      if (Date.now() > deadline) throw new Error(`${what}: no pasó en ${DEADLINE_MS} ms`);
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 20));
     }
-    throw new Error(`${url} no respondió 200 en ${DEADLINE_MS} ms`);
   }
 
-  test('⛔ escucha antes de leer SSM, responde 503 mientras tanto, y entra en servicio con lo que leyó', async () => {
-    const ssm = await heldSsm();
-    // Un entorno mínimo, sin heredar el de quien corre la prueba: ninguna credencial ni perfil de AWS
-    // real puede colarse. El SDK habla con el SSM falso por su variable de endpoint.
-    const child = spawn(process.execPath, [join(root, 'server', 'index.js')], {
-      env: {
-        PANEL_BUILD_DIR: outDir, PORT: '0', NODE_ENV: 'production', SESSION_STORE: 'memory',
-        COGNITO_LOGIN_URL: LOGIN_URL, COGNITO_ISSUER: ISSUER, COGNITO_CLIENT_ID: CLIENT_ID, COGNITO_CLIENT_SECRET: CLIENT_SECRET,
-        PANEL_SSM_PARAMETERS: JSON.stringify(SSM_MAP), AWS_ENDPOINT_URL_SSM: ssm.url, AWS_REGION: 'us-east-2',
-        AWS_ACCESS_KEY_ID: 'test', AWS_SECRET_ACCESS_KEY: 'test',
-        AWS_CONFIG_FILE: join(outDir, 'sin-config'), AWS_SHARED_CREDENTIALS_FILE: join(outDir, 'sin-credenciales'),
-      },
-    });
+  test('⛔ escucha antes de leer SSM, y el pedido que llega mientras tanto espera y recibe la página (el arranque en frío no falla)', async () => {
+    const ssm = await fakeSsm();
+    const child = startServer(ssm.url);
     try {
       const base = await listeningAt(child);
-      const waiting = await fetch(`${base}/auth/no-access`);
-      expect(waiting.status).toBe(503);
-      expect(waiting.headers.get('retry-after')).toBe('5');
+      const pending = fetch(`${base}/auth/no-access`);
+      await until(() => ssm.asked.length === 1, 'el servidor pidió su configuración');
       ssm.release();
-      const ready = await untilReady(`${base}/auth/no-access`);
-      expect(ready.headers.get('content-security-policy')).toContain("'nonce-");
+      const response = await pending;
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-security-policy')).toContain("'nonce-");
       expect(ssm.asked).toEqual([Object.values(SSM_MAP)]);
     } finally {
-      child.kill();
-      if (child.exitCode === null) await once(child, 'exit');
-      ssm.server.close();
+      await stop(child, ssm);
+    }
+  }, DEADLINE_MS * 2);
+
+  test('⛔ si faltan parámetros (el backend todavía no hizo su segunda pasada), responde 503 enseguida', async () => {
+    const ssm = await fakeSsm({ missing: true });
+    const child = startServer(ssm.url);
+    try {
+      const base = await listeningAt(child);
+      await until(() => ssm.asked.length === 1, 'el servidor pidió su configuración');
+      const startedAt = Date.now();
+      const response = await fetch(`${base}/auth/no-access`);
+      expect(response.status).toBe(503);
+      expect(response.headers.get('retry-after')).toBe('5');
+      expect(Date.now() - startedAt).toBeLessThan(2000);
+    } finally {
+      await stop(child, ssm);
     }
   }, DEADLINE_MS * 2);
 });
