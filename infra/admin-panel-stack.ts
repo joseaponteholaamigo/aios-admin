@@ -10,6 +10,7 @@
 import { CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 import { createAlarms } from './alarms.ts';
+import { requireCodeVersion } from './code-version.ts';
 import { createDistribution, createStaticSite } from './edge.ts';
 import { createSessionStore } from './sessions.ts';
 import { createPanelFunction } from './web-function.ts';
@@ -19,10 +20,12 @@ export type AdminPanelStackProps = StackProps & {
   codeAssetPath: string;
   /** Los estáticos del build (`build/client/`). */
   staticAssetPath: string;
+  /** La versión del código: el commit desde el que se armó (`code-version.ts`). */
+  version: string;
 };
 
 export class AdminPanelStack extends Stack {
-  constructor(scope: Construct, id: string, { codeAssetPath, staticAssetPath, ...props }: AdminPanelStackProps) {
+  constructor(scope: Construct, id: string, { codeAssetPath, staticAssetPath, version, ...props }: AdminPanelStackProps) {
     super(scope, id, {
       ...props,
       terminationProtection: true,
@@ -30,7 +33,7 @@ export class AdminPanelStack extends Stack {
     });
     const sessions = createSessionStore(this);
     const site = createStaticSite(this, staticAssetPath);
-    const panel = createPanelFunction(this, { codeAssetPath, sessions, liveAfter: [site.upload] });
+    const panel = createPanelFunction(this, { codeAssetPath, sessions, liveAfter: [site.upload], version: requireCodeVersion(version) });
     const distribution = createDistribution(this, panel, site.bucket);
     createAlarms(this);
 

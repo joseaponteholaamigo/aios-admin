@@ -27,6 +27,7 @@ const CACHING_DISABLED = '4135ea2d-6df8-44a3-9df3-4b5a84be39ad';
 const CACHING_OPTIMIZED = '658327ea-f89d-4fab-a63d-7e88639e58f6';
 const ALL_VIEWER_EXCEPT_HOST_HEADER = 'b689b0a8-53d0-40ab-baf2-68738e2966ac';
 const SYNTH_TIMEOUT_MS = 60_000;
+const VERSION = 'abc1234';
 
 let dir: string;
 let stack: AdminPanelStack;
@@ -39,7 +40,7 @@ beforeAll(() => {
     writeFileSync(join(dir, file), content);
   }
   const app = new App({ outdir: join(dir, 'cdk.out') });
-  stack = new AdminPanelStack(app, 'AiosAdmin', { codeAssetPath: join(dir, 'code'), staticAssetPath: join(dir, 'static') });
+  stack = new AdminPanelStack(app, 'AiosAdmin', { codeAssetPath: join(dir, 'code'), staticAssetPath: join(dir, 'static'), version: VERSION });
   template = Template.fromStack(stack);
 }, SYNTH_TIMEOUT_MS);
 
@@ -68,6 +69,12 @@ describe('la Web Function', () => {
     expect(env.SESSION_STORE).toBe('dynamodb');
     expect(JSON.parse(String(env.PANEL_SSM_PARAMETERS))).toEqual(RUNTIME_PARAMETERS);
     expect(Object.keys(env).filter((name) => /SECRET|PASSWORD|TOKEN|PRIVATE/.test(name))).toEqual([]);
+  });
+
+  test('la revisión lleva la versión del código, para atar cada log a su commit', () => {
+    const revision = onlyResource('AWS::Lambda::WebFunctionRevision').Properties;
+    expect(revision.ServiceConfig.EnvironmentVariables.PANEL_VERSION).toBe(VERSION);
+    expect(revision.Description).toBe(`aios-admin ${VERSION}`);
   });
 
   test('⛔ la revisión queda atada a la versión exacta del zip, y nada borra versiones viejas', () => {

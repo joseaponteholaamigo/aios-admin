@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { App } from 'aws-cdk-lib';
 import { requireAllowedAccount } from './accounts.ts';
 import { AdminPanelStack } from './admin-panel-stack.ts';
+import { codeVersion } from './code-version.ts';
 
 export const CODE_ASSET_PATH = '.lambda-asset';
 export const STATIC_ASSET_PATH = 'build/client';
@@ -26,4 +27,5 @@ new AdminPanelStack(app, 'AiosAdmin', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
   codeAssetPath: CODE_ASSET_PATH,
   staticAssetPath: STATIC_ASSET_PATH,
+  version: codeVersion(),
 });

@@ -111,10 +111,11 @@ function createCode(scope: Construct, codeAssetPath: string) {
 }
 
 /** Las variables de la revisión. Nada secreto: la configuración de Cognito y la API sale de SSM al arrancar. */
-function environment(scope: Construct, sessions: SessionStore): Record<string, string> {
+function environment(scope: Construct, sessions: SessionStore, version: string): Record<string, string> {
   return {
     NODE_ENV: 'production',
     AWS_LAMBDA_NODEJS_ENTRYPOINT: ENTRYPOINT,
+    PANEL_VERSION: version,
     PANEL_REGION: Stack.of(scope).region,
     SESSION_STORE: 'dynamodb',
     SESSION_TABLE: sessions.table.tableName,
@@ -123,16 +124,16 @@ function environment(scope: Construct, sessions: SessionStore): Record<string, s
   };
 }
 
-/** Una revisión: el zip subido, fijado a su versión, con su rol y sus variables. */
-function createRevision(
-  scope: Construct,
-  { webFunction, code, role, sessions }: { webFunction: lambda.CfnWebFunction; code: ReturnType<typeof createCode>; role: iam.Role; sessions: SessionStore },
-): lambda.CfnWebFunctionRevision {
+type RevisionParts = { webFunction: lambda.CfnWebFunction; code: ReturnType<typeof createCode>; role: iam.Role; sessions: SessionStore; version: string };
+
+/** Una revisión: el zip subido, fijado a su versión de S3, con su rol, sus variables y la versión del código. */
+function createRevision(scope: Construct, { webFunction, code, role, sessions, version }: RevisionParts): lambda.CfnWebFunctionRevision {
   const s3Object = { bucket: code.bucket.bucketName, key: Fn.select(0, code.upload.objectKeys), versionId: Fn.select(0, code.upload.objectVersionIds) };
   return new lambda.CfnWebFunctionRevision(scope, 'Revision', {
     functionName: webFunction.attrFunctionArn,
+    description: `aios-admin ${version}`,
     buildConfig: { codeConfig: { s3Object }, runtimeConfig: { runtime: RUNTIME } },
-    serviceConfig: { executionRoleArn: role.roleArn, timeoutSeconds: REQUEST_TIMEOUT_SECONDS, environmentVariables: environment(scope, sessions) },
+    serviceConfig: { executionRoleArn: role.roleArn, timeoutSeconds: REQUEST_TIMEOUT_SECONDS, environmentVariables: environment(scope, sessions, version) },
   });
 }
 
@@ -142,13 +143,13 @@ function createRevision(
  */
 export function createPanelFunction(
   scope: Construct,
-  { codeAssetPath, sessions, liveAfter }: { codeAssetPath: string; sessions: SessionStore; liveAfter: IDependable[] },
+  { codeAssetPath, sessions, liveAfter, version }: { codeAssetPath: string; sessions: SessionStore; liveAfter: IDependable[]; version: string },
 ): PanelFunction {
   const role = createRole(scope, sessions);
   const logGroups = createLogGroups(scope);
   const code = createCode(scope, codeAssetPath);
   const webFunction = new lambda.CfnWebFunction(scope, 'WebFunction', { functionName: FUNCTION_NAME });
-  const revision = createRevision(scope, { webFunction, code, role, sessions });
+  const revision = createRevision(scope, { webFunction, code, role, sessions, version });
   // Lambda revisa al crear la revisión que puede leer el código, y el servidor escribe logs al arrancar.
   revision.node.addDependency(code.bucket.policy!, role, ...logGroups);
   const endpoint = new lambda.CfnWebFunctionEndpoint(scope, 'Endpoint', {

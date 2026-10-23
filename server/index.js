@@ -65,6 +65,7 @@ ensureRegion(process.env);
 const { host, port } = listenAddress(process.env);
 const server = app.listen(port, host, () => {
   const { port: actual } = /** @type {import('node:net').AddressInfo} */ (server.address());
-  console.log(`aios-admin escuchando en http://${host}:${actual}`);
+  // La versión ata cada log a su commit: las métricas de la Web Function no dicen qué revisión respondió.
+  console.log(`aios-admin escuchando en http://${host}:${actual} · versión ${process.env.PANEL_VERSION ?? 'local'}`);
   void startup.start();
 });
