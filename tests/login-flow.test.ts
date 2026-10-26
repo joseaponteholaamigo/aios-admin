@@ -247,6 +247,14 @@ describe('salir', () => {
     expect(location.searchParams.get('client_id')).toBe(CLIENT_ID);
     expect(location.searchParams.get('logout_uri')).toBe(`${ORIGIN}/`);
   });
+
+  test('⛔ sin sesión (desde «sin acceso») igual pasa por el logout de Cognito, para poder entrar con otra cuenta', async () => {
+    const response = await flow.logout(new Request(`${LAMBDA}/auth/logout`, { method: 'POST' }));
+    expect(cognito.revoked).toEqual([]);
+    const location = new URL(response.headers.get('location')!);
+    expect(`${location.origin}${location.pathname}`).toBe(`${LOGIN_URL}/logout`);
+    expect(location.searchParams.get('logout_uri')).toBe(`${ORIGIN}/`);
+  });
 });
 
 describe('MFA reciente', () => {
