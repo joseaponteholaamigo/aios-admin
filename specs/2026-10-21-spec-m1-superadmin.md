@@ -537,12 +537,12 @@ Presupuesto de las pruebas: ≤ 100 ms cada una y 1 s de techo, según el `CLAUD
 
 ## Resultado de la prueba técnica
 
-*(Se completa al correr CA-32 y CA-38.)*
+*(CA-32 se corrió el 2026-10-23 y el 2026-10-26; falta CA-38.)*
 
-- Camino elegido: —
-- POST por CloudFront: —
-- Arranque en frío: —
-- Despliegue sin corte: —
+- Camino elegido: **A**, la Lambda Web Function detrás de CloudFront con OAC. Se cumplen los tres criterios de CA-32.
+- POST por CloudFront: `POST /auth/logout` con el `Origin` del panel llega al servidor y responde su 302 con `no-store` (`npm run smoke`, 2026-10-23). No es 2xx porque el logout redirige. Lo que el criterio mide es que CloudFront y la firma de OAC dejen pasar un POST, y lo dejan.
+- Arranque en frío: `GET /` responde su 302 al login en 1,64 s en un entorno recién creado (2026-10-23) y en 1,75 s después de días sin uso (2026-10-26). Se mide desde afuera, con la conexión TLS incluida. Antes de CB-12 (`320fbec`), ese primer pedido respondía 503.
+- Despliegue sin corte: `npm run infra:deploy` de `c8a877c` con `npm run probe` corriendo, el 2026-10-26 entre 17:04:22 y 17:09:21 UTC. Fueron 300 pedidos a `/auth/no-access`: todos respondieron 200 y el más lento tardó 881 ms. Según los eventos de CloudFormation, el endpoint cambió de revisión entre 17:06:14 y 17:06:20 y la revisión vieja se borró entre 17:06:25 y 17:06:29. El cambio cayó en la mitad de la medición, con casi tres minutos de pedidos después.
 - MFA reciente con `acr_values`: —
 
 ## Riesgos y preguntas abiertas
