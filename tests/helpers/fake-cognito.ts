@@ -32,12 +32,13 @@ export function fakeCognito({ now = () => Date.now() } = {}) {
   const revoked: string[] = [];
   let down = false;
   let nonceOverride: string | null = null;
+  let accessExtras: Record<string, unknown> = {};
   let refreshes = 0;
 
   const tokensFor = (sub: string, nonce?: string) => {
     const seconds = Math.floor(now() / 1000);
     return {
-      access_token: jwt({ sub, token_use: 'access', client_id: CLIENT_ID, scope: 'openid admin/acceso', exp: seconds + 900 }),
+      access_token: jwt({ sub, token_use: 'access', client_id: CLIENT_ID, scope: 'openid admin/acceso', exp: seconds + 900, ...accessExtras }),
       id_token: jwt({ sub, iss: ISSUER, aud: CLIENT_ID, token_use: 'id', exp: seconds + 900, ...(nonce ? { nonce } : {}) }),
       expires_in: 900,
       token_type: 'Bearer',
@@ -90,5 +91,7 @@ export function fakeCognito({ now = () => Date.now() } = {}) {
     refreshes: () => refreshes,
     setDown(value: boolean) { down = value; },
     setNonce(value: string | null) { nonceOverride = value; },
+    /** Claims de más en el access token, como el `acr` y el `auth_time` que pone el Cognito real. */
+    setAccessClaims(value: Record<string, unknown>) { accessExtras = value; },
   };
 }

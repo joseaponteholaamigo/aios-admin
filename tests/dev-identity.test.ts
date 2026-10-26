@@ -51,7 +51,7 @@ beforeEach(() => {
   cognito = createCognitoClient({ config: config.cognito, clientSecret: async () => CLIENT_SECRET, fetchImpl: callIdentity, now: () => t });
   flow = createLoginFlow({
     config, cognito, pending: createPendingLogins({ store, cipher, now: () => t }),
-    sessions: createSessionService({ store, cipher, now: () => t }), now: () => t, log: () => {},
+    sessions: createSessionService({ store, cipher, now: () => t }), now: () => t, log: () => {}, info: () => {},
   });
 });
 

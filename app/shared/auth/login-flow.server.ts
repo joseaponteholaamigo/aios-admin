@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { redirect } from 'react-router';
 import type { PanelConfig } from '../config/config.server';
 import type { ActiveSession, SessionService } from '../session/session.server';
-import { IdentityProviderError, type CognitoClient } from './cognito-client.server';
+import { decodeJwtClaims, IdentityProviderError, type CognitoClient } from './cognito-client.server';
 import { expiredLoginCookie, type PendingLogins } from './pending-login.server';
 
 /** Se renueva el access token cuando le queda menos de esto. */
@@ -55,6 +55,30 @@ export function loginRedirect(request: Request, { freshMfa = false, headers }: {
   return redirect(`/auth/login?${params}`, { headers });
 }
 
+const MISSING = '(no viene)';
+
+/**
+ * La línea de log de un login completo: con qué garantía entró la persona, según el access token
+ * que el backend va a revisar (`acr` dice si hubo MFA; `auth_time`, cuándo). Sin el token ni nada
+ * que identifique a la persona.
+ *
+ * ⚠️ Existe porque el token nunca llega al navegador: es la única forma de ver si Cognito pone
+ * `acr` en el access token (M-4). Sin él, el backend rechazaría todo cambio de permisos (CA-38).
+ */
+export function loginAssuranceLine(accessToken: string, freshMfaRequested: boolean): string {
+  let claims: Record<string, unknown> = {};
+  try {
+    claims = decodeJwtClaims(accessToken);
+  } catch {
+    // Un token sin forma de JWT no frena el login: la línea dice que no vienen.
+  }
+  const acr = typeof claims.acr === 'string' ? claims.acr : MISSING;
+  const authTime = typeof claims.auth_time === 'number' && Number.isFinite(claims.auth_time)
+    ? new Date(claims.auth_time * 1000).toISOString()
+    : MISSING;
+  return `login completo · MFA reciente pedido: ${freshMfaRequested ? 'sí' : 'no'} · acr=${acr} · auth_time=${authTime}`;
+}
+
 export type FinishedLogin =
   | { ok: true; response: Response }
   | { ok: false; status: number; message: string; headers: Headers };
@@ -68,6 +92,7 @@ export function createLoginFlow({
   sessions,
   now = Date.now,
   log = (message: string) => console.warn(message),
+  info = (message: string) => console.log(message),
 }: {
   config: PanelConfig;
   cognito: CognitoClient;
@@ -75,6 +100,7 @@ export function createLoginFlow({
   sessions: SessionService;
   now?: () => number;
   log?: (message: string) => void;
+  info?: (message: string) => void;
 }) {
   const origin = config.publicOrigins[0]!;
   const redirectUri = `${origin}/auth/callback`;
@@ -117,6 +143,7 @@ export function createLoginFlow({
       if (!claimsAreValid(result.idClaims, login.nonce)) return failed(400, 'No pudimos verificar tu ingreso. Vuelve a intentarlo.');
 
       const { cookie } = await sessions.create(request, result.idClaims.sub, result.tokens);
+      info(loginAssuranceLine(result.tokens.accessToken, login.freshMfa));
       const headers = new Headers();
       headers.append('Set-Cookie', cookie);
       headers.append('Set-Cookie', expiredLoginCookie());

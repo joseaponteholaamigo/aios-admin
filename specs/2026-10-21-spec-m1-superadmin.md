@@ -391,7 +391,7 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Dado** una sesión con un `auth_time` de hace más de 15 minutos
 - **Cuando** el panel redirige con `acr_values=urn:cognito:loa:4&max_age=900`
 - **Entonces** Cognito vuelve a pedir el código TOTP.
-- **Y** el token nuevo trae `acr = urn:cognito:loa:4` y un `auth_time` actualizado.
+- **Y** el token nuevo trae `acr = urn:cognito:loa:4` y un `auth_time` actualizado. Como el token no llega al navegador, esto se ve en el log del panel: cada login completo deja una línea `login completo` con el `acr` y el `auth_time` del access token, sin el token ni quién entró.
 - **Y** si Cognito no lo soporta en el plan del pool, queda escrito en esta spec y se aplica la alternativa de «Riesgos».
 
 ## Casos borde y de error
