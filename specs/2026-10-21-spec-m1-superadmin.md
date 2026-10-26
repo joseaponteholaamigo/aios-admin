@@ -537,13 +537,17 @@ Presupuesto de las pruebas: ≤ 100 ms cada una y 1 s de techo, según el `CLAUD
 
 ## Resultado de la prueba técnica
 
-*(CA-32 se corrió el 2026-10-23 y el 2026-10-26; falta CA-38.)*
+*(CA-32 se corrió el 2026-10-23 y el 2026-10-26; CA-38, el 2026-10-26.)*
 
 - Camino elegido: **A**, la Lambda Web Function detrás de CloudFront con OAC. Se cumplen los tres criterios de CA-32.
 - POST por CloudFront: `POST /auth/logout` con el `Origin` del panel llega al servidor y responde su 302 con `no-store` (`npm run smoke`, 2026-10-23). No es 2xx porque el logout redirige. Lo que el criterio mide es que CloudFront y la firma de OAC dejen pasar un POST, y lo dejan.
 - Arranque en frío: `GET /` responde su 302 al login en 1,64 s en un entorno recién creado (2026-10-23) y en 1,75 s después de días sin uso (2026-10-26). Se mide desde afuera, con la conexión TLS incluida. Antes de CB-12 (`320fbec`), ese primer pedido respondía 503.
 - Despliegue sin corte: `npm run infra:deploy` de `c8a877c` con `npm run probe` corriendo, el 2026-10-26 entre 17:04:22 y 17:09:21 UTC. Fueron 300 pedidos a `/auth/no-access`: todos respondieron 200 y el más lento tardó 881 ms. Según los eventos de CloudFormation, el endpoint cambió de revisión entre 17:06:14 y 17:06:20 y la revisión vieja se borró entre 17:06:25 y 17:06:29. El cambio cayó en la mitad de la medición, con casi tres minutos de pedidos después.
-- MFA reciente con `acr_values`: —
+- MFA reciente con `acr_values` (CA-38): **se cumple a medias.**
+  - Lo que sí funciona: con `/auth/login?mfa=1` (`acr_values=urn:cognito:loa:4`, `max_age=900`), Cognito vuelve a pedir la contraseña y el código si el último ingreso tiene más de 15 minutos. Se probó a las 21:28 UTC, 30 minutos después del login.
+  - Lo que no: el token nunca trae `acr`, ni en ese login ni en ninguno; la línea `login completo` del log dice `acr=(no viene)`. El pool está en el plan `ESSENTIALS` (confirmado con `describe-user-pool`), así que lo más probable es que la función todavía no le llegue: según la documentación de Cognito, se habilita de a poco y, mientras no esté, ignora `acr_values` sin dar error.
+  - Un hallazgo más: un inicio silencioso (Cognito con su sesión abierta, sin pedir nada) renueva `auth_time`. Por eso `auth_time` solo no prueba que se escribió el código hace poco.
+  - Consecuencia: tal como está, el backend (`exigirMfaReciente`) rechazaría todo cambio de permisos. Cómo protegerlos se decide antes de la pantalla de Equipo (M2).
 
 ## Riesgos y preguntas abiertas
 
