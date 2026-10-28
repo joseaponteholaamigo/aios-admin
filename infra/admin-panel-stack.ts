@@ -5,8 +5,9 @@
 //   1. backend, primera pasada (`AIOS_ADMIN_URLS=primera-pasada`): crea el pool del equipo;
 //   2. este stack: crea CloudFront y escribe su dirección en SSM. El panel responde 503 hasta el
 //      paso 3, porque todavía no existen el cliente de Cognito ni la API de admin;
-//   3. backend, segunda pasada (`AIOS_ADMIN_URLS=<PanelUrl>`): el panel toma solo los parámetros
-//      nuevos, sin volver a desplegarse.
+//   3. backend, segunda pasada (`AIOS_ADMIN_URLS=<PanelUrl>` y `AIOS_ADMIN_CLIENTES`, las empresas
+//      que muestra la API de admin): el panel toma solo los parámetros nuevos, sin volver a
+//      desplegarse.
 import { CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 import { createAlarms } from './alarms.ts';

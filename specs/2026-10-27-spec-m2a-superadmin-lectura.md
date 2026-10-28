@@ -83,10 +83,10 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 
 #### CA-1: La lista de empresas visibles es obligatoria [backend]
 - **Dado** el stack del backend
-- **Cuando** se sintetiza sin `AIOS_ADMIN_CLIENTES`
-- **Entonces** el synth falla con un mensaje que dice cómo pedirla, igual que sin `AIOS_ADMIN_URLS`.
+- **Cuando** se sintetiza la segunda pasada (con la URL del panel en `AIOS_ADMIN_URLS`) sin `AIOS_ADMIN_CLIENTES`
+- **Entonces** el synth falla con un mensaje que dice cómo pedirla, igual que sin `AIOS_ADMIN_URLS`. La primera pasada no la necesita: no monta la API de admin.
 - **Y** con `AIOS_ADMIN_CLIENTES=desarrollo-enso-78479d`, cada función de M2a recibe esa lista en su entorno.
-- **Y** el valor es una lista de ids separados por coma, o `todos`. Un valor vacío, o un id con caracteres fuera de `[a-z0-9-]`, hace fallar el synth.
+- **Y** el valor es `todos` o una lista de ids separados por coma, con la forma de los que arma `idDeTenant`: el nombre hecho slug y seis caracteres hexadecimales. Cualquier otro valor hace fallar el synth: uno vacío, un id con otra forma o un error de tipeo como `todas`.
 
 #### CA-2: El filtro vive en el backend, en un solo lugar [backend]
 - **Dado** dos empresas, una visible y otra no
@@ -138,7 +138,7 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
   - la última página trae `siguiente: null`;
   - recorrer todas las páginas devuelve cada empresa una sola vez;
   - `q` filtra por nombre o id antes de paginar, sin distinguir mayúsculas ni tildes.
-- **Y** un `limite` fuera de rango, o un `cursor` que esta API no emitió, responde 422.
+- **Y** responde 422 con un `limite` fuera de rango, o con un `cursor` que no tiene la forma de los que emite esta API. El cursor no va firmado: uno fabricado con la forma correcta solo empieza la lista en otro lugar, y el filtro y los permisos se aplican igual.
 
 #### CA-7: La ficha de una empresa [backend]
 - **Dado** una empresa visible con plan Personalizado y reglas de acceso de empresa
@@ -232,14 +232,14 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 - **Entonces**:
   - **sobre `tenants`:** solo lectura, la que da `grantReadData`. Nunca `PutItem`, `UpdateItem`, `DeleteItem` ni `BatchWriteItem`;
   - **sobre el bucket de bundles:** solo lectura, y solo las funciones que leen las dependencias: la ficha y las personas;
-  - **sobre `eventos`:** solo lectura. M2a no escribe eventos;
+  - **sobre `eventos`:** solo lectura, y solo lo que usa cada una: la historia, `Query`; Gobernanza, además `Scan`. M2a no escribe eventos;
   - **sobre la tabla del equipo:** solo lectura.
 
-#### CA-17: El servidor local monta las rutas [backend]
-- **Dado** `npm run dev` con la identidad falsa y DynamoDB Local
-- **Cuando** se pide `GET /v1/admin/clientes` con un token de superadministrador de la identidad falsa
-- **Entonces** responde 200.
-- **Y** sin token responde 401.
+#### CA-17: El servidor local monta las rutas [backend, manual]
+- **Dado** `npm run dev` del backend
+- **Cuando** se pide cada ruta de admin sin token
+- **Entonces** responde 401, nunca 404: está montada y con su puerta. Lo comprueba `tests/dev-local-admin.test.js`.
+- **Y** con DynamoDB Local y un token de superadministrador de la identidad falsa, `GET /v1/admin/clientes` responde 200. Esta parte se comprueba a mano antes del primer despliegue: la prueba automática no tiene el pool del equipo. El 200 de cada ruta lo cubren las pruebas de los handlers.
 
 #### CA-18: Parámetros raros no rompen las rutas [backend]
 - **Dado** las rutas con `{id}`
