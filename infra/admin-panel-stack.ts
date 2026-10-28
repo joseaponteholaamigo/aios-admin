@@ -34,7 +34,7 @@ export class AdminPanelStack extends Stack {
     });
     const sessions = createSessionStore(this);
     const site = createStaticSite(this, staticAssetPath);
-    const panel = createPanelFunction(this, { codeAssetPath, sessions, liveAfter: [site.upload], version: requireCodeVersion(version) });
+    const panel = createPanelFunction(this, { codeAssetPath, sessions, liveAfter: site.uploads, version: requireCodeVersion(version) });
     const distribution = createDistribution(this, panel, site.bucket);
     createAlarms(this);
 

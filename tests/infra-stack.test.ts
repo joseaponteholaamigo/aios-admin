@@ -16,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { App } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { AdminPanelStack } from '../infra/admin-panel-stack';
+import { FONT_CONTENT_TYPE, FONT_FILES } from '../infra/edge';
 import { SESSION_ENCRYPTION_CONTEXT } from '../infra/sessions';
 import { ENTRYPOINT, MAX_ENVIRONMENTS, RATE_LIMIT, RUNTIME } from '../infra/web-function';
 import { BACKEND_ALARM_TOPIC_NAME, LOG_GROUP_NAMES, PUBLIC_ORIGINS_PARAMETER, RUNTIME_PARAMETERS } from '../infra/names';
@@ -53,6 +54,12 @@ const onlyResource = (type: string) => {
   expect(found, type).toHaveLength(1);
   return found[0] as { Properties: Record<string, any>; DeletionPolicy?: string };
 };
+
+/** Las subidas de estáticos: las que extraen el zip (la del código no lo hace). */
+const staticUploads = () =>
+  Object.values(template.findResources('Custom::CDKBucketDeployment'))
+    .map((r) => (r as { Properties: Record<string, any> }).Properties)
+    .filter((p) => p.Extract !== false);
 
 const roleStatements = () => {
   const policies = Object.values(template.findResources('AWS::IAM::Policy', { Properties: { Roles: [{ Ref: Match.stringLikeRegexp('^PanelRole') }] } }));
@@ -119,6 +126,21 @@ describe('CloudFront', () => {
     template.hasResourceProperties('AWS::CloudFront::OriginAccessControl', {
       OriginAccessControlConfig: { OriginAccessControlOriginType: 'lambda', SigningBehavior: 'always-amz-auth', SigningProtocol: 'sigv4' },
     });
+  });
+
+  // Con `binary/octet-stream`, que la tipografía cargue depende de que el navegador perdone el tipo.
+  test('⛔ las tipografías se suben como font/woff2, y la otra subida las deja afuera', () => {
+    const uploads = staticUploads();
+    expect(uploads).toHaveLength(2);
+    const fonts = uploads.filter((p) => p.SystemMetadata?.['content-type'] === FONT_CONTENT_TYPE);
+    expect(fonts).toEqual([expect.objectContaining({ Exclude: ['*'], Include: [FONT_FILES] })]);
+    expect(uploads.filter((p) => !fonts.includes(p))).toEqual([expect.objectContaining({ Exclude: [FONT_FILES] })]);
+  });
+
+  test('⛔ ninguna subida de estáticos poda: cada una borraría los archivos de la otra', () => {
+    const uploads = staticUploads();
+    expect(uploads.length).toBeGreaterThan(0);
+    for (const p of uploads) expect(p).toMatchObject({ Prune: false, SystemMetadata: { 'cache-control': 'public, max-age=31536000, immutable' } });
   });
 
   test('su dirección queda en SSM, para que el servidor la lea al arrancar', () => {

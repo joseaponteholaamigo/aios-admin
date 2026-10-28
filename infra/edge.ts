@@ -17,7 +17,14 @@ import type { Construct } from 'constructs';
 import { FUNCTION_NAME, PUBLIC_ORIGINS_PARAMETER } from './names.ts';
 import { UPLOAD_MEMORY_MB, type PanelFunction } from './web-function.ts';
 
-/** El bucket de los estáticos y su subida. Nunca poda: un navegador con el HTML anterior pide los archivos anteriores. */
+/** La subida adivina el tipo por la extensión y no conoce `.woff2`: sin decírselo, las tipografías salen como `binary/octet-stream`. */
+export const FONT_FILES = '*.woff2';
+export const FONT_CONTENT_TYPE = 'font/woff2';
+
+/**
+ * El bucket de los estáticos y sus dos subidas: las tipografías con su tipo, y todo lo demás. Ninguna
+ * poda: un navegador con el HTML anterior pide los archivos anteriores, y cada una borraría los de la otra.
+ */
 export function createStaticSite(scope: Construct, staticAssetPath: string) {
   const bucket = new s3.Bucket(scope, 'StaticBucket', {
     encryption: s3.BucketEncryption.S3_MANAGED,
@@ -25,14 +32,18 @@ export function createStaticSite(scope: Construct, staticAssetPath: string) {
     enforceSSL: true,
     removalPolicy: RemovalPolicy.RETAIN,
   });
-  const upload = new s3deploy.BucketDeployment(scope, 'StaticUpload', {
+  const upload = {
     sources: [s3deploy.Source.asset(staticAssetPath)],
     destinationBucket: bucket,
     prune: false,
     cacheControl: [s3deploy.CacheControl.fromString('public, max-age=31536000, immutable')],
     memoryLimit: UPLOAD_MEMORY_MB,
-  });
-  return { bucket, upload };
+  };
+  const uploads = [
+    new s3deploy.BucketDeployment(scope, 'StaticUpload', { ...upload, exclude: [FONT_FILES] }),
+    new s3deploy.BucketDeployment(scope, 'FontUpload', { ...upload, exclude: ['*'], include: [FONT_FILES], contentType: FONT_CONTENT_TYPE }),
+  ];
+  return { bucket, uploads };
 }
 
 /** La firma de CloudFront hacia la Web Function. */
