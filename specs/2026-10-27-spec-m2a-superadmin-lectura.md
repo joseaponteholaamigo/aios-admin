@@ -23,16 +23,18 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 - **Empresas:**
   - `GET /v1/admin/clientes`, con búsqueda y paginación;
   - `GET /v1/admin/clientes/{id}`;
-  - `GET /v1/admin/clientes/{id}/historia`;
-  - `GET /v1/admin/doctor`.
-- **Personas:** `GET /v1/admin/clientes/{id}/personas` y `POST /v1/admin/personas/buscar`.
+  - `GET /v1/admin/clientes/{id}/historia`.
+- **Personas:**
+  - `GET /v1/admin/clientes/{id}/personas`;
+  - `POST /v1/admin/personas/buscar`;
+  - `GET /v1/admin/doctor`: la revisión de datos. Va con las personas porque sus hallazgos traen correos (decisión de Jose, 2026-10-28).
 - **Auditoría y equipo:** `GET /v1/admin/auditoria` y `GET /v1/admin/equipo`.
 - **Las rutas nuevas** van en las dos listas (`src/lambda.js` e `infra/equipo.js`), en el servidor local y en el stack. Sus funciones tienen permisos de solo lectura.
 
 **[panel] `aios-admin`**
 - **La plantilla visual del panel viejo:** los tokens de color y los dos temas, el marco (barra lateral y barra superior), los íconos y las tipografías servidas desde el propio panel. La usan también las pantallas de M1.
-- **Empresas:** la lista, la ficha con su historia y la revisión de datos (el doctor).
-- **Usuarios de clientes:** la búsqueda por correo, y las personas, los roles y la bitácora de una empresa.
+- **Empresas:** la lista y la ficha con su historia.
+- **Usuarios de clientes:** la búsqueda por correo; las personas, los roles y la bitácora de una empresa; y la revisión de datos (el doctor).
 - **Gobernanza:** la auditoría.
 - **Equipo ensō:** la lista de personas, solo para el superadministrador.
 - **Lo que comparten las pantallas:**
@@ -72,8 +74,8 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 
 | Ruta (bajo `/v1/admin`) | Módulo y nivel |
 |---|---|
-| `GET /clientes`, `GET /clientes/{id}`, `GET /clientes/{id}/historia`, `GET /doctor` | `empresas: ver` |
-| `GET /clientes/{id}/personas`, `POST /personas/buscar` | `usuarios: ver` |
+| `GET /clientes`, `GET /clientes/{id}`, `GET /clientes/{id}/historia` | `empresas: ver` |
+| `GET /clientes/{id}/personas`, `POST /personas/buscar`, `GET /doctor` | `usuarios: ver` |
 | `GET /auditoria` | `gobernanza: ver` |
 | `GET /equipo` | solo superadministrador |
 
@@ -320,7 +322,7 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 | Ruta | Pantalla | Acceso | En el menú |
 |---|---|---|---|
 | `companies` | Empresas: la lista, con búsqueda y paginación | `companies: view` | Empresas |
-| `companies/checkup` | La revisión de datos (doctor) | `companies: view` | no: se entra desde Empresas |
+| `client-users/checkup` | La revisión de datos (doctor) | `clientUsers: view` | no: se entra desde Usuarios de clientes |
 | `companies/:companyId` | La ficha y su historia | `companies: view` | no |
 | `client-users` | Buscar a una persona por su correo | `clientUsers: view` | Usuarios de clientes |
 | `client-users/:companyId` | Las personas, los roles y la bitácora de una empresa | `clientUsers: view` | no |
