@@ -5,7 +5,7 @@
 // formularios frenados), el despliegue se daría por bueno. Cada comprobación tiene que caer sola
 // cuando lo que revisa se rompe.
 import { describe, expect, test } from 'vitest';
-import { runSmoke } from '../scripts/smoke.mjs';
+import { runSmoke, SCREENS_OF_M2A } from '../scripts/smoke.mjs';
 
 const PANEL = 'https://dxxxx.cloudfront.net';
 const API = 'https://api.example';
@@ -20,6 +20,9 @@ const HEALTHY: Record<string, Route> = {
   'GET /assets/root-AbC.js': () => new Response('export {}', { status: 200 }),
   'POST /auth/logout': () => new Response(null, { status: 302, headers: { location: 'https://equipo.auth.example/logout', 'cache-control': 'no-store' } }),
   'GET /v1/admin/yo': () => new Response('{"error":"x"}', { status: 401 }),
+  ...Object.fromEntries(SCREENS_OF_M2A.map((path: string) => [
+    `GET ${path}`, () => new Response(null, { status: 302, headers: { location: `/auth/login?returnTo=${encodeURIComponent(path)}` } }),
+  ])),
 };
 
 function fetchFor(routes: Record<string, Route>) {
@@ -43,6 +46,8 @@ describe('runSmoke', () => {
     ['los estáticos no llegan', 'GET /assets/root-AbC.js', () => new Response('', { status: 403 })],
     ['el POST lo frena CloudFront', 'POST /auth/logout', () => new Response('', { status: 403 })],
     ['la API responde sin token', 'GET /v1/admin/yo', () => new Response('{}', { status: 200 })],
+    ['una pantalla de M2a se abre sin sesión', 'GET /governance', () => new Response('<html>', { status: 200 })],
+    ['una pantalla de M2a da 500', 'GET /companies/visible-aaaaaa', () => new Response('error', { status: 500 })],
   ];
 
   test.each(BROKEN)('⛔ cae cuando %s', async (_name, route, broken) => {

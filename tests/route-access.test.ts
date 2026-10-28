@@ -40,6 +40,16 @@ describe('allows y menuFor', () => {
     ]);
   });
 
+  test('⛔ el acceso «superadmin» solo lo cumple un superadministrador activo, no quien tiene todos los módulos (CA-27)', () => {
+    const todo = { companies: 'edit', clientUsers: 'edit', governance: 'view', overview: 'view' } as const;
+    expect(allows(teamMember('jose', { isSuperadmin: true }), 'superadmin')).toBe(true);
+    expect(allows(teamMember('ana', { permissions: todo }), 'superadmin')).toBe(false);
+    expect(allows(teamMember('jose', { isSuperadmin: true, status: 'inactive' }), 'superadmin')).toBe(false);
+    const conEquipo: RouteEntry[] = [...TABLE, { path: 'team', file: 'x', access: 'superadmin', menu: { label: 'Equipo ensō', group: 'administration', icon: 'people' } }];
+    expect(menuFor(teamMember('ana', { permissions: todo }), conEquipo).map((i) => i.label)).not.toContain('Equipo ensō');
+    expect(menuFor(teamMember('jose', { isSuperadmin: true }), conEquipo).map((i) => i.label)).toContain('Equipo ensō');
+  });
+
   test('⛔ una persona inactiva no cumple ni «miembro»', () => {
     expect(allows(teamMember('ana', { status: 'inactive' }), 'member')).toBe(false);
   });

@@ -1,0 +1,5 @@
+/* Una lista de datos: la etiqueta como las de las fichas del panel viejo (`.ficha h4`), el valor debajo. */
+.facts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+.facts dt { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 4px 0 0; font-size: 13.5px; color: var(--ink); }
+@media (max-width: 860px) { .facts { grid-template-columns: minmax(0, 1fr); } }

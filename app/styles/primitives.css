@@ -99,6 +99,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 .hide { display: none !important; }
 
+/* Aire entre los bloques seguidos de una tarjeta (una lista de datos y su tabla, un título y lo que
+ * sigue). En el panel viejo lo ponía cada página con `style` en línea, que la CSP de este bloquea. */
+.card-b > * + *, .card.pad > * + * { margin-top: 16px; }
+
+/* Una lista de chips con `<ul>`: sin viñetas ni sangría. No estaba en el panel viejo, que los
+ * pintaba sueltos. */
+ul.chips { list-style: none; margin: 0; padding: 0; }
+
 /* ── Responsive de las grillas (las reglas del panel viejo, sin las de pantallas sueltas) ── */
 @media (max-width: 1180px) {
   .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

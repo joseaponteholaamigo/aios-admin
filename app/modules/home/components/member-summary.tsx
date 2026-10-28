@@ -1,6 +1,6 @@
 // Quién es la persona y qué módulos puede usar, con su nivel, tal como los da `/yo` (CA-31).
 import type { Level, Module } from '../../../domain/permissions';
-import { LEVEL_LABELS, MODULE_LABELS } from '../module-labels';
+import { LEVEL_LABELS, MODULE_LABELS } from '../../../shared/labels/permission-labels';
 
 export type MemberSummaryProps = {
   name: string;

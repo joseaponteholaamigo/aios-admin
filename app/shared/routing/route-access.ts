@@ -24,6 +24,7 @@ export function accessFor(url: URL, table: readonly RouteEntry[] = ROUTE_TABLE):
 export function allows(member: TeamMember, access: RouteAccess): boolean {
   if (access === 'public') return true;
   if (access === 'member') return member.status === 'active';
+  if (access === 'superadmin') return member.status === 'active' && member.isSuperadmin;
   return can(member, access.module, access.level);
 }
 

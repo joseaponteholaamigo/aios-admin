@@ -1,0 +1,11 @@
+/* La insignia de una empresa: copiada del panel viejo (`admin.css` de beenso, `d74d3fb`). El color del
+ * logo iba en un `style` en línea, que la CSP del panel nuevo bloquea: va por clase, con la misma
+ * paleta de `colorDe` de `iconos.ts`. */
+
+.ent { display: flex; align-items: center; gap: 11px; min-width: 200px; }
+.logo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 12.5px; color: #fff; flex: none; background: var(--accent); }
+.ent b { display: block; font-size: 14px; }
+.ent small { display: block; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.logo svg { width: 16px; height: 16px; }
+.logo--c0 { background: #1567D6; } .logo--c1 { background: #0B6B47; } .logo--c2 { background: #5B4BD6; } .logo--c3 { background: #B0543A; }
+.logo--c4 { background: #0E7490; } .logo--c5 { background: #9A3412; } .logo--c6 { background: #4338CA; } .logo--c7 { background: #047857; }

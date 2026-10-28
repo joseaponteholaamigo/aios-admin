@@ -22,6 +22,8 @@ export type RouteAccess =
   | 'public'
   /** Cualquier persona activa del equipo (la página de inicio). */
   | 'member'
+  /** Solo el superadministrador: «Equipo ensō» no es un módulo que se asigne. */
+  | 'superadmin'
   | { module: Module; level: Level };
 
 export type RouteEntry = {
@@ -35,7 +37,25 @@ export type RouteEntry = {
 };
 
 export const ROUTE_TABLE: readonly RouteEntry[] = [
+  // El menú sigue el orden de la barra lateral del panel viejo.
   { path: '', file: 'modules/home/routes/home.tsx', access: 'member', menu: { label: 'Inicio', group: 'administration', icon: 'fleet' } },
+  {
+    path: 'companies', file: 'modules/companies/routes/companies.tsx', access: { module: 'companies', level: 'view' },
+    menu: { label: 'Empresas', group: 'administration', icon: 'empresas' },
+  },
+  { path: 'companies/:companyId', file: 'modules/companies/routes/company.tsx', access: { module: 'companies', level: 'view' } },
+  {
+    path: 'client-users', file: 'modules/client-users/routes/client-users.tsx', access: { module: 'clientUsers', level: 'view' },
+    menu: { label: 'Usuarios de clientes', group: 'administration', icon: 'usuarios' },
+  },
+  // Antes que `:companyId`: la tabla se lee en orden, y `checkup` no es una empresa.
+  { path: 'client-users/checkup', file: 'modules/client-users/routes/checkup.tsx', access: { module: 'clientUsers', level: 'view' } },
+  { path: 'client-users/:companyId', file: 'modules/client-users/routes/company-people.tsx', access: { module: 'clientUsers', level: 'view' } },
+  { path: 'team', file: 'modules/team/routes/team.tsx', access: 'superadmin', menu: { label: 'Equipo ensō', group: 'administration', icon: 'people' } },
+  {
+    path: 'governance', file: 'modules/governance/routes/governance.tsx', access: { module: 'governance', level: 'view' },
+    menu: { label: 'Gobernanza', group: 'business', icon: 'gobernanza' },
+  },
   { path: 'auth/login', file: 'modules/auth/routes/login.tsx', access: 'public' },
   { path: 'auth/callback', file: 'modules/auth/routes/callback.tsx', access: 'public' },
   { path: 'auth/logout', file: 'modules/auth/routes/logout.tsx', access: 'public' },

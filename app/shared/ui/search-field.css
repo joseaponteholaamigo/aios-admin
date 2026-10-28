@@ -1,0 +1,9 @@
+/* Los filtros y el buscador de una lista: copiados del panel viejo (`admin.css` de beenso, `d74d3fb`). */
+
+.adm-search { flex: 1; max-width: 520px; display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; color: var(--muted); }
+.adm-search input { border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; width: 100%; }
+.adm-search svg { color: var(--faint); }
+.filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.filtros select, .sel { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; }
+.filtros .adm-search { max-width: 300px; }
+.filtros .vacio { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }

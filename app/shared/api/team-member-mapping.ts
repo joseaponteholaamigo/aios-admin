@@ -60,6 +60,13 @@ export function toApiPermissions(permissions: TeamMember['permissions']): Record
   );
 }
 
+/** La lista del equipo (`/v1/admin/equipo`): cada persona con la misma forma de `/yo`. */
+export function toTeamList(body: unknown, log: (message: string) => void): TeamMember[] {
+  const personas = body && typeof body === 'object' ? (body as Record<string, unknown>).personas : undefined;
+  if (!Array.isArray(personas)) throw new TeamMemberContractError('`/equipo` sin `personas`');
+  return personas.map((p) => toTeamMember(p, log));
+}
+
 /** La persona del equipo, en el idioma del panel. **Lanza** si la respuesta no tiene la forma de `/yo`. */
 export function toTeamMember(body: unknown, log: (message: string) => void): TeamMember {
   if (!body || typeof body !== 'object') throw new TeamMemberContractError('`/yo` no devolvió un objeto');

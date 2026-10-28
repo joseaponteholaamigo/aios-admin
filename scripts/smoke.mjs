@@ -9,6 +9,9 @@
 // como un navegador, que el panel responde de verdad. Termina con código 1 si falla algo.
 import { pathToFileURL } from 'node:url';
 
+/** Las pantallas de M2a que tienen que pedir sesión (CA-31 de la spec de M2a). */
+export const SCREENS_OF_M2A = ['/companies', '/companies/visible-aaaaaa', '/client-users', '/client-users/checkup', '/client-users/visible-aaaaaa', '/governance', '/team'];
+
 /**
  * @typedef {{ name: string, ok: boolean, detail: string }} Check
  * @param {{ panelUrl: string, apiUrl: string, fetchImpl?: typeof fetch }} options
@@ -26,6 +29,14 @@ export async function runSmoke({ panelUrl, apiUrl, fetchImpl = fetch }) {
 
   let r = await get(`${panel}/`);
   check('GET / manda al login del panel', r.status === 302 && r.headers.get('location')?.startsWith('/auth/login'), `${r.status} ${r.headers.get('location')}`);
+
+  // Las pantallas de M2a, sin sesión: al login, nunca la página (ni un 500 de una ruta rota).
+  const sinSesion = [];
+  for (const path of SCREENS_OF_M2A) {
+    const s = await get(`${panel}${path}`);
+    if (!(s.status === 302 && s.headers.get('location')?.startsWith('/auth/login'))) sinSesion.push(`${path} → ${s.status}`);
+  }
+  check('las pantallas de M2a sin sesión mandan al login', sinSesion.length === 0, sinSesion.join(', '));
 
   r = await get(`${panel}/auth/login`);
   const authorize = r.headers.get('location') ?? '';
