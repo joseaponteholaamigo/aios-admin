@@ -1,0 +1,14 @@
+/* El marco: la grilla de barra lateral y contenido, copiada del panel viejo (`admin.css` de
+ * beenso, `d74d3fb`). `.adm-scrim` es nueva: en el teléfono, tocar fuera del menú lo cierra. */
+
+.adm-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+.adm-main { min-width: 0; display: flex; flex-direction: column; }
+.adm-page { padding: 22px 28px 64px; display: flex; flex-direction: column; gap: 22px; max-width: 1440px; width: 100%; }
+
+.adm-scrim { display: none; }
+
+@media (max-width: 860px) {
+  .adm-shell { grid-template-columns: minmax(0, 1fr); }
+  .adm-page { padding: 16px 16px 48px; }
+  .adm-scrim { display: block; position: fixed; inset: 0; z-index: 40; }
+}

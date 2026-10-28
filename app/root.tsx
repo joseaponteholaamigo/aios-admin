@@ -1,6 +1,9 @@
-// El marco de todas las páginas: <html>, metadatos, scripts, el menú y el middleware que corre en
-// cada pedido. Sin pantallas: cada una vive en su módulo (`app/modules/`), y las rutas, con el
+// El marco de todas las páginas: <html>, metadatos, scripts, la plantilla visual y el middleware
+// que corre en cada pedido. Sin pantallas: cada una vive en su módulo (`app/modules/`), y las rutas, con el
 // acceso que exige cada una, están en `app/shared/routing/route-table.ts`.
+// La hoja global va primero: Vite junta las hojas en el orden de importación, y las de los
+// componentes del marco tienen que poder pisar sus primitivas (`.adm-menu` sobre `.adm-iconbtn`).
+import './styles/global.css';
 import type { ReactNode } from 'react';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, isRouteErrorResponse, useRouteLoaderData } from 'react-router';
 import type { Route } from './+types/root';
@@ -10,7 +13,10 @@ import { sessionMiddleware } from './middleware/session.server';
 import { authMiddleware } from './middleware/auth.server';
 import { permissionsMiddleware, teamMemberContext } from './middleware/permissions.server';
 import { menuFor } from './shared/routing/route-access';
-import { MainNav } from './shared/layout/main-nav';
+import { AppShell } from './shared/layout/app-shell';
+import { PublicFrame } from './shared/layout/public-frame';
+import { ThemeScript } from './shared/layout/theme-script';
+import favicon from './shared/layout/brand/favicon-64.png';
 
 /**
  * En orden: las cabeceras envuelven todo (también un rechazo de CSRF); después la protección
@@ -27,24 +33,36 @@ export const middleware: Route.MiddlewareFunction[] = [
   permissionsMiddleware(),
 ];
 
-/** El nonce de la CSP de este pedido, para marcar los scripts del documento, y el menú de la persona. */
+/** El ícono de la pestaña, del panel viejo. */
+export const links: Route.LinksFunction = () => [{ rel: 'icon', href: favicon }];
+
+/**
+ * El nonce de la CSP de este pedido, para marcar los scripts del documento; y, si hay sesión, quién
+ * entró y su menú, para el marco. Sin sesión (login, «sin acceso») no hay marco.
+ */
 export function loader({ context }: Route.LoaderArgs) {
   const member = context.get(teamMemberContext);
-  return { nonce: context.get(nonceContext), menu: member ? menuFor(member) : [] };
+  return {
+    nonce: context.get(nonceContext),
+    member: member ? { name: member.name ?? member.email ?? member.actor, isSuperadmin: member.isSuperadmin } : null,
+    menu: member ? menuFor(member) : [],
+  };
 }
 
 export function Layout({ children }: { children: ReactNode }) {
   const nonce = useRouteLoaderData<typeof loader>('root')?.nonce || undefined;
   return (
-    <html lang="es">
+    // `suppressHydrationWarning`: el script del tema pone `data-theme` antes de que React hidrate.
+    <html lang="es" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="robots" content="noindex, nofollow" />
+        <ThemeScript />
         <Meta />
         <Links />
       </head>
-      <body>
+      <body className="adm">
         {children}
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />
@@ -54,11 +72,17 @@ export function Layout({ children }: { children: ReactNode }) {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
+  if (!loaderData.member) {
+    return (
+      <PublicFrame>
+        <Outlet />
+      </PublicFrame>
+    );
+  }
   return (
-    <>
-      {loaderData.menu.length > 0 && <MainNav items={loaderData.menu} />}
+    <AppShell member={loaderData.member} menu={loaderData.menu}>
       <Outlet />
-    </>
+    </AppShell>
   );
 }
 
@@ -80,10 +104,12 @@ const GENERIC_ERROR = { title: 'Algo salió mal', detail: 'Vuelve a intentarlo. 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const { title, detail } = (isRouteErrorResponse(error) && ERROR_MESSAGES[error.status]) || GENERIC_ERROR;
   return (
-    <main>
-      <h1>{title}</h1>
-      <p>{detail}</p>
-      <a href="/">Ir al inicio</a>
-    </main>
+    <PublicFrame>
+      <main className="card pad">
+        <h1>{title}</h1>
+        <p>{detail}</p>
+        <a className="btn primary" href="/">Ir al inicio</a>
+      </main>
+    </PublicFrame>
   );
 }

@@ -90,6 +90,51 @@ describe('el build de producción', () => {
   });
 });
 
+describe('la plantilla visual en el build', () => {
+  /** Las caras que pide `app/styles/fonts.css`: latín y latín extendido de cada peso. */
+  const EXPECTED_FONTS = [
+    ...[400, 500, 600, 700].map((w) => `inter-tight-%-${w}-normal.woff2`),
+    ...[400, 500, 700].map((w) => `jetbrains-mono-%-${w}-normal.woff2`),
+  ].flatMap((name) => [name.replace('%', 'latin'), name.replace('%', 'latin-ext')]).sort();
+
+  test('⛔ las tipografías salen del propio panel: solo woff2, solo latín y latín extendido, y nada de Google (CA-24)', () => {
+    const assets = join(outDir, 'client', 'assets');
+    const fonts = readdirSync(assets).filter((name) => /\.(woff2?|ttf|otf|eot)$/.test(name));
+    // Sin el hash que agrega Vite: `inter-tight-latin-400-normal-AbC12.woff2` → `inter-tight-latin-400-normal.woff2`.
+    expect(fonts.map((name) => name.replace(/-[\w-]{8}\.woff2$/, '.woff2')).sort()).toEqual(EXPECTED_FONTS);
+    const google = filesUnder(outDir).filter((f) => /fonts\.(googleapis|gstatic)\.com/.test(readFileSync(f, 'utf8')));
+    expect(google).toEqual([]);
+  });
+
+  test('la página sin sesión lleva la hoja del panel, el tema antes de pintar y el marco público, sin menú (CA-23, CA-25)', () => {
+    const [page] = requestBuild(['/auth/no-access']);
+    const body = page?.body ?? '';
+    const head = body.slice(0, body.indexOf('</head>'));
+    expect(page?.status).toBe(200);
+    expect(head).toMatch(/<link[^>]*rel="stylesheet"[^>]*href="\/assets\/root-[\w-]+\.css"/);
+    // El script del tema va en el <head> y antes de las hojas: fija el tema antes del primer cuadro.
+    const themeScript = head.indexOf('enso-theme');
+    expect(themeScript).toBeGreaterThan(-1);
+    expect(themeScript).toBeLessThan(head.indexOf('rel="stylesheet"'));
+    expect(body).toContain('<body class="adm">');
+    expect(body).toContain('class="adm-public"');
+    expect(body).not.toContain('adm-side');
+  });
+
+  test('⛔ en la hoja del panel, los tokens y las primitivas van antes que el marco (el botón del menú no aparece en el escritorio)', () => {
+    const assets = join(outDir, 'client', 'assets');
+    const sheets = readdirSync(assets).filter((name) => /^root-[\w-]+\.css$/.test(name));
+    expect(sheets).toHaveLength(1);
+    const css = readFileSync(join(assets, sheets[0]!), 'utf8');
+    const at = (rule: string) => css.indexOf(rule);
+    // `.adm-menu { display: none }` tiene la misma especificidad que `.adm-iconbtn { display: grid }`:
+    // gana el que va después. Con la hoja global al final, el botón del teléfono se veía siempre.
+    expect(at('--bg:')).toBeGreaterThan(-1);
+    expect(at('--bg:')).toBeLessThan(at('.adm-iconbtn{'));
+    expect(at('.adm-iconbtn{')).toBeLessThan(at('.adm-menu{'));
+  });
+});
+
 test('⛔ el build se detiene si un archivo de app/ importa de dev/', () => {
   const plugin = forbidDevImports(root);
   const resolveId = plugin.resolveId as (this: unknown, source: string, importer: string | undefined) => unknown;

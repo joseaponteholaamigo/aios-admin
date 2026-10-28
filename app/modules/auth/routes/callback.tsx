@@ -12,10 +12,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function Callback({ loaderData }: Route.ComponentProps) {
   return (
-    <main>
+    <main className="card pad">
       <h1>No pudimos completar el ingreso</h1>
       <p>{loaderData.message}</p>
-      <a href="/auth/login">Volver a entrar</a>
+      <a className="btn primary" href="/auth/login">Volver a entrar</a>
     </main>
   );
 }

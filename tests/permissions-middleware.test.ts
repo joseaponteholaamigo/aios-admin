@@ -20,8 +20,8 @@ import { fakeAdminApi, teamMember } from './helpers/fake-admin-api';
 import { runMiddleware } from './helpers/run-middleware';
 
 const TABLE: RouteEntry[] = [
-  { path: '', file: 'x', access: 'member', menuLabel: 'Inicio' },
-  { path: 'companies', file: 'x', access: { module: 'companies', level: 'view' }, menuLabel: 'Empresas' },
+  { path: '', file: 'x', access: 'member', menu: { label: 'Inicio', group: 'administration', icon: 'fleet' } },
+  { path: 'companies', file: 'x', access: { module: 'companies', level: 'view' }, menu: { label: 'Empresas', group: 'administration', icon: 'empresas' } },
   { path: 'companies/:id/edit', file: 'x', access: { module: 'companies', level: 'edit' } },
   { path: 'auth/no-access', file: 'x', access: 'public' },
 ];
@@ -60,7 +60,7 @@ describe('permissionsMiddleware', () => {
     const run = await request('/');
     expect(run.reached).toBe(true);
     const args = { context: run.context, request: new Request('https://dxxxx.cloudfront.net/'), params: {} } as never;
-    expect(rootLoader(args).menu).toEqual([{ path: '/', label: 'Inicio' }]);
+    expect(rootLoader(args).menu).toEqual([{ path: '/', label: 'Inicio', group: 'administration', icon: 'fleet' }]);
     expect(homeLoader(args).name).toBe('Ana');
     expect(fake.calls()).toBe(1);
   });

@@ -26,17 +26,17 @@ describe('accessFor', () => {
 
 describe('allows y menuFor', () => {
   const TABLE: RouteEntry[] = [
-    { path: '', file: 'x', access: 'member', menuLabel: 'Inicio' },
-    { path: 'companies', file: 'x', access: { module: 'companies', level: 'view' }, menuLabel: 'Empresas' },
-    { path: 'usage', file: 'x', access: { module: 'usage', level: 'view' }, menuLabel: 'Consumo' },
+    { path: '', file: 'x', access: 'member', menu: { label: 'Inicio', group: 'administration', icon: 'fleet' } },
+    { path: 'companies', file: 'x', access: { module: 'companies', level: 'view' }, menu: { label: 'Empresas', group: 'administration', icon: 'empresas' } },
+    { path: 'usage', file: 'x', access: { module: 'usage', level: 'view' }, menu: { label: 'Consumo', group: 'business', icon: 'consumo' } },
     { path: 'companies/:id/edit', file: 'x', access: { module: 'companies', level: 'edit' } },
   ];
 
   test('⛔ el menú no muestra los módulos que la persona no puede usar', () => {
     const member = teamMember('ana', { permissions: { companies: 'view' } });
     expect(menuFor(member, TABLE)).toEqual([
-      { path: '/', label: 'Inicio' },
-      { path: '/companies', label: 'Empresas' },
+      { path: '/', label: 'Inicio', group: 'administration', icon: 'fleet' },
+      { path: '/companies', label: 'Empresas', group: 'administration', icon: 'empresas' },
     ]);
   });
 

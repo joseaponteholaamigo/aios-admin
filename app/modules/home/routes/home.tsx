@@ -3,6 +3,7 @@ import type { Route } from './+types/home';
 import { grantedModules } from '../../../domain/permissions';
 import { teamMemberContext } from '../../../middleware/permissions.server';
 import { MemberSummary } from '../components/member-summary';
+import { PageHeader } from '../../../shared/layout/page-header';
 
 /** La persona sale del contexto que dejó el middleware de permisos: aquí no se vuelve a pedir `/yo`. */
 export function loader({ context }: Route.LoaderArgs) {
@@ -17,9 +18,9 @@ export function loader({ context }: Route.LoaderArgs) {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   return (
-    <main>
-      <h1>Panel ensō</h1>
+    <>
+      <PageHeader title="Panel ensō" lead="Quién eres y qué módulos puedes usar." />
       <MemberSummary {...loaderData} />
-    </main>
+    </>
   );
 }

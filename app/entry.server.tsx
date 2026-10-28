@@ -1,5 +1,5 @@
 // El render del servidor. Es el de React Router para Node, con tres cambios:
-//   1. Los scripts que mete React Router llevan el nonce de la CSP de este pedido
+//   1. Los scripts que mete React Router, y el del tema, llevan el nonce de la CSP de este pedido
 //      (`security-headers.server.ts`); sin él, la CSP los bloquearía.
 //   2. Una página que no pasó por el middleware (una ruta que no existe: React Router responde el
 //      404 sin correrlo) recibe aquí las mismas cabeceras de seguridad (CA-28).
@@ -15,6 +15,7 @@ import type { RenderToPipeableStreamOptions } from 'react-dom/server';
 import { renderToPipeableStream } from 'react-dom/server';
 import { getConfig } from './shared/config/config.server';
 import { CSP_ENABLED, applySecurityHeaders, createNonce, nonceContext } from './middleware/security-headers.server';
+import { CspNonceContext } from './shared/layout/csp-nonce-context';
 
 getConfig();
 
@@ -43,7 +44,9 @@ export default function handleRequest(
     let timeoutId: ReturnType<typeof setTimeout> | undefined = setTimeout(() => abort(), streamTimeout + 1000);
 
     const { pipe, abort } = renderToPipeableStream(
-      <ServerRouter context={routerContext} url={request.url} nonce={nonce} />,
+      <CspNonceContext value={nonce}>
+        <ServerRouter context={routerContext} url={request.url} nonce={nonce} />
+      </CspNonceContext>,
       {
         nonce,
         [readyOption]() {

@@ -1,7 +1,10 @@
 // Qué acceso exige un pedido y si una persona lo cumple, según la tabla de rutas.
 import { matchPath } from 'react-router';
 import { can, type TeamMember } from '../../domain/permissions';
-import { ROUTE_TABLE, type RouteAccess, type RouteEntry } from './route-table';
+import { ROUTE_TABLE, type MenuEntry, type RouteAccess, type RouteEntry } from './route-table';
+
+/** Una entrada del menú de una persona: la ruta, con su nombre, su grupo y su ícono. */
+export type MenuItem = { path: string } & MenuEntry;
 
 /** La ruta del documento. En un pedido de datos (`/x.data`, `/_.data`) se quita el sufijo. */
 export function requestedPath(url: URL): string {
@@ -25,6 +28,6 @@ export function allows(member: TeamMember, access: RouteAccess): boolean {
 }
 
 /** Las entradas del menú que `member` puede abrir: nunca un módulo que no puede usar (CA-25). */
-export function menuFor(member: TeamMember, table: readonly RouteEntry[] = ROUTE_TABLE): { path: string; label: string }[] {
-  return table.flatMap((r) => (r.menuLabel && allows(member, r.access) ? [{ path: `/${r.path}`, label: r.menuLabel }] : []));
+export function menuFor(member: TeamMember, table: readonly RouteEntry[] = ROUTE_TABLE): MenuItem[] {
+  return table.flatMap((r) => (r.menu && allows(member, r.access) ? [{ path: `/${r.path}`, ...r.menu }] : []));
 }

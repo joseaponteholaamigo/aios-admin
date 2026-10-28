@@ -7,14 +7,14 @@
 // entrar con otra. Es un `<form>` del navegador: funciona aunque el JavaScript no cargue.
 export default function NoAccess() {
   return (
-    <main>
+    <main className="card pad">
       <h1>No pudimos confirmar tu acceso al panel</h1>
       <p>
         Puede que tu cuenta del equipo ya no esté activa, o que tu sesión haya vencido. Vuelve a entrar; si sigue
         pasando, avísale a quien administra el panel.
       </p>
       <form method="post" action="/auth/logout">
-        <button type="submit">Volver a entrar</button>
+        <button type="submit" className="btn primary">Volver a entrar</button>
       </form>
     </main>
   );
