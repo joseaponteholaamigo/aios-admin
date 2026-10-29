@@ -21,12 +21,12 @@ function open(url: string) {
 
 beforeEach(() => {
   listClientUsers.mockReset();
-  listClientUsers.mockResolvedValue({ kind: 'ok', value: { people: [], next: null, onlySome: true } });
+  listClientUsers.mockResolvedValue({ kind: 'ok', value: { people: [], next: null, companies: [], onlySome: true } });
 });
 
 describe('la lista de personas', () => {
   test('la primera página se pide sin cursor ni filtro, con el token de la sesión', async () => {
-    expect(await open('https://dxxxx.cloudfront.net/client-users')).toEqual({ people: [], next: null, onlySome: true });
+    expect(await open('https://dxxxx.cloudfront.net/client-users')).toEqual({ people: [], next: null, companies: [], onlySome: true });
     expect(listClientUsers).toHaveBeenCalledWith('token-ana', { company: '', cursor: null });
   });
 
@@ -35,10 +35,11 @@ describe('la lista de personas', () => {
     expect(listClientUsers).toHaveBeenCalledWith('token-ana', { company: 'acme', cursor: 'c2' });
   });
 
-  test('sin nadie, la lista dice por qué: el filtro, una página que se vació o que no hay personas', () => {
-    expect(emptyListMessage({ filtered: true, laterPage: false })).toMatch(/coincide con el filtro/);
-    expect(emptyListMessage({ filtered: false, laterPage: true })).toMatch(/En esta página/);
-    expect(emptyListMessage({ filtered: false, laterPage: false })).toMatch(/Todavía no hay personas/);
+  test('sin nadie, la lista dice por qué: la empresa elegida, una que no está, una página que se vació o que no hay personas', () => {
+    expect(emptyListMessage({ kind: 'company', name: 'Auteco' }, false)).toBe('Auteco no tiene personas activas, invitadas ni en pausa.');
+    expect(emptyListMessage({ kind: 'unknown-company' }, false)).toMatch(/no está entre las que el panel muestra/);
+    expect(emptyListMessage({ kind: 'company', name: 'Auteco' }, true)).toMatch(/En esta página/);
+    expect(emptyListMessage({ kind: 'all' }, false)).toMatch(/Todavía no hay personas/);
   });
 
   // Si buscar volviera a pedir la lista, cada búsqueda costaría un pedido más, y un fallo de la

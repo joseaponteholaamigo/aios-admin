@@ -28,7 +28,7 @@ describe('buscar por correo', () => {
   test('manda el correo sin espacios y en minúsculas, con el token de la sesión', async () => {
     const r = await search('  Ana@ACME.com ');
     expect(findPerson).toHaveBeenCalledWith('token-ana', 'ana@acme.com');
-    expect(r).toEqual({ error: null, result: { found: false, onlySome: true } });
+    expect(r).toEqual({ error: null, result: { found: false, onlySome: true }, email: 'ana@acme.com' });
   });
 
   test('⛔ deja buscar los correos raros que el backend sí guarda: la regla es la suya, no la de z.email()', async () => {

@@ -107,6 +107,10 @@ export function toClientUsersPage(body: unknown, log: Log): ClientUsersPage {
   return {
     people: asArray(b.personas, 'personas').map((p) => toClientUser(p, log)),
     next: strOrNull(b.siguiente),
+    companies: asArray(b.empresas ?? [], 'empresas').map((raw) => {
+      const c = asRecord(raw, 'una empresa del filtro');
+      return { id: str(c.id, 'empresa.id'), name: str(c.nombre, 'empresa.nombre'), hasTeam: c.equipo === true };
+    }),
     onlySome: b.soloAlgunas !== false,
   };
 }

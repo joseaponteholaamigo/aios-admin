@@ -1,0 +1,11 @@
+/* La barra de filtros de Usuarios de clientes: en su propia fila, a todo el ancho de la tarjeta,
+ * con una raya entre la búsqueda por correo y el filtro de la lista. */
+
+.client-users-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 20px 0; }
+.client-users-filters__divider { width: 1px; align-self: stretch; background: var(--line); }
+.client-users-filters select { max-width: 280px; }
+.client-users-filters__error { flex-basis: 100%; max-width: fit-content; }
+
+@media (max-width: 860px) {
+  .client-users-filters__divider { display: none; }
+}

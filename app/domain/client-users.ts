@@ -61,7 +61,10 @@ export type PersonSearch =
 /** Una persona de la lista de Usuarios de clientes: su asiento y la empresa donde lo tiene. */
 export type ClientUser = SeatCard & { company: { id: string; name: string } };
 
-export type ClientUsersPage = { people: ClientUser[]; next: string | null; onlySome: boolean };
+/** Una empresa en el filtro de la lista. `hasTeam`: su plan es de más de un asiento. */
+export type CompanyOption = { id: string; name: string; hasTeam: boolean };
+
+export type ClientUsersPage = { people: ClientUser[]; next: string | null; companies: CompanyOption[]; onlySome: boolean };
 
 /** Los tipos de hallazgo de la revisión de datos (el doctor del backend). */
 export const FINDING_KINDS = [

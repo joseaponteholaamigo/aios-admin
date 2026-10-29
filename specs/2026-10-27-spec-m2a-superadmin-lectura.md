@@ -195,12 +195,17 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 #### CA-33: La lista de las personas de los clientes [backend, panel]
 - **Dado** personas en dos empresas visibles y en una no visible, una persona revocada y una entrada del índice sin asiento
 - **Cuando** una persona con `usuarios: ver` pide `GET /v1/admin/personas`
-- **Entonces** responde `{ personas, siguiente, soloAlgunas }`, ordenadas por correo y paginadas como en CA-6: 50 por defecto y hasta 100.
+- **Entonces** responde `{ personas, siguiente, empresas, soloAlgunas }`, con las personas ordenadas por correo y paginadas como en CA-6: 50 por defecto y hasta 100.
 - **Y** cada persona trae `correo`, `empresa: { id, nombre }`, `rol`, `admin`, `estado`, `invitadoEl` y `aceptadoEl`, y nada más.
 - **Y** no trae a las revocadas, a las de una empresa no visible ni las entradas sin asiento, igual que la búsqueda (CA-11).
-- **Y** con `?empresa=` trae solo las personas de las empresas visibles cuyo nombre (sin tildes ni mayúsculas) o id contiene ese texto, con la misma regla que la búsqueda de Empresas (CA-5). Un texto que coincide con una empresa no visible no trae a nadie.
+- **Y** `empresas` trae todas las empresas visibles, sin importar el filtro ni el cursor, como `{ id, nombre, equipo }`, ordenadas por nombre sin tildes ni mayúsculas. `equipo` dice si su plan es de más de un asiento (o de un tope que todavía no se conoce). Nunca nombra una empresa no visible.
+- **Y** con `?empresa=<id>` trae solo las personas de esa empresa, por su id exacto. Un id que no existe o de una empresa no visible no trae a nadie.
 - **Y** el cursor no lleva ningún correo, porque viaja en la URL (la razón de CA-11). Lleva la posición en la lista: si alguien entra o sale entre una página y la siguiente, una persona puede repetirse o saltarse. Vale solo para el mismo filtro: con otro responde 422 (CB-3).
-- **Y** en el panel, Usuarios de clientes muestra esa lista debajo de la búsqueda, con un filtro por empresa, la empresa de cada persona enlazada a sus personas (`client-users/:companyId`) y la paginación de Empresas, que conserva el filtro.
+- **Y** en el panel, la tarjeta «Personas» tiene una sola barra de filtros, como la del panel viejo:
+  - la búsqueda por correo exacto, por POST;
+  - una lista desplegable de empresas con dos grupos, «Empresas con equipo» y «Empresas de un solo asiento», que se aplica con «Filtrar» y se quita con «Quitar filtro».
+- **Y** el resultado de la búsqueda reemplaza la lista, como una fila de la misma tabla, con «Ver la lista» para volver; el filtro de empresa no lo afecta.
+- **Y** la empresa de cada persona lleva a sus personas (`client-users/:companyId`), y la paginación de Empresas conserva el filtro.
 
 ### Gobernanza y equipo
 
@@ -444,7 +449,7 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 | CA-5, CA-6, CA-7, CA-8, CB-2 a CB-5 | integración (handler con motores en memoria) | `tests/admin-clientes-endpoint.test.js` (backend, nuevo) |
 | CA-9 | integración | `tests/admin-doctor-endpoint.test.js` (backend, nuevo) |
 | CA-10, CA-11, CB-6, CB-7 | integración | `tests/admin-personas-endpoint.test.js` (backend, nuevo) |
-| CA-33 | integración (backend) y unit (panel) | `tests/admin-personas-endpoint.test.js` y `tests/admin-clientes-visibles.test.js` (backend); `tests/client-users-list.test.ts` y `tests/admin-read-api.test.ts` (panel) |
+| CA-33 | integración (backend) y unit (panel) | `tests/admin-personas-endpoint.test.js` y `tests/admin-clientes-visibles.test.js` (backend); `tests/client-users-list.test.ts`, `tests/client-users-filters.test.ts` y `tests/admin-read-api.test.ts` (panel) |
 | CA-12, CB-8 | integración | `tests/admin-auditoria-endpoint.test.js` (backend, nuevo) |
 | CA-13 | integración | `tests/admin-equipo-endpoint.test.js` (backend, nuevo) |
 | CA-14 | integración (tabla de casos) | `tests/admin-permisos-por-ruta.test.js` (backend, nuevo) |

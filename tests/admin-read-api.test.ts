@@ -114,12 +114,14 @@ describe('las personas', () => {
     const { api, seen } = apiAnswering(() => Response.json({
       personas: [{ correo: 'bea@otra.com', empresa: { id: 'otra-000002', nombre: 'Otra' }, rol: null, admin: true, estado: 'invitado', invitadoEl: 'a', aceptadoEl: null }],
       siguiente: 'c2', soloAlgunas: true,
+      empresas: [{ id: 'otra-000002', nombre: 'Otra', equipo: true }, { id: 'webinar-000003', nombre: 'Webinar', equipo: false }],
     }));
     const r = await api.listClientUsers('token-ana', { company: 'acme', cursor: 'c1' });
     expect(seen).toEqual([{ method: 'GET', url: 'https://api.example/v1/admin/personas?empresa=acme&cursor=c1', body: null, authorization: 'Bearer token-ana' }]);
     expect(r).toEqual({ kind: 'ok', value: {
       people: [{ email: 'bea@otra.com', company: { id: 'otra-000002', name: 'Otra' }, role: null, isAdmin: true, status: 'invited', invitedAt: 'a', acceptedAt: null }],
       next: 'c2',
+      companies: [{ id: 'otra-000002', name: 'Otra', hasTeam: true }, { id: 'webinar-000003', name: 'Webinar', hasTeam: false }],
       onlySome: true,
     } });
   });

@@ -14,13 +14,17 @@ const SEAT_STATUS: Record<SeatStatus, Label> = {
 
 export const seatStatusLabel = (status: SeatStatus): Label => SEAT_STATUS[status];
 
+/** Qué filtra la lista: nada, una empresa del filtro, o un id en la URL que no está entre ellas. */
+export type ListFilter = { kind: 'all' } | { kind: 'company'; name: string } | { kind: 'unknown-company' };
+
 /**
  * Qué dice la lista cuando no trae a nadie. Fuera de la primera página no quiere decir que no haya
  * nadie: esas entradas estaban muertas (las muestra la revisión de datos), o la lista ya terminó.
  */
-export function emptyListMessage({ filtered, laterPage }: { filtered: boolean; laterPage: boolean }): string {
+export function emptyListMessage(filter: ListFilter, laterPage: boolean): string {
   if (laterPage) return 'En esta página no quedan personas vigentes.';
-  if (filtered) return 'Ninguna empresa con personas coincide con el filtro.';
+  if (filter.kind === 'unknown-company') return 'Esa empresa no está entre las que el panel muestra.';
+  if (filter.kind === 'company') return `${filter.name} no tiene personas activas, invitadas ni en pausa.`;
   return 'Todavía no hay personas para mostrar.';
 }
 

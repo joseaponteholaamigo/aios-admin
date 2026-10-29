@@ -6,9 +6,10 @@
 import { Icon } from '../icons/icon';
 import './search-field.css';
 
-type Props = { name: string; label: string; placeholder: string; defaultValue?: string; inputMode?: 'search' | 'email' };
+/** `errorId`: el id del mensaje que explica por qué lo escrito no sirve. Lo marca inválido y lo enlaza. */
+type Props = { name: string; label: string; placeholder: string; defaultValue?: string; inputMode?: 'search' | 'email'; errorId?: string };
 
-export function SearchField({ name, label, placeholder, defaultValue, inputMode = 'search' }: Props) {
+export function SearchField({ name, label, placeholder, defaultValue, inputMode = 'search', errorId }: Props) {
   return (
     <label className="adm-search">
       <Icon name="search" />
@@ -19,6 +20,8 @@ export function SearchField({ name, label, placeholder, defaultValue, inputMode 
         aria-label={label}
         placeholder={placeholder}
         defaultValue={defaultValue}
+        aria-invalid={errorId ? true : undefined}
+        aria-describedby={errorId}
         autoComplete="off"
       />
     </label>
