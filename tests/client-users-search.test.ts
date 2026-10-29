@@ -1,48 +1,49 @@
-// La búsqueda de una persona por su correo, desde el panel (CA-23 de M2a).
+// La búsqueda por correo de Usuarios de clientes, desde el panel (CA-11 y CA-23 de M2a).
 //
 // EL DEFECTO QUE PREVIENE. Lo que se escribe a mano viene con mayúsculas y espacios: si el panel lo
-// mandara así, no encontraría a nadie y soporte creería que la persona no existe. Y algo que no es
-// un correo no tiene que llegar al backend, que respondería 422 y la pantalla un error genérico.
+// mandara así, no encontraría a nadie y soporte creería que la persona no existe. Si la respuesta no
+// dijera qué texto y qué empresa buscó, la pantalla mostraría el resultado de una búsqueda vieja
+// como si fuera el de la nueva. Y lo que no se puede buscar no tiene que llegar al backend.
 import { RouterContextProvider } from 'react-router';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { sessionContext } from '../app/middleware/session.server';
 import type { ActiveSession } from '../app/shared/session/session.server';
 
-const findPerson = vi.fn();
-vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ findPerson }) }));
+const searchPeople = vi.fn();
+vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ searchPeople }) }));
 const { action } = await import('../app/modules/client-users/routes/client-users');
 
-function search(email: string) {
+const FOUND = { people: [], hasMore: false, onlySome: true };
+
+function search(text: string, company = '') {
   const context = new RouterContextProvider();
   context.set(sessionContext, { sub: 'sub-ana', tokens: { accessToken: 'token-ana' } } as unknown as ActiveSession);
-  const request = new Request('https://dxxxx.cloudfront.net/client-users', { method: 'POST', body: new URLSearchParams({ email }) });
+  const request = new Request('https://dxxxx.cloudfront.net/client-users', { method: 'POST', body: new URLSearchParams({ text, company }) });
   return action({ request, context, params: {} } as never);
 }
 
 beforeEach(() => {
-  findPerson.mockReset();
-  findPerson.mockResolvedValue({ kind: 'ok', value: { found: false, onlySome: true } });
+  searchPeople.mockReset();
+  searchPeople.mockResolvedValue({ kind: 'ok', value: FOUND });
 });
 
 describe('buscar por correo', () => {
-  test('manda el correo sin espacios y en minúsculas, con el token de la sesión', async () => {
-    const r = await search('  Ana@ACME.com ');
-    expect(findPerson).toHaveBeenCalledWith('token-ana', 'ana@acme.com');
-    expect(r).toEqual({ error: null, result: { found: false, onlySome: true }, email: 'ana@acme.com' });
+  test('manda el texto sin espacios y en minúsculas, con la empresa elegida y el token de la sesión', async () => {
+    const r = await search('  Ana@ACME ', 'acme-000001');
+    expect(searchPeople).toHaveBeenCalledWith('token-ana', { text: 'ana@acme', company: 'acme-000001' });
+    expect(r).toEqual({ text: 'ana@acme', company: 'acme-000001', result: FOUND });
   });
 
-  test('⛔ deja buscar los correos raros que el backend sí guarda: la regla es la suya, no la de z.email()', async () => {
-    for (const raro of ['josé@acme.com', 'a..b@acme.com', 'ana@acme.c', 'a&b@acme.com']) {
-      expect((await search(raro)).error, raro).toBeNull();
-    }
-    expect(findPerson).toHaveBeenCalledTimes(4);
+  test('busca con un pedazo del correo: ya no exige uno completo', async () => {
+    for (const pedazo of ['ana', '@acme', 'josé']) await search(pedazo);
+    expect(searchPeople).toHaveBeenCalledTimes(3);
   });
 
-  test('⛔ algo que no es un correo no llega al backend: la pantalla pide uno completo', async () => {
-    for (const malo of ['', 'ana', 'ana@', '@acme.com']) {
+  test('⛔ sin texto, o con uno más largo que un correo, no llega al backend y responde que no hay nadie', async () => {
+    for (const malo of ['', '   ', 'a'.repeat(255)]) {
       const r = await search(malo);
-      expect(r.error, malo).toMatch(/correo completo/);
+      expect(r.result, JSON.stringify(malo).slice(0, 20)).toEqual({ people: [], hasMore: false, onlySome: true });
     }
-    expect(findPerson).not.toHaveBeenCalled();
+    expect(searchPeople).not.toHaveBeenCalled();
   });
 });

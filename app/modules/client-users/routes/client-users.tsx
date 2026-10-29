@@ -1,29 +1,28 @@
 // Usuarios de clientes: la lista de las personas de los clientes, por correo, de a una página y con
-// filtro por empresa (CA-33 de M2a), y la búsqueda de una por su correo exacto (CA-23). Los dos
-// viven en la misma barra; el resultado de la búsqueda ocupa el lugar de la lista.
+// filtro por empresa (CA-33 de M2a), y la búsqueda por un pedazo del correo (CA-23). Los dos se
+// aplican solos al cambiar, y la búsqueda ocupa el lugar de la lista mientras tiene texto.
 //
-// La búsqueda va por POST, como el backend: el correo no queda en la dirección ni en el historial
-// del navegador. El filtro y el cursor de la lista sí viajan en la dirección, y por eso no llevan
-// ningún correo.
-import { Link, useNavigation, useSearchParams, type ShouldRevalidateFunctionArgs } from 'react-router';
+// La empresa viaja en la dirección: la lista filtrada se puede recargar y compartir. El texto de la
+// búsqueda no: va por POST (`use-people-search.ts`), y el cursor de la lista no lleva ningún correo.
+import { Link, useNavigate, useSearchParams, type ShouldRevalidateFunctionArgs } from 'react-router';
 import { z } from 'zod';
 import type { Route } from './+types/client-users';
+import type { PeopleSearch } from '../../../domain/client-users';
 import { fromAdminApi } from '../../../shared/api/admin-loader.server';
 import { FilterNotice } from '../../../shared/layout/filter-notice';
 import { ModuleError } from '../../../shared/layout/module-error';
 import { PageHeader } from '../../../shared/layout/page-header';
 import { Pager } from '../../../shared/ui/pager';
 import { emptyListMessage, type ListFilter } from '../client-user-labels';
-import { ClientUsersFilters } from '../components/client-users-filters';
+import { ClientUsersFilters, MAX_SEARCH_LENGTH } from '../components/client-users-filters';
 import { ClientUsersTable } from '../components/client-users-table';
-import { SearchOutcome } from '../components/search-outcome';
+import { SearchResults } from '../components/search-results';
+import { searchQuery, usePeopleSearch } from '../use-people-search';
 
-/**
- * La misma regla que `correoNormalizado` del backend, y no `z.email()`: esa es más estricta, y soporte
- * no podría buscar justo los correos raros que el backend sí guardó (`josé@acme.com`, `a..b@acme.com`).
- */
-const EMAIL_LIKE_BACKEND = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SEARCH = z.object({ email: z.string().trim().toLowerCase().regex(EMAIL_LIKE_BACKEND) });
+const SEARCH = z.object({ text: z.string().min(1).max(MAX_SEARCH_LENGTH), company: z.string() });
+
+/** Lo que responde una búsqueda que no llega al backend: sin texto, o con uno más largo que un correo. */
+const NOTHING_FOUND: PeopleSearch = { people: [], hasMore: false, onlySome: true };
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
@@ -37,40 +36,50 @@ export function shouldRevalidate({ formMethod, defaultShouldRevalidate }: Should
   return formMethod === 'POST' ? false : defaultShouldRevalidate;
 }
 
+/** La búsqueda por correo. Devuelve también qué buscó, para que la pantalla descarte respuestas viejas. */
 export async function action({ request, context }: Route.ActionArgs) {
-  const parsed = SEARCH.safeParse(Object.fromEntries(await request.formData()));
-  if (!parsed.success) return { error: 'Escribe un correo completo, como persona@empresa.com.' as const, result: null, email: null };
-  const result = await fromAdminApi({ request, context }, (api, token) => api.findPerson(token, parsed.data.email));
-  return { error: null, result, email: parsed.data.email };
+  const form = await request.formData();
+  const text = searchQuery(String(form.get('text') ?? ''));
+  const company = String(form.get('company') ?? '');
+  const parsed = SEARCH.safeParse({ text, company });
+  if (!parsed.success) return { text, company, result: NOTHING_FOUND };
+  const result = await fromAdminApi({ request, context }, (api, token) => api.searchPeople(token, parsed.data));
+  return { text, company, result };
 }
 
-export default function ClientUsers({ loaderData, actionData }: Route.ComponentProps) {
-  const searching = useNavigation().state === 'submitting';
+export default function ClientUsers({ loaderData }: Route.ComponentProps) {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const company = params.get('company') ?? '';
+  const search = usePeopleSearch(company);
   const withQuery = (extra: Record<string, string>) => `?${new URLSearchParams({ ...(company ? { company } : {}), ...extra })}`;
+  const toCompany = (id: string) => navigate(id ? `?${new URLSearchParams({ company: id })}` : '?');
   const { people, next, companies, onlySome } = loaderData;
   const chosen = companies.find((c) => c.id === company);
   const filter: ListFilter = !company ? { kind: 'all' } : chosen ? { kind: 'company', name: chosen.name } : { kind: 'unknown-company' };
-  const searched = actionData?.result && actionData.email ? { result: actionData.result, email: actionData.email } : null;
+  const { state } = search;
   return (
     <>
       <PageHeader
         crumbs={[{ label: 'Administración' }, { label: 'Usuarios de clientes' }]}
         title="Usuarios de clientes"
-        lead="Las personas de los clientes: en qué empresa están, con qué rol y en qué estado. Busca una por su correo o filtra la lista por empresa."
+        lead="Las personas de los clientes: en qué empresa están, con qué rol y en qué estado. Busca por correo o elige una empresa: la lista cambia sola."
         actions={<Link className="btn" to="/client-users/checkup">Revisión de datos</Link>}
       />
       <FilterNotice onlySome={onlySome} />
       <section className="card">
         <div className="card-h"><div><h2>Personas</h2><p>Ordenadas por correo: las que hoy tienen un asiento (activas, invitadas o en pausa).</p></div></div>
-        <ClientUsersFilters companies={companies} company={company} searching={searching} emailError={actionData?.error ?? null} />
+        <ClientUsersFilters
+          companies={companies} company={company} text={search.text}
+          onTextChange={search.setText} onCompanyChange={toCompany}
+          onClearAll={() => { search.setText(''); toCompany(''); }}
+        />
         <div className="card-b">
-          {searched
-            ? <SearchOutcome result={searched.result} email={searched.email} backTo={withQuery({})} />
-            : <ClientUsersTable people={people} emptyMessage={emptyListMessage(filter, params.has('cursor'))} />}
+          {state.kind === 'idle'
+            ? <ClientUsersTable people={people} emptyMessage={emptyListMessage(filter, params.has('cursor'))} />
+            : <SearchResults state={state} query={searchQuery(search.text)} companyName={chosen?.name ?? null} onlySome={onlySome} />}
         </div>
-        {!searched && (
+        {state.kind === 'idle' && (
           <Pager
             shown={`${people.length} persona${people.length === 1 ? '' : 's'}${chosen ? ` de ${chosen.name}` : ''} en esta página`}
             firstHref={params.get('cursor') ? withQuery({}) : null}

@@ -2,6 +2,9 @@
 
 .adm-search { flex: 1; max-width: 520px; display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; color: var(--muted); }
 .adm-search input { border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; width: 100%; }
+/* El foco se marca en la caja entera, no alrededor del texto: adentro también van el ícono y la X. */
+.adm .adm-search input:focus-visible { outline: 0; }
+.adm-search:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .adm-search svg { color: var(--faint); }
 .filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .filtros select, .sel { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; }

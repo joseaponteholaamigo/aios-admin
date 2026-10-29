@@ -44,7 +44,7 @@ export type CompanyPeople = {
   log: GovernanceEntry[];
 };
 
-/** La ficha de un asiento, como la da la búsqueda por correo. */
+/** La ficha de un asiento. */
 export type SeatCard = {
   email: string;
   role: string | null;
@@ -54,10 +54,6 @@ export type SeatCard = {
   acceptedAt: string | null;
 };
 
-export type PersonSearch =
-  | { found: false; onlySome: boolean }
-  | { found: true; company: { id: string; name: string }; seat: SeatCard; onlySome: boolean };
-
 /** Una persona de la lista de Usuarios de clientes: su asiento y la empresa donde lo tiene. */
 export type ClientUser = SeatCard & { company: { id: string; name: string } };
 
@@ -65,6 +61,9 @@ export type ClientUser = SeatCard & { company: { id: string; name: string } };
 export type CompanyOption = { id: string; name: string; hasTeam: boolean };
 
 export type ClientUsersPage = { people: ClientUser[]; next: string | null; companies: CompanyOption[]; onlySome: boolean };
+
+/** Las personas cuyo correo contiene un texto. `hasMore`: hubo más que las que vinieron. */
+export type PeopleSearch = { people: ClientUser[]; hasMore: boolean; onlySome: boolean };
 
 /** Los tipos de hallazgo de la revisión de datos (el doctor del backend). */
 export const FINDING_KINDS = [

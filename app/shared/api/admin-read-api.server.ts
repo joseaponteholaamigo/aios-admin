@@ -5,13 +5,13 @@
 // Llama con el access token de la sesión, que nunca sale del servidor del panel, y traduce cada
 // respuesta aquí mismo: el resto del panel no ve un nombre del backend.
 import type { AuditPage } from '../../domain/audit';
-import type { ClientUsersPage, CompanyPeople, DataCheckup, PersonSearch } from '../../domain/client-users';
+import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '../../domain/client-users';
 import type { CompaniesPage, CompanyFile, CompanyHistoryEvent } from '../../domain/companies';
 import type { TeamMember } from '../../domain/permissions';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
-import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPersonSearch } from './client-users-mapping';
+import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } from './client-users-mapping';
 import { toCompaniesPage, toCompanyFile, toCompanyHistory } from './companies-mapping';
 import { toTeamList } from './team-member-mapping';
 
@@ -41,7 +41,7 @@ export type AdminReadApi = {
   getCompanyHistory(token: string, id: string): Promise<ApiResult<CompanyHistoryEvent[]>>;
   getCompanyPeople(token: string, id: string): Promise<ApiResult<CompanyPeople>>;
   listClientUsers(token: string, q: { company?: string; cursor?: string | null }): Promise<ApiResult<ClientUsersPage>>;
-  findPerson(token: string, email: string): Promise<ApiResult<PersonSearch>>;
+  searchPeople(token: string, q: { text: string; company: string }): Promise<ApiResult<PeopleSearch>>;
   getDataCheckup(token: string): Promise<ApiResult<DataCheckup>>;
   listAuditEvents(token: string, q: { target?: string | null; cursor?: string | null }): Promise<ApiResult<AuditPage>>;
   listTeam(token: string): Promise<ApiResult<TeamMember[]>>;
@@ -90,8 +90,8 @@ export function createAdminReadApi({
     getCompanyHistory: (token, id) => send(`${company(id)}/historia`, token, toCompanyHistory),
     getCompanyPeople: (token, id) => send(`${company(id)}/personas`, token, (b) => toCompanyPeople(b, log)),
     listClientUsers: (token, { company, cursor }) => send(`/v1/admin/personas${query({ empresa: company, cursor })}`, token, (b) => toClientUsersPage(b, log)),
-    // Por POST, con el correo en el cuerpo: así no queda en ninguna URL ni en los logs de acceso.
-    findPerson: (token, email) => send('/v1/admin/personas/buscar', token, toPersonSearch, { body: { correo: email } }),
+    // Por POST, con el texto en el cuerpo: lo que se escribe de un correo no queda en ninguna URL ni en los logs de acceso.
+    searchPeople: (token, { text, company }) => send('/v1/admin/personas/buscar', token, (b) => toPeopleSearch(b, log), { body: { texto: text, empresa: company } }),
     getDataCheckup: (token) => send('/v1/admin/doctor', token, (b) => toDataCheckup(b, log), { timeoutMs: CHECKUP_TIMEOUT_MS }),
     listAuditEvents: (token, { target, cursor }) => send(`/v1/admin/auditoria${query({ objetivo: target, cursor })}`, token, (b) => toAuditPage(b, log)),
     listTeam: (token) => send('/v1/admin/equipo', token, (b) => toTeamList(b, log)),

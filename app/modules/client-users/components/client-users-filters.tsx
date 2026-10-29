@@ -1,52 +1,65 @@
-// La barra de filtros de Usuarios de clientes, como la del panel viejo: buscar a una persona por su
-// correo y filtrar la lista por empresa, en un solo lugar.
+// La barra de filtros de Usuarios de clientes: buscar por correo y elegir una empresa, en un solo
+// lugar. Cada cambio se aplica solo; el único botón es «Borrar filtros».
 //
-// ⛔ Son dos formularios aparte a propósito. El del correo va por POST y es el único que lo lleva:
-// así el correo nunca termina en la URL. El de la empresa va por GET, para que la lista filtrada se
-// pueda recargar y compartir, y nunca lleva el cursor: filtrar vuelve a la primera página.
-import { Form, Link } from 'react-router';
+// Solo muestra y avisa: el texto, la empresa y qué pasa al cambiarlos los maneja la pantalla. No hay
+// formularios: nada de esta barra puede mandar el texto en una dirección.
+import { useRef } from 'react';
 import type { CompanyOption } from '../../../domain/client-users';
-import { SearchField } from '../../../shared/ui/search-field';
+import { Icon } from '../../../shared/icons/icon';
+// Los estilos del buscador y de las barras de filtros del panel (`.adm-search`, `.filtros`).
+import '../../../shared/ui/search-field.css';
 import './client-users-filters.css';
 
-export const EMAIL_ERROR_ID = 'client-users-email-error';
+/** El texto más largo que se busca: el de un correo. El backend tampoco acepta más. */
+export const MAX_SEARCH_LENGTH = 254;
 
-type Props = { companies: CompanyOption[]; company: string; searching: boolean; emailError: string | null };
+type Props = {
+  companies: CompanyOption[];
+  company: string;
+  text: string;
+  onTextChange: (text: string) => void;
+  onCompanyChange: (companyId: string) => void;
+  onClearAll: () => void;
+};
 
-export function ClientUsersFilters({ companies, company, searching, emailError }: Props) {
+export function ClientUsersFilters({ companies, company, text, onTextChange, onCompanyChange, onClearAll }: Props) {
+  const input = useRef<HTMLInputElement>(null);
   const withTeam = companies.filter((c) => c.hasTeam);
   const solo = companies.filter((c) => !c.hasTeam);
   const unknown = company !== '' && !companies.some((c) => c.id === company);
+  const clearText = () => {
+    onTextChange('');
+    input.current?.focus();
+  };
   return (
-    <div className="client-users-filters">
-      <Form method="post" className="filtros" role="search" aria-label="Buscar una persona por correo">
-        <SearchField
-          inputMode="email" name="email" label="Correo exacto de la persona" placeholder="Correo exacto de la persona"
-          errorId={emailError ? EMAIL_ERROR_ID : undefined}
+    <div className="filtros client-users-filters" role="search" aria-label="Filtrar las personas">
+      <label className="adm-search client-users-filters__text">
+        <Icon name="search" />
+        <input
+          ref={input} type="text" inputMode="email" name="text" aria-label="Buscar por correo" placeholder="Buscar por correo"
+          value={text} maxLength={MAX_SEARCH_LENGTH} autoComplete="off" onChange={(e) => onTextChange(e.target.value)}
         />
-        <button type="submit" className="btn sm primary">{searching ? 'Buscando…' : 'Buscar'}</button>
-      </Form>
-      <span className="client-users-filters__divider" aria-hidden="true" />
-      <Form method="get" className="filtros" role="search" aria-label="Filtrar la lista">
-        {/* `key`: al quitar el filtro, la lista vuelve a «Todas las empresas». */}
-        <select key={company} name="company" aria-label="Empresa" defaultValue={company} className={company ? 'on' : undefined}>
-          <option value="">Todas las empresas</option>
-          {unknown && <option value={company}>{company}</option>}
-          {withTeam.length > 0 && (
-            <optgroup label={`Empresas con equipo (${withTeam.length})`}>
-              {withTeam.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </optgroup>
-          )}
-          {solo.length > 0 && (
-            <optgroup label={`Empresas de un solo asiento (${solo.length})`}>
-              {solo.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </optgroup>
-          )}
-        </select>
-        <button type="submit" className="btn sm">Filtrar</button>
-        {company && <Link className="btn sm soft" to="?">Quitar filtro</Link>}
-      </Form>
-      {emailError && <p id={EMAIL_ERROR_ID} className="badge warn client-users-filters__error" role="alert">{emailError}</p>}
+        {text && (
+          <button type="button" className="client-users-filters__clear" aria-label="Borrar la búsqueda" onClick={clearText}>
+            <Icon name="x" />
+          </button>
+        )}
+      </label>
+      <select name="company" aria-label="Empresa" value={company} onChange={(e) => onCompanyChange(e.target.value)} className={company ? 'on' : undefined}>
+        <option value="">Todas las empresas</option>
+        {unknown && <option value={company}>{company}</option>}
+        {withTeam.length > 0 && (
+          <optgroup label={`Empresas con equipo (${withTeam.length})`}>
+            {withTeam.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </optgroup>
+        )}
+        {solo.length > 0 && (
+          <optgroup label={`Empresas de un solo asiento (${solo.length})`}>
+            {solo.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </optgroup>
+        )}
+      </select>
+      {(text || company) && <button type="button" className="btn sm soft" onClick={onClearAll}>Borrar filtros</button>}
     </div>
   );
 }

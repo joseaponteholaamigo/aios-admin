@@ -1,11 +1,10 @@
-/* La barra de filtros de Usuarios de clientes: en su propia fila, a todo el ancho de la tarjeta,
- * con una raya entre la búsqueda por correo y el filtro de la lista. */
+/* La barra de filtros de Usuarios de clientes: en su propia fila, a todo el ancho de la tarjeta. La
+ * X de borrar va dentro del buscador, a la derecha. */
 
-.client-users-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 20px 0; }
-.client-users-filters__divider { width: 1px; align-self: stretch; background: var(--line); }
+.client-users-filters { gap: 12px; padding: 16px 20px 0; }
 .client-users-filters select { max-width: 280px; }
-.client-users-filters__error { flex-basis: 100%; max-width: fit-content; }
-
-@media (max-width: 860px) {
-  .client-users-filters__divider { display: none; }
+.client-users-filters__clear {
+  display: grid; place-items: center; flex: none; padding: 2px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--faint); cursor: pointer;
 }
+.client-users-filters__clear:hover, .client-users-filters__clear:focus-visible { color: var(--ink); background: var(--line-2); }

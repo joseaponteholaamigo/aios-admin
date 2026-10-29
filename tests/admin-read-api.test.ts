@@ -104,10 +104,10 @@ describe('las empresas', () => {
 });
 
 describe('las personas', () => {
-  test('⛔ la búsqueda manda el correo en el cuerpo de un POST, nunca en la URL', async () => {
-    const { api, seen } = apiAnswering(() => Response.json({ encontrada: false, soloAlgunas: true }));
-    expect(await api.findPerson('t', 'ana@acme.com')).toEqual({ kind: 'ok', value: { found: false, onlySome: true } });
-    expect(seen[0]).toMatchObject({ method: 'POST', url: 'https://api.example/v1/admin/personas/buscar', body: '{"correo":"ana@acme.com"}' });
+  test('⛔ la búsqueda manda el texto y la empresa en el cuerpo de un POST, nunca en la URL', async () => {
+    const { api, seen } = apiAnswering(() => Response.json({ personas: [], hayMas: false, soloAlgunas: true }));
+    expect(await api.searchPeople('t', { text: 'ana', company: 'acme-000001' })).toEqual({ kind: 'ok', value: { people: [], hasMore: false, onlySome: true } });
+    expect(seen[0]).toMatchObject({ method: 'POST', url: 'https://api.example/v1/admin/personas/buscar', body: '{"texto":"ana","empresa":"acme-000001"}' });
   });
 
   test('la lista: pide con el filtro de empresa y el cursor, y trae cada persona con su empresa y su estado traducido', async () => {
@@ -126,14 +126,15 @@ describe('las personas', () => {
     } });
   });
 
-  test('la búsqueda que encuentra: la empresa y la ficha del asiento, con el estado traducido', async () => {
+  test('la búsqueda que encuentra: cada persona con su empresa y su estado traducido, y si hubo más', async () => {
     const { api } = apiAnswering(() => Response.json({
-      encontrada: true, empresa: { id: 'acme-000001', nombre: 'Acme' },
-      persona: { correo: 'beto@acme.com', rol: 'ventas', admin: false, estado: 'en-pausa', invitadoEl: 'a', aceptadoEl: null }, soloAlgunas: false,
+      personas: [{ correo: 'beto@acme.com', empresa: { id: 'acme-000001', nombre: 'Acme' }, rol: 'ventas', admin: false, estado: 'en-pausa', invitadoEl: 'a', aceptadoEl: null }],
+      hayMas: true, soloAlgunas: false,
     }));
-    expect(await api.findPerson('t', 'beto@acme.com')).toEqual({ kind: 'ok', value: {
-      found: true, company: { id: 'acme-000001', name: 'Acme' }, onlySome: false,
-      seat: { email: 'beto@acme.com', role: 'ventas', isAdmin: false, status: 'paused', invitedAt: 'a', acceptedAt: null },
+    expect(await api.searchPeople('t', { text: 'beto', company: '' })).toEqual({ kind: 'ok', value: {
+      people: [{ email: 'beto@acme.com', company: { id: 'acme-000001', name: 'Acme' }, role: 'ventas', isAdmin: false, status: 'paused', invitedAt: 'a', acceptedAt: null }],
+      hasMore: true,
+      onlySome: false,
     } });
   });
 

@@ -1,7 +1,7 @@
 // La traducción de las personas de los clientes y de la revisión de datos del backend
 // (`/v1/admin/clientes/{id}/personas`, `/v1/admin/personas`, `/v1/admin/personas/buscar`, `/v1/admin/doctor`).
 import type {
-  ClientPerson, ClientRole, ClientUser, ClientUsersPage, CompanyPeople, DataCheckup, Finding, FindingKind, ItemCounts, PersonSearch, PersonSees, RoleBase,
+  ClientPerson, ClientRole, ClientUser, ClientUsersPage, CompanyPeople, DataCheckup, Finding, FindingKind, ItemCounts, PeopleSearch, PersonSees, RoleBase,
   SeatCard, SeatStatus,
 } from '../../domain/client-users';
 import { asArray, asRecord, num, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
@@ -115,12 +115,13 @@ export function toClientUsersPage(body: unknown, log: Log): ClientUsersPage {
   };
 }
 
-export function toPersonSearch(body: unknown): PersonSearch {
+export function toPeopleSearch(body: unknown, log: Log): PeopleSearch {
   const b = asRecord(body, 'la búsqueda');
-  const onlySome = b.soloAlgunas !== false;
-  if (b.encontrada !== true) return { found: false, onlySome };
-  const company = asRecord(b.empresa, 'empresa');
-  return { found: true, company: { id: str(company.id, 'empresa.id'), name: str(company.nombre, 'empresa.nombre') }, seat: toSeatCard(b.persona), onlySome };
+  return {
+    people: asArray(b.personas, 'personas').map((p) => toClientUser(p, log)),
+    hasMore: b.hayMas === true,
+    onlySome: b.soloAlgunas !== false,
+  };
 }
 
 /** Cada tipo de hallazgo del backend, con su nombre en el panel y lo que describe a uno. */

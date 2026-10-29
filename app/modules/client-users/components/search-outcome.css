@@ -1,4 +1,0 @@
-/* El resultado de la búsqueda por correo, en el lugar de la lista. */
-
-.search-outcome { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
-.search-outcome .tbl-wrap { align-self: stretch; }
