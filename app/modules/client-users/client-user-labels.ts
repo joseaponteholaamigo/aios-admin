@@ -14,6 +14,9 @@ const SEAT_STATUS: Record<SeatStatus, Label> = {
 
 export const seatStatusLabel = (status: SeatStatus): Label => SEAT_STATUS[status];
 
+/** El rol de un asiento: la admin primero, porque ve todo aunque además tenga un rol. */
+export const roleLabel = (seat: { isAdmin: boolean; role: string | null }) => (seat.isAdmin ? 'Admin de la empresa' : seat.role ?? 'Sin rol');
+
 const plusAdjustments = (n: number) => (n ? ` + ${n} ajuste${n === 1 ? '' : 's'}` : '');
 
 /** Qué ve una persona, como la columna «Ve» de «Mi equipo». */

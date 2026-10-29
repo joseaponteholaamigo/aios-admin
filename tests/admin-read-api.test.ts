@@ -110,6 +110,20 @@ describe('las personas', () => {
     expect(seen[0]).toMatchObject({ method: 'POST', url: 'https://api.example/v1/admin/personas/buscar', body: '{"correo":"ana@acme.com"}' });
   });
 
+  test('la lista: pide con el cursor, y trae cada persona con su empresa y su estado traducido', async () => {
+    const { api, seen } = apiAnswering(() => Response.json({
+      personas: [{ correo: 'bea@otra.com', empresa: { id: 'otra-000002', nombre: 'Otra' }, rol: null, admin: true, estado: 'invitado', invitadoEl: 'a', aceptadoEl: null }],
+      siguiente: 'c2', soloAlgunas: true,
+    }));
+    const r = await api.listClientUsers('token-ana', { cursor: 'c1' });
+    expect(seen).toEqual([{ method: 'GET', url: 'https://api.example/v1/admin/personas?cursor=c1', body: null, authorization: 'Bearer token-ana' }]);
+    expect(r).toEqual({ kind: 'ok', value: {
+      people: [{ email: 'bea@otra.com', company: { id: 'otra-000002', name: 'Otra' }, role: null, isAdmin: true, status: 'invited', invitedAt: 'a', acceptedAt: null }],
+      next: 'c2',
+      onlySome: true,
+    } });
+  });
+
   test('la búsqueda que encuentra: la empresa y la ficha del asiento, con el estado traducido', async () => {
     const { api } = apiAnswering(() => Response.json({
       encontrada: true, empresa: { id: 'acme-000001', nombre: 'Acme' },

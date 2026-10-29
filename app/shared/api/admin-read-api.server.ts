@@ -5,13 +5,13 @@
 // Llama con el access token de la sesión, que nunca sale del servidor del panel, y traduce cada
 // respuesta aquí mismo: el resto del panel no ve un nombre del backend.
 import type { AuditPage } from '../../domain/audit';
-import type { CompanyPeople, DataCheckup, PersonSearch } from '../../domain/client-users';
+import type { ClientUsersPage, CompanyPeople, DataCheckup, PersonSearch } from '../../domain/client-users';
 import type { CompaniesPage, CompanyFile, CompanyHistoryEvent } from '../../domain/companies';
 import type { TeamMember } from '../../domain/permissions';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
-import { toCompanyPeople, toDataCheckup, toPersonSearch } from './client-users-mapping';
+import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPersonSearch } from './client-users-mapping';
 import { toCompaniesPage, toCompanyFile, toCompanyHistory } from './companies-mapping';
 import { toTeamList } from './team-member-mapping';
 
@@ -40,6 +40,7 @@ export type AdminReadApi = {
   getCompany(token: string, id: string): Promise<ApiResult<CompanyFile>>;
   getCompanyHistory(token: string, id: string): Promise<ApiResult<CompanyHistoryEvent[]>>;
   getCompanyPeople(token: string, id: string): Promise<ApiResult<CompanyPeople>>;
+  listClientUsers(token: string, q: { cursor?: string | null }): Promise<ApiResult<ClientUsersPage>>;
   findPerson(token: string, email: string): Promise<ApiResult<PersonSearch>>;
   getDataCheckup(token: string): Promise<ApiResult<DataCheckup>>;
   listAuditEvents(token: string, q: { target?: string | null; cursor?: string | null }): Promise<ApiResult<AuditPage>>;
@@ -88,6 +89,7 @@ export function createAdminReadApi({
     getCompany: (token, id) => send(company(id), token, (b) => toCompanyFile(b, log)),
     getCompanyHistory: (token, id) => send(`${company(id)}/historia`, token, toCompanyHistory),
     getCompanyPeople: (token, id) => send(`${company(id)}/personas`, token, (b) => toCompanyPeople(b, log)),
+    listClientUsers: (token, { cursor }) => send(`/v1/admin/personas${query({ cursor })}`, token, (b) => toClientUsersPage(b, log)),
     // Por POST, con el correo en el cuerpo: así no queda en ninguna URL ni en los logs de acceso.
     findPerson: (token, email) => send('/v1/admin/personas/buscar', token, toPersonSearch, { body: { correo: email } }),
     getDataCheckup: (token) => send('/v1/admin/doctor', token, (b) => toDataCheckup(b, log), { timeoutMs: CHECKUP_TIMEOUT_MS }),

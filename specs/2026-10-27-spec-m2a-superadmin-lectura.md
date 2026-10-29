@@ -26,6 +26,7 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
   - `GET /v1/admin/clientes/{id}/historia`.
 - **Personas:**
   - `GET /v1/admin/clientes/{id}/personas`;
+  - `GET /v1/admin/personas`: la lista de las personas de todas las empresas visibles (CA-33);
   - `POST /v1/admin/personas/buscar`;
   - `GET /v1/admin/doctor`: la revisión de datos. Va con las personas porque sus hallazgos traen correos (decisión de Jose, 2026-10-28).
 - **Auditoría y equipo:** `GET /v1/admin/auditoria` y `GET /v1/admin/equipo`.
@@ -34,7 +35,7 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 **[panel] `aios-admin`**
 - **La plantilla visual del panel viejo:** los tokens de color y los dos temas, el marco (barra lateral y barra superior), los íconos y las tipografías servidas desde el propio panel. La usan también las pantallas de M1.
 - **Empresas:** la lista y la ficha con su historia.
-- **Usuarios de clientes:** la búsqueda por correo; las personas, los roles y la bitácora de una empresa; y la revisión de datos (el doctor).
+- **Usuarios de clientes:** la lista de las personas de los clientes y la búsqueda por correo; las personas, los roles y la bitácora de una empresa; y la revisión de datos (el doctor).
 - **Gobernanza:** la auditoría.
 - **Equipo ensō:** la lista de personas, solo para el superadministrador.
 - **Lo que comparten las pantallas:**
@@ -75,7 +76,7 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 | Ruta (bajo `/v1/admin`) | Módulo y nivel |
 |---|---|
 | `GET /clientes`, `GET /clientes/{id}`, `GET /clientes/{id}/historia` | `empresas: ver` |
-| `GET /clientes/{id}/personas`, `POST /personas/buscar`, `GET /doctor` | `usuarios: ver` |
+| `GET /clientes/{id}/personas`, `GET /personas`, `POST /personas/buscar`, `GET /doctor` | `usuarios: ver` |
 | `GET /auditoria` | `gobernanza: ver` |
 | `GET /equipo` | solo superadministrador |
 
@@ -190,6 +191,15 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
   - un correo revocado.
 - **Y** va por POST para que el correo no quede en la URL ni en los logs de acceso.
 - **Y** un cuerpo sin `correo`, o con algo que no tiene forma de correo, responde 422.
+
+#### CA-33: La lista de las personas de los clientes [backend, panel]
+- **Dado** personas en dos empresas visibles y en una no visible, una persona revocada y una entrada del índice sin asiento
+- **Cuando** una persona con `usuarios: ver` pide `GET /v1/admin/personas`
+- **Entonces** responde `{ personas, siguiente, soloAlgunas }`, ordenadas por correo y paginadas como en CA-6: 50 por defecto y hasta 100.
+- **Y** cada persona trae `correo`, `empresa: { id, nombre }`, `rol`, `admin`, `estado`, `invitadoEl` y `aceptadoEl`, y nada más.
+- **Y** no trae a las revocadas, a las de una empresa no visible ni las entradas sin asiento, igual que la búsqueda (CA-11).
+- **Y** el cursor no lleva ningún correo, porque viaja en la URL (la razón de CA-11). Lleva la posición en la lista: si alguien entra o sale entre una página y la siguiente, una persona puede repetirse o saltarse.
+- **Y** en el panel, Usuarios de clientes muestra esa lista debajo de la búsqueda, con la empresa de cada persona enlazada a sus personas (`client-users/:companyId`) y la paginación de Empresas.
 
 ### Gobernanza y equipo
 
@@ -324,7 +334,7 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 | `companies` | Empresas: la lista, con búsqueda y paginación | `companies: view` | Empresas |
 | `client-users/checkup` | La revisión de datos (doctor) | `clientUsers: view` | no: se entra desde Usuarios de clientes |
 | `companies/:companyId` | La ficha y su historia | `companies: view` | no |
-| `client-users` | Buscar a una persona por su correo | `clientUsers: view` | Usuarios de clientes |
+| `client-users` | La lista de las personas de los clientes, y buscar una por su correo | `clientUsers: view` | Usuarios de clientes |
 | `client-users/:companyId` | Las personas, los roles y la bitácora de una empresa | `clientUsers: view` | no |
 | `governance` | La auditoría | `governance: view` | Gobernanza |
 | `team` | Equipo ensō | `superadmin` | Equipo ensō |
@@ -367,7 +377,7 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 - **Entonces**:
   - Empresas muestra solo Desarrollo Enso, con el aviso del filtro;
   - su ficha muestra el plan, los asientos y la historia;
-  - Usuarios de clientes encuentra un correo de Desarrollo Enso y no encuentra el de una persona de otra empresa;
+  - Usuarios de clientes lista a las personas de Desarrollo Enso, encuentra un correo de Desarrollo Enso y no encuentra el de una persona de otra empresa;
   - las personas de Desarrollo Enso aparecen con su rol y su estado;
   - Gobernanza muestra los eventos del equipo, como el alta del superadministrador;
   - la revisión de datos responde y dice cuántos hallazgos quedan fuera;
@@ -433,6 +443,7 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 | CA-5, CA-6, CA-7, CA-8, CB-2 a CB-5 | integración (handler con motores en memoria) | `tests/admin-clientes-endpoint.test.js` (backend, nuevo) |
 | CA-9 | integración | `tests/admin-doctor-endpoint.test.js` (backend, nuevo) |
 | CA-10, CA-11, CB-6, CB-7 | integración | `tests/admin-personas-endpoint.test.js` (backend, nuevo) |
+| CA-33 | integración (backend) y unit (panel) | `tests/admin-personas-endpoint.test.js` y `tests/admin-clientes-visibles.test.js` (backend); `tests/client-users-list.test.ts` y `tests/admin-read-api.test.ts` (panel) |
 | CA-12, CB-8 | integración | `tests/admin-auditoria-endpoint.test.js` (backend, nuevo) |
 | CA-13 | integración | `tests/admin-equipo-endpoint.test.js` (backend, nuevo) |
 | CA-14 | integración (tabla de casos) | `tests/admin-permisos-por-ruta.test.js` (backend, nuevo) |

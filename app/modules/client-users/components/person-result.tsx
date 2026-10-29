@@ -5,7 +5,7 @@ import type { PersonSearch } from '../../../domain/client-users';
 import { CompanyBadge } from '../../../shared/ui/company-badge';
 import { FactList } from '../../../shared/ui/fact-list';
 import { formatDate } from '../../../shared/ui/format';
-import { badgeClass, seatStatusLabel } from '../client-user-labels';
+import { badgeClass, roleLabel, seatStatusLabel } from '../client-user-labels';
 
 export function PersonResult({ result }: { result: PersonSearch }) {
   if (!result.found) {
@@ -23,7 +23,7 @@ export function PersonResult({ result }: { result: PersonSearch }) {
         <FactList facts={[
           { label: 'Correo', value: seat.email },
           { label: 'Estado', value: <span className={badgeClass(status.tone)}>{status.text}</span> },
-          { label: 'Rol', value: seat.isAdmin ? 'Admin de la empresa' : seat.role ?? 'Sin rol' },
+          { label: 'Rol', value: roleLabel(seat) },
           { label: 'Invitada', value: formatDate(seat.invitedAt) },
           { label: 'Entró por primera vez', value: formatDate(seat.acceptedAt) },
         ]} />

@@ -1,7 +1,8 @@
 // La traducción de las personas de los clientes y de la revisión de datos del backend
-// (`/v1/admin/clientes/{id}/personas`, `/v1/admin/personas/buscar`, `/v1/admin/doctor`).
+// (`/v1/admin/clientes/{id}/personas`, `/v1/admin/personas`, `/v1/admin/personas/buscar`, `/v1/admin/doctor`).
 import type {
-  ClientPerson, ClientRole, CompanyPeople, DataCheckup, Finding, FindingKind, ItemCounts, PersonSearch, PersonSees, RoleBase, SeatCard, SeatStatus,
+  ClientPerson, ClientRole, ClientUser, ClientUsersPage, CompanyPeople, DataCheckup, Finding, FindingKind, ItemCounts, PersonSearch, PersonSees, RoleBase,
+  SeatCard, SeatStatus,
 } from '../../domain/client-users';
 import { asArray, asRecord, num, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
 
@@ -89,6 +90,24 @@ function toSeatCard(raw: unknown): SeatCard {
     status: toSeatStatus(s.estado),
     invitedAt: strOrNull(s.invitadoEl),
     acceptedAt: strOrNull(s.aceptadoEl),
+  };
+}
+
+const CLIENT_USER_FIELDS = ['correo', 'empresa', 'rol', 'admin', 'estado', 'invitadoEl', 'aceptadoEl'] as const;
+
+function toClientUser(raw: unknown, log: Log): ClientUser {
+  const p = asRecord(raw, 'una persona de la lista');
+  warnUnknownFields(p, CLIENT_USER_FIELDS, 'una persona de la lista', log);
+  const company = asRecord(p.empresa, 'empresa');
+  return { ...toSeatCard(p), company: { id: str(company.id, 'empresa.id'), name: str(company.nombre, 'empresa.nombre') } };
+}
+
+export function toClientUsersPage(body: unknown, log: Log): ClientUsersPage {
+  const b = asRecord(body, 'la lista de personas');
+  return {
+    people: asArray(b.personas, 'personas').map((p) => toClientUser(p, log)),
+    next: strOrNull(b.siguiente),
+    onlySome: b.soloAlgunas !== false,
   };
 }
 

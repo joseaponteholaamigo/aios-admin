@@ -58,6 +58,11 @@ export type PersonSearch =
   | { found: false; onlySome: boolean }
   | { found: true; company: { id: string; name: string }; seat: SeatCard; onlySome: boolean };
 
+/** Una persona de la lista de Usuarios de clientes: su asiento y la empresa donde lo tiene. */
+export type ClientUser = SeatCard & { company: { id: string; name: string } };
+
+export type ClientUsersPage = { people: ClientUser[]; next: string | null; onlySome: boolean };
+
 /** Los tipos de hallazgo de la revisión de datos (el doctor del backend). */
 export const FINDING_KINDS = [
   'orphanCredentials',
