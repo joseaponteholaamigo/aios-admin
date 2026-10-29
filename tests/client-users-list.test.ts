@@ -11,6 +11,7 @@ import type { ActiveSession } from '../app/shared/session/session.server';
 const listClientUsers = vi.fn();
 vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ listClientUsers }) }));
 const { loader, shouldRevalidate } = await import('../app/modules/client-users/routes/client-users');
+const { emptyListMessage } = await import('../app/modules/client-users/client-user-labels');
 
 function open(url: string) {
   const context = new RouterContextProvider();
@@ -24,14 +25,20 @@ beforeEach(() => {
 });
 
 describe('la lista de personas', () => {
-  test('la primera página se pide sin cursor, con el token de la sesión', async () => {
+  test('la primera página se pide sin cursor ni filtro, con el token de la sesión', async () => {
     expect(await open('https://dxxxx.cloudfront.net/client-users')).toEqual({ people: [], next: null, onlySome: true });
-    expect(listClientUsers).toHaveBeenCalledWith('token-ana', { cursor: null });
+    expect(listClientUsers).toHaveBeenCalledWith('token-ana', { company: '', cursor: null });
   });
 
-  test('⛔ «Siguiente» pide la página del cursor que trae la dirección', async () => {
-    await open('https://dxxxx.cloudfront.net/client-users?cursor=c2');
-    expect(listClientUsers).toHaveBeenCalledWith('token-ana', { cursor: 'c2' });
+  test('⛔ «Siguiente» pide la página del cursor que trae la dirección, con el mismo filtro de empresa', async () => {
+    await open('https://dxxxx.cloudfront.net/client-users?company=acme&cursor=c2');
+    expect(listClientUsers).toHaveBeenCalledWith('token-ana', { company: 'acme', cursor: 'c2' });
+  });
+
+  test('sin nadie, la lista dice por qué: el filtro, una página que se vació o que no hay personas', () => {
+    expect(emptyListMessage({ filtered: true, laterPage: false })).toMatch(/coincide con el filtro/);
+    expect(emptyListMessage({ filtered: false, laterPage: true })).toMatch(/En esta página/);
+    expect(emptyListMessage({ filtered: false, laterPage: false })).toMatch(/Todavía no hay personas/);
   });
 
   // Si buscar volviera a pedir la lista, cada búsqueda costaría un pedido más, y un fallo de la

@@ -14,6 +14,16 @@ const SEAT_STATUS: Record<SeatStatus, Label> = {
 
 export const seatStatusLabel = (status: SeatStatus): Label => SEAT_STATUS[status];
 
+/**
+ * Qué dice la lista cuando no trae a nadie. Fuera de la primera página no quiere decir que no haya
+ * nadie: esas entradas estaban muertas (las muestra la revisión de datos), o la lista ya terminó.
+ */
+export function emptyListMessage({ filtered, laterPage }: { filtered: boolean; laterPage: boolean }): string {
+  if (laterPage) return 'En esta página no quedan personas vigentes.';
+  if (filtered) return 'Ninguna empresa con personas coincide con el filtro.';
+  return 'Todavía no hay personas para mostrar.';
+}
+
 /** El rol de un asiento: la admin primero, porque ve todo aunque además tenga un rol. */
 export const roleLabel = (seat: { isAdmin: boolean; role: string | null }) => (seat.isAdmin ? 'Admin de la empresa' : seat.role ?? 'Sin rol');
 

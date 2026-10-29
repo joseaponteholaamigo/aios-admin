@@ -198,8 +198,9 @@ Que el equipo ensō consulte desde el panel lo que hoy consulta por terminal: qu
 - **Entonces** responde `{ personas, siguiente, soloAlgunas }`, ordenadas por correo y paginadas como en CA-6: 50 por defecto y hasta 100.
 - **Y** cada persona trae `correo`, `empresa: { id, nombre }`, `rol`, `admin`, `estado`, `invitadoEl` y `aceptadoEl`, y nada más.
 - **Y** no trae a las revocadas, a las de una empresa no visible ni las entradas sin asiento, igual que la búsqueda (CA-11).
-- **Y** el cursor no lleva ningún correo, porque viaja en la URL (la razón de CA-11). Lleva la posición en la lista: si alguien entra o sale entre una página y la siguiente, una persona puede repetirse o saltarse.
-- **Y** en el panel, Usuarios de clientes muestra esa lista debajo de la búsqueda, con la empresa de cada persona enlazada a sus personas (`client-users/:companyId`) y la paginación de Empresas.
+- **Y** con `?empresa=` trae solo las personas de las empresas visibles cuyo nombre (sin tildes ni mayúsculas) o id contiene ese texto, con la misma regla que la búsqueda de Empresas (CA-5). Un texto que coincide con una empresa no visible no trae a nadie.
+- **Y** el cursor no lleva ningún correo, porque viaja en la URL (la razón de CA-11). Lleva la posición en la lista: si alguien entra o sale entre una página y la siguiente, una persona puede repetirse o saltarse. Vale solo para el mismo filtro: con otro responde 422 (CB-3).
+- **Y** en el panel, Usuarios de clientes muestra esa lista debajo de la búsqueda, con un filtro por empresa, la empresa de cada persona enlazada a sus personas (`client-users/:companyId`) y la paginación de Empresas, que conserva el filtro.
 
 ### Gobernanza y equipo
 

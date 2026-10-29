@@ -40,7 +40,7 @@ export type AdminReadApi = {
   getCompany(token: string, id: string): Promise<ApiResult<CompanyFile>>;
   getCompanyHistory(token: string, id: string): Promise<ApiResult<CompanyHistoryEvent[]>>;
   getCompanyPeople(token: string, id: string): Promise<ApiResult<CompanyPeople>>;
-  listClientUsers(token: string, q: { cursor?: string | null }): Promise<ApiResult<ClientUsersPage>>;
+  listClientUsers(token: string, q: { company?: string; cursor?: string | null }): Promise<ApiResult<ClientUsersPage>>;
   findPerson(token: string, email: string): Promise<ApiResult<PersonSearch>>;
   getDataCheckup(token: string): Promise<ApiResult<DataCheckup>>;
   listAuditEvents(token: string, q: { target?: string | null; cursor?: string | null }): Promise<ApiResult<AuditPage>>;
@@ -89,7 +89,7 @@ export function createAdminReadApi({
     getCompany: (token, id) => send(company(id), token, (b) => toCompanyFile(b, log)),
     getCompanyHistory: (token, id) => send(`${company(id)}/historia`, token, toCompanyHistory),
     getCompanyPeople: (token, id) => send(`${company(id)}/personas`, token, (b) => toCompanyPeople(b, log)),
-    listClientUsers: (token, { cursor }) => send(`/v1/admin/personas${query({ cursor })}`, token, (b) => toClientUsersPage(b, log)),
+    listClientUsers: (token, { company, cursor }) => send(`/v1/admin/personas${query({ empresa: company, cursor })}`, token, (b) => toClientUsersPage(b, log)),
     // Por POST, con el correo en el cuerpo: así no queda en ninguna URL ni en los logs de acceso.
     findPerson: (token, email) => send('/v1/admin/personas/buscar', token, toPersonSearch, { body: { correo: email } }),
     getDataCheckup: (token) => send('/v1/admin/doctor', token, (b) => toDataCheckup(b, log), { timeoutMs: CHECKUP_TIMEOUT_MS }),
