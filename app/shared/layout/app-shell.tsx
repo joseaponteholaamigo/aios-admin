@@ -3,6 +3,7 @@
 // con Escape.
 import { useEffect, useState, type ReactNode } from 'react';
 import type { MenuItem } from '../routing/route-access';
+import { PageContent } from './page-content';
 import { SideNav } from './side-nav';
 import { TopBar, type ShellMember } from './top-bar';
 import './app-shell.css';
@@ -22,7 +23,7 @@ export function AppShell({ member, menu, children }: { member: ShellMember; menu
       {menuOpen && <div className="adm-scrim" aria-hidden="true" onClick={closeMenu} />}
       <div className="adm-main">
         <TopBar member={member} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((open) => !open)} />
-        <main className="adm-page">{children}</main>
+        <PageContent>{children}</PageContent>
       </div>
     </div>
   );
