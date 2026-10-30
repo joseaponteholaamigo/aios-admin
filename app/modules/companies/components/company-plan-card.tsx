@@ -1,5 +1,6 @@
-// El plan de una empresa en su ficha: lo que tiene hoy, calculado como el manifest que recibe ENSŌ,
-// y las condiciones de su Personalizado si lo es.
+// El plan de una cuenta en su ficha: lo que tiene hoy, calculado como el manifest que recibe ENSŌ,
+// y las condiciones de su Personalizado si lo es. Una cuenta personal no muestra la parte de equipo:
+// es una sola persona.
 import type { CompanyFile, CustomConditions } from '../../../domain/companies';
 import { FactList, type Fact } from '../../../shared/ui/fact-list';
 import { formatDate } from '../../../shared/ui/format';
@@ -10,11 +11,14 @@ const yesNo = (value: boolean | null) => (value === true ? 'Sí' : value === fal
 function planFacts(file: CompanyFile): Fact[] {
   const p = file.effectivePlan;
   if (!p) return [];
+  const team: Fact[] = file.kind === 'personal' ? [] : [
+    { label: 'Asientos', value: `${file.seats.used} usados de ${p.seats ?? '—'}` },
+    { label: 'Maneja equipo', value: yesNo(p.managesSeats) },
+  ];
   return [
     { label: 'Tier', value: p.tier ?? '—' },
     { label: 'Contenido (preset)', value: p.preset ?? '—' },
-    { label: 'Asientos', value: `${file.seats.used} usados de ${p.seats ?? '—'}` },
-    { label: 'Maneja equipo', value: yesNo(p.managesSeats) },
+    ...team,
     { label: 'Trabajo compartido', value: yesNo(p.flags.collaboration) },
     { label: 'Horarios', value: yesNo(p.flags.scheduling) },
     { label: 'Cupos', value: quotasLabel(p.quotas) },

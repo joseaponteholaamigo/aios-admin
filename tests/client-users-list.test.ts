@@ -27,12 +27,17 @@ beforeEach(() => {
 describe('la lista de personas', () => {
   test('la primera página se pide sin cursor ni filtro, con el token de la sesión', async () => {
     expect(await open('https://dxxxx.cloudfront.net/client-users')).toEqual({ people: [], next: null, companies: [], onlySome: true });
-    expect(listClientUsers).toHaveBeenCalledWith('token-ana', { company: '', cursor: null });
+    expect(listClientUsers).toHaveBeenCalledWith('token-ana', { company: '', kind: null, cursor: null });
+  });
+
+  test('«Solo cuentas personales» pide solo esas personas, y nunca junto con una empresa', async () => {
+    await open('https://dxxxx.cloudfront.net/client-users?kind=personal&company=acme&cursor=c2');
+    expect(listClientUsers).toHaveBeenCalledWith('token-ana', { company: '', kind: 'personal', cursor: 'c2' });
   });
 
   test('⛔ «Siguiente» pide la página del cursor que trae la dirección, con el mismo filtro de empresa', async () => {
     await open('https://dxxxx.cloudfront.net/client-users?company=acme&cursor=c2');
-    expect(listClientUsers).toHaveBeenCalledWith('token-ana', { company: 'acme', cursor: 'c2' });
+    expect(listClientUsers).toHaveBeenCalledWith('token-ana', { company: 'acme', kind: null, cursor: 'c2' });
   });
 
   test('sin nadie, la lista dice por qué: la empresa elegida, una que no está, una página que se vació o que no hay personas', () => {
@@ -40,6 +45,7 @@ describe('la lista de personas', () => {
     expect(emptyListMessage({ kind: 'unknown-company' }, false)).toMatch(/no está entre las que el panel muestra/);
     expect(emptyListMessage({ kind: 'company', name: 'Auteco' }, true)).toMatch(/En esta página/);
     expect(emptyListMessage({ kind: 'all' }, false)).toMatch(/Todavía no hay personas/);
+    expect(emptyListMessage({ kind: 'personal' }, false)).toMatch(/Ninguna cuenta personal tiene personas/);
   });
 
   // Si buscar volviera a pedir la lista, cada búsqueda costaría un pedido más, y un fallo de la

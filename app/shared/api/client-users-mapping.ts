@@ -4,12 +4,16 @@ import type {
   ClientPerson, ClientRole, ClientUser, ClientUsersPage, CompanyPeople, DataCheckup, Finding, FindingKind, ItemCounts, PeopleSearch, PersonSees, RoleBase,
   SeatCard, SeatStatus,
 } from '../../domain/client-users';
+import type { AccountKind } from '../../domain/companies';
 import { asArray, asRecord, num, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
 
 const SEAT_STATUS_FROM_API: Record<string, SeatStatus> = { activo: 'active', invitado: 'invited', 'en-pausa': 'paused', revocado: 'revoked' };
 const ROLE_BASE_FROM_API: Record<string, RoleBase> = { empresa: 'company', nada: 'nothing' };
 
-const toSeatStatus = (value: unknown): SeatStatus => SEAT_STATUS_FROM_API[String(value)] ?? 'unknown';
+export const toSeatStatus = (value: unknown): SeatStatus => SEAT_STATUS_FROM_API[String(value)] ?? 'unknown';
+
+/** El tipo de una cuenta: solo `personal` la hace personal, como en el backend. */
+export const toAccountKind = (value: unknown): AccountKind => (value === 'personal' ? 'personal' : 'company');
 
 const PEOPLE_FIELDS = ['cliente', 'empresa', 'roles', 'personas', 'revocadas', 'bitacora'] as const;
 
@@ -99,7 +103,10 @@ function toClientUser(raw: unknown, log: Log): ClientUser {
   const p = asRecord(raw, 'una persona de la lista');
   warnUnknownFields(p, CLIENT_USER_FIELDS, 'una persona de la lista', log);
   const company = asRecord(p.empresa, 'empresa');
-  return { ...toSeatCard(p), company: { id: str(company.id, 'empresa.id'), name: str(company.nombre, 'empresa.nombre') } };
+  return {
+    ...toSeatCard(p),
+    company: { id: str(company.id, 'empresa.id'), name: str(company.nombre, 'empresa.nombre'), kind: toAccountKind(company.tipo) },
+  };
 }
 
 export function toClientUsersPage(body: unknown, log: Log): ClientUsersPage {
@@ -109,7 +116,7 @@ export function toClientUsersPage(body: unknown, log: Log): ClientUsersPage {
     next: strOrNull(b.siguiente),
     companies: asArray(b.empresas ?? [], 'empresas').map((raw) => {
       const c = asRecord(raw, 'una empresa del filtro');
-      return { id: str(c.id, 'empresa.id'), name: str(c.nombre, 'empresa.nombre'), hasTeam: c.equipo === true };
+      return { id: str(c.id, 'empresa.id'), name: str(c.nombre, 'empresa.nombre'), kind: toAccountKind(c.tipo) };
     }),
     onlySome: b.soloAlgunas !== false,
   };

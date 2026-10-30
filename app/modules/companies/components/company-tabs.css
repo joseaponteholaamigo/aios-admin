@@ -1,0 +1,6 @@
+/* Las pestañas de Empresas: una línea abajo, y la elegida con el borde de acento. */
+
+.company-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.company-tabs a { padding: 9px 12px; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.company-tabs a:hover { color: var(--ink); }
+.company-tabs a.on { color: var(--accent-ink); border-bottom-color: var(--accent); font-weight: 600; }

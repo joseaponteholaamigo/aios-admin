@@ -1,4 +1,5 @@
 // Las personas de los clientes y la revisión de datos, como las ve el panel (M2a).
+import type { AccountKind } from './companies';
 
 export type ItemCounts = { skills: number; agents: number; chains: number };
 
@@ -54,11 +55,11 @@ export type SeatCard = {
   acceptedAt: string | null;
 };
 
-/** Una persona de la lista de Usuarios de clientes: su asiento y la empresa donde lo tiene. */
-export type ClientUser = SeatCard & { company: { id: string; name: string } };
+/** Una persona de la lista de Usuarios de clientes: su asiento y la cuenta donde lo tiene. */
+export type ClientUser = SeatCard & { company: { id: string; name: string; kind: AccountKind } };
 
-/** Una empresa en el filtro de la lista. `hasTeam`: su plan es de más de un asiento. */
-export type CompanyOption = { id: string; name: string; hasTeam: boolean };
+/** Una cuenta en el filtro de la lista: una empresa, o una cuenta personal (que se agrupan en una sola opción). */
+export type CompanyOption = { id: string; name: string; kind: AccountKind };
 
 export type ClientUsersPage = { people: ClientUser[]; next: string | null; companies: CompanyOption[]; onlySome: boolean };
 

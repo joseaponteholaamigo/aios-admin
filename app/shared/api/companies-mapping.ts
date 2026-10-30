@@ -1,8 +1,10 @@
 // La traducción de las empresas del backend (`/v1/admin/clientes…`) al idioma del panel.
 import type {
-  AccessRule, CompaniesPage, Company, CompanyAccess, CompanyFile, CompanyHistoryEvent, ContentBase, CustomConditions, EffectivePlan, Quotas,
+  AccessRule, AccountCounts, AccountPerson, CompaniesPage, CompaniesSearch, Company, CompanyAccess, CompanyFile, CompanyHistoryEvent, ContentBase,
+  CustomConditions, EffectivePlan, KindCount, Quotas,
 } from '../../domain/companies';
 import { asArray, asRecord, num, numOrNull, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
+import { toAccountKind, toSeatStatus } from './client-users-mapping';
 
 const CONTENT_FROM_API: Record<string, ContentBase> = { todo: 'everything', free: 'free', nada: 'nothing' };
 const ACTION_FROM_API: Record<string, AccessRule['action']> = { dar: 'grant', quitar: 'remove' };
@@ -23,17 +25,27 @@ function toQuotas(raw: unknown, log: Log): Quotas {
   return quotas;
 }
 
-const COMPANY_FIELDS = ['id', 'nombre', 'plan', 'estado', 'vencimiento', 'aviso', 'asientos', 'admins', 'pagaPorStripe', 'creadaEl'] as const;
+const COMPANY_FIELDS = ['id', 'nombre', 'tipo', 'persona', 'plan', 'estado', 'vencimiento', 'aviso', 'asientos', 'admins', 'pagaPorStripe', 'creadaEl'] as const;
 const FILE_FIELDS = [...COMPANY_FIELDS, 'planEfectivo', 'condiciones', 'acceso', 'accesoPendiente'] as const;
 
 const EXPIRED_BY: Record<string, Company['expiry']['expiredBy']> = { suscripcion: 'subscription', fecha: 'date' };
 
+/** La persona de una cuenta personal, o `null` (una empresa, o una cuenta sin nadie). */
+function toAccountPerson(raw: unknown): AccountPerson | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const p = raw as Record<string, unknown>;
+  return { email: str(p.correo, 'persona.correo'), status: toSeatStatus(p.estado), invitedAt: strOrNull(p.invitadoEl), acceptedAt: strOrNull(p.aceptadoEl) };
+}
+
 function toCompanyFields(r: Record<string, unknown>): Company {
   const expiry = r.vencimiento && typeof r.vencimiento === 'object' ? (r.vencimiento as Record<string, unknown>) : {};
   const seats = r.asientos && typeof r.asientos === 'object' ? (r.asientos as Record<string, unknown>) : {};
+  const kind = toAccountKind(r.tipo);
   return {
     id: str(r.id, 'empresa.id'),
     name: str(r.nombre, 'empresa.nombre'),
+    kind,
+    person: kind === 'personal' ? toAccountPerson(r.persona) : null,
     plan: r.plan === 'personalizado' ? 'custom' : strOrNull(r.plan),
     status: strOrNull(r.estado),
     expiry: { expired: expiry.vencido === true, expiredBy: EXPIRED_BY[String(expiry.vencidoPor)] ?? null, until: strOrNull(expiry.hasta) },
@@ -51,11 +63,33 @@ export function toCompany(raw: unknown, log: Log): Company {
   return toCompanyFields(r);
 }
 
+/** Cuántas de un tipo, por plan. Un conteo que no vino es cero: el backend viejo no lo mandaba. */
+function toKindCount(raw: unknown): KindCount {
+  const k = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const plans = k.planes && typeof k.planes === 'object' ? (k.planes as Record<string, unknown>) : {};
+  return { total: num(k.total), plans: { free: num(plans.free), pro: num(plans.pro), team: num(plans.team), custom: num(plans.personalizado) } };
+}
+
+function toAccountCounts(raw: unknown): AccountCounts {
+  const c = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  return { companies: toKindCount(c.empresas), personal: toKindCount(c.personales) };
+}
+
 export function toCompaniesPage(body: unknown, log: Log): CompaniesPage {
   const b = asRecord(body, 'la lista de empresas');
   return {
     companies: asArray(b.clientes, 'clientes').map((c) => toCompany(c, log)),
     next: strOrNull(b.siguiente),
+    counts: toAccountCounts(b.conteo),
+    onlySome: b.soloAlgunas !== false,
+  };
+}
+
+export function toCompaniesSearch(body: unknown, log: Log): CompaniesSearch {
+  const b = asRecord(body, 'la búsqueda de cuentas');
+  return {
+    companies: asArray(b.clientes, 'clientes').map((c) => toCompany(c, log)),
+    hasMore: b.hayMas === true,
     onlySome: b.soloAlgunas !== false,
   };
 }

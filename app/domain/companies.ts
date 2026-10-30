@@ -1,12 +1,29 @@
-// Las empresas, como las ve el panel (M2a). Los nombres del backend se traducen solo en
+// Las cuentas de los clientes, como las ve el panel (M2a y spec «Cuentas personales»): una empresa
+// o la cuenta personal de una persona sola. Los nombres del backend se traducen solo en
 // `app/shared/api/`: aquí no aparece ninguno.
+import type { SeatStatus } from './client-users';
 
 /** El plan contratado: `custom` es el Personalizado; otro valor es un tier del backend. */
 export type CompanyPlan = 'custom' | 'free' | 'pro' | 'team' | string;
 
+/** Los planes por los que se filtra y se cuenta, en el orden en que se ofrecen. */
+export const LIST_PLANS = ['free', 'pro', 'team', 'custom'] as const;
+export type ListPlan = (typeof LIST_PLANS)[number];
+
+export const isListPlan = (value: string | null): value is ListPlan => LIST_PLANS.includes(value as ListPlan);
+
+/** Una empresa, o la cuenta de una persona sola (quien compró Pro, cada persona del webinar). */
+export type AccountKind = 'company' | 'personal';
+
+/** La persona de una cuenta personal: su asiento vigente. */
+export type AccountPerson = { email: string; status: SeatStatus; invitedAt: string | null; acceptedAt: string | null };
+
 export type Company = {
   id: string;
   name: string;
+  kind: AccountKind;
+  /** La persona de una cuenta personal; `null` en una empresa, o en una cuenta personal sin nadie. */
+  person: AccountPerson | null;
   plan: CompanyPlan | null;
   /** El estado del backend tal cual (`active`, `revoked`, `canceled`…). */
   status: string | null;
@@ -19,7 +36,16 @@ export type Company = {
   createdAt: string | null;
 };
 
-export type CompaniesPage = { companies: Company[]; next: string | null; onlySome: boolean };
+/** Cuántas cuentas hay de un tipo: en total y de cada plan. */
+export type KindCount = { total: number; plans: Record<ListPlan, number> };
+
+/** Los números de las pestañas y de la lista de planes. No dependen de la búsqueda ni de la página. */
+export type AccountCounts = { companies: KindCount; personal: KindCount };
+
+export type CompaniesPage = { companies: Company[]; next: string | null; counts: AccountCounts; onlySome: boolean };
+
+/** Las cuentas que contienen un texto. `hasMore`: hubo más que las que vinieron. */
+export type CompaniesSearch = { companies: Company[]; hasMore: boolean; onlySome: boolean };
 
 /** Los cupos de un plan por nombre (`radar`, `projects`, `skills`, `chains`); `null` es sin tope. */
 export type Quotas = Record<string, number | null>;

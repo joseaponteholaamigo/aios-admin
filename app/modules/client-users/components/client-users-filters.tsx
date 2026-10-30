@@ -1,65 +1,52 @@
-// La barra de filtros de Usuarios de clientes: buscar por correo y elegir una empresa, en un solo
-// lugar. Cada cambio se aplica solo; el único botón es «Borrar filtros».
+// La barra de filtros de Usuarios de clientes: buscar por correo y elegir una empresa (o solo las
+// cuentas personales), en un solo lugar. Cada cambio se aplica solo; el único botón es «Borrar
+// filtros».
 //
-// Solo muestra y avisa: el texto, la empresa y qué pasa al cambiarlos los maneja la pantalla. No hay
-// formularios: nada de esta barra puede mandar el texto en una dirección.
-import { useRef } from 'react';
+// Solo muestra y avisa: el texto, la elección y qué pasa al cambiarlos los maneja la pantalla. No
+// hay formularios: nada de esta barra puede mandar el texto en una dirección.
 import type { CompanyOption } from '../../../domain/client-users';
-import { Icon } from '../../../shared/icons/icon';
-// Los estilos del buscador y de las barras de filtros del panel (`.adm-search`, `.filtros`).
-import '../../../shared/ui/search-field.css';
+import { SearchInput } from '../../../shared/ui/search-input';
 import './client-users-filters.css';
 
-/** El texto más largo que se busca: el de un correo. El backend tampoco acepta más. */
-export const MAX_SEARCH_LENGTH = 254;
+/** Qué se eligió en la lista: todas, una empresa o solo las cuentas personales. */
+export type CompanyChoice = { kind: 'all' } | { kind: 'company'; id: string } | { kind: 'personal' };
+
+/** El valor de la opción «Solo cuentas personales». No choca con un id: los ids no llevan `:`. */
+const PERSONAL_VALUE = 'tipo:personal';
+
+const valueOf = (choice: CompanyChoice) => (choice.kind === 'all' ? '' : choice.kind === 'personal' ? PERSONAL_VALUE : choice.id);
+const choiceOf = (value: string): CompanyChoice => (!value ? { kind: 'all' } : value === PERSONAL_VALUE ? { kind: 'personal' } : { kind: 'company', id: value });
 
 type Props = {
   companies: CompanyOption[];
-  company: string;
+  choice: CompanyChoice;
   text: string;
   onTextChange: (text: string) => void;
-  onCompanyChange: (companyId: string) => void;
+  onChoiceChange: (choice: CompanyChoice) => void;
   onClearAll: () => void;
 };
 
-export function ClientUsersFilters({ companies, company, text, onTextChange, onCompanyChange, onClearAll }: Props) {
-  const input = useRef<HTMLInputElement>(null);
-  const withTeam = companies.filter((c) => c.hasTeam);
-  const solo = companies.filter((c) => !c.hasTeam);
-  const unknown = company !== '' && !companies.some((c) => c.id === company);
-  const clearText = () => {
-    onTextChange('');
-    input.current?.focus();
-  };
+export function ClientUsersFilters({ companies, choice, text, onTextChange, onChoiceChange, onClearAll }: Props) {
+  const real = companies.filter((c) => c.kind === 'company');
+  const personal = companies.length - real.length;
+  const unknown = choice.kind === 'company' && !companies.some((c) => c.id === choice.id);
   return (
     <div className="filtros client-users-filters" role="search" aria-label="Filtrar las personas">
-      <label className="adm-search client-users-filters__text">
-        <Icon name="search" />
-        <input
-          ref={input} type="text" inputMode="email" name="text" aria-label="Buscar por correo" placeholder="Buscar por correo"
-          value={text} maxLength={MAX_SEARCH_LENGTH} autoComplete="off" onChange={(e) => onTextChange(e.target.value)}
-        />
-        {text && (
-          <button type="button" className="client-users-filters__clear" aria-label="Borrar la búsqueda" onClick={clearText}>
-            <Icon name="x" />
-          </button>
-        )}
-      </label>
-      <select name="company" aria-label="Empresa" value={company} onChange={(e) => onCompanyChange(e.target.value)} className={company ? 'on' : undefined}>
+      <SearchInput value={text} onChange={onTextChange} label="Buscar por correo" placeholder="Buscar por correo" inputMode="email" />
+      <select
+        name="company" aria-label="Empresa" value={valueOf(choice)} onChange={(e) => onChoiceChange(choiceOf(e.target.value))}
+        className={choice.kind === 'all' ? undefined : 'on'}
+      >
         <option value="">Todas las empresas</option>
-        {unknown && <option value={company}>{company}</option>}
-        {withTeam.length > 0 && (
-          <optgroup label={`Empresas con equipo (${withTeam.length})`}>
-            {withTeam.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </optgroup>
-        )}
-        {solo.length > 0 && (
-          <optgroup label={`Empresas de un solo asiento (${solo.length})`}>
-            {solo.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        {unknown && <option value={choice.id}>{choice.id}</option>}
+        {personal > 0 && <option value={PERSONAL_VALUE}>{`Solo cuentas personales (${personal})`}</option>}
+        {real.length > 0 && (
+          <optgroup label={`Empresas (${real.length})`}>
+            {real.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </optgroup>
         )}
       </select>
-      {(text || company) && <button type="button" className="btn sm soft" onClick={onClearAll}>Borrar filtros</button>}
+      {(text || choice.kind !== 'all') && <button type="button" className="btn sm soft" onClick={onClearAll}>Borrar filtros</button>}
     </div>
   );
 }

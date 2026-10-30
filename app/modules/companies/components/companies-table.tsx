@@ -8,8 +8,9 @@ import { badgeClass, expiryLabel, planLabel, statusLabel } from '../company-labe
 
 const fileOf = (company: Company) => `/companies/${company.id}`;
 
-export function CompaniesTable({ companies, searched }: { companies: Company[]; searched: boolean }) {
-  if (companies.length === 0) return <p className="empty">{searched ? 'Ninguna empresa coincide con la búsqueda.' : 'Todavía no hay empresas para mostrar.'}</p>;
+/** `emptyMessage`: qué decir sin ninguna, que depende del plan elegido y de la página (`emptyAccountsMessage`). */
+export function CompaniesTable({ companies, emptyMessage }: { companies: Company[]; emptyMessage: string }) {
+  if (companies.length === 0) return <p className="empty">{emptyMessage}</p>;
   return (
     <div className="tbl-wrap">
       <table className="tbl">

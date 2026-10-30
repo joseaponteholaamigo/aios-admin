@@ -6,13 +6,13 @@
 // respuesta aquí mismo: el resto del panel no ve un nombre del backend.
 import type { AuditPage } from '../../domain/audit';
 import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '../../domain/client-users';
-import type { CompaniesPage, CompanyFile, CompanyHistoryEvent } from '../../domain/companies';
+import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan } from '../../domain/companies';
 import type { TeamMember } from '../../domain/permissions';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
 import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } from './client-users-mapping';
-import { toCompaniesPage, toCompanyFile, toCompanyHistory } from './companies-mapping';
+import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory } from './companies-mapping';
 import { toTeamList } from './team-member-mapping';
 
 const TIMEOUT_MS = 5000;
@@ -36,18 +36,25 @@ export type ApiResult<T> =
   | { kind: 'invalid' };
 
 export type AdminReadApi = {
-  listCompanies(token: string, q: { query?: string; cursor?: string | null }): Promise<ApiResult<CompaniesPage>>;
+  listCompanies(token: string, q: { kind: AccountKind; plan: ListPlan | null; cursor?: string | null }): Promise<ApiResult<CompaniesPage>>;
+  searchCompanies(token: string, q: { text: string; kind: AccountKind; plan: ListPlan | null }): Promise<ApiResult<CompaniesSearch>>;
   getCompany(token: string, id: string): Promise<ApiResult<CompanyFile>>;
   getCompanyHistory(token: string, id: string): Promise<ApiResult<CompanyHistoryEvent[]>>;
   getCompanyPeople(token: string, id: string): Promise<ApiResult<CompanyPeople>>;
-  listClientUsers(token: string, q: { company?: string; cursor?: string | null }): Promise<ApiResult<ClientUsersPage>>;
-  searchPeople(token: string, q: { text: string; company: string }): Promise<ApiResult<PeopleSearch>>;
+  /** `kind`: solo las personas de cuentas de ese tipo. No va con `company`: se filtra por una o por el otro. */
+  listClientUsers(token: string, q: { company?: string; kind?: AccountKind | null; cursor?: string | null }): Promise<ApiResult<ClientUsersPage>>;
+  searchPeople(token: string, q: { text: string; company: string; kind?: AccountKind | null }): Promise<ApiResult<PeopleSearch>>;
   getDataCheckup(token: string): Promise<ApiResult<DataCheckup>>;
   listAuditEvents(token: string, q: { target?: string | null; cursor?: string | null }): Promise<ApiResult<AuditPage>>;
   listTeam(token: string): Promise<ApiResult<TeamMember[]>>;
 };
 
 const STATUS_RESULT: Record<number, ApiResult<never>['kind']> = { 400: 'invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found', 422: 'invalid' };
+
+/** Los nombres del backend: el tipo de cuenta y el plan Personalizado. */
+const KIND_TO_API: Record<AccountKind, string> = { company: 'empresa', personal: 'personal' };
+const planToApi = (plan: ListPlan | null) => (plan === 'custom' ? 'personalizado' : plan);
+const kindToApi = (kind: AccountKind | null | undefined) => (kind ? KIND_TO_API[kind] : null);
 
 const query = (params: Record<string, string | null | undefined>) => {
   const q = new URLSearchParams(Object.entries(params).filter((e): e is [string, string] => Boolean(e[1])));
@@ -85,13 +92,19 @@ export function createAdminReadApi({
   }
   const company = (id: string) => `/v1/admin/clientes/${encodeURIComponent(id)}`;
   return {
-    listCompanies: (token, { query: q, cursor }) => send(`/v1/admin/clientes${query({ q, cursor })}`, token, (b) => toCompaniesPage(b, log)),
+    listCompanies: (token, { kind, plan, cursor }) =>
+      send(`/v1/admin/clientes${query({ tipo: kindToApi(kind), plan: planToApi(plan), cursor })}`, token, (b) => toCompaniesPage(b, log)),
+    // Por POST, con el texto en el cuerpo: una cuenta personal se busca por correo, y un correo no va en una URL.
+    searchCompanies: (token, { text, kind, plan }) =>
+      send('/v1/admin/clientes/buscar', token, (b) => toCompaniesSearch(b, log), { body: { texto: text, tipo: kindToApi(kind), plan: planToApi(plan) } }),
     getCompany: (token, id) => send(company(id), token, (b) => toCompanyFile(b, log)),
     getCompanyHistory: (token, id) => send(`${company(id)}/historia`, token, toCompanyHistory),
     getCompanyPeople: (token, id) => send(`${company(id)}/personas`, token, (b) => toCompanyPeople(b, log)),
-    listClientUsers: (token, { company, cursor }) => send(`/v1/admin/personas${query({ empresa: company, cursor })}`, token, (b) => toClientUsersPage(b, log)),
+    listClientUsers: (token, { company, kind, cursor }) =>
+      send(`/v1/admin/personas${query({ empresa: company, tipo: kindToApi(kind), cursor })}`, token, (b) => toClientUsersPage(b, log)),
     // Por POST, con el texto en el cuerpo: lo que se escribe de un correo no queda en ninguna URL ni en los logs de acceso.
-    searchPeople: (token, { text, company }) => send('/v1/admin/personas/buscar', token, (b) => toPeopleSearch(b, log), { body: { texto: text, empresa: company } }),
+    searchPeople: (token, { text, company, kind }) =>
+      send('/v1/admin/personas/buscar', token, (b) => toPeopleSearch(b, log), { body: { texto: text, empresa: company, ...(kind ? { tipo: kindToApi(kind) } : {}) } }),
     getDataCheckup: (token) => send('/v1/admin/doctor', token, (b) => toDataCheckup(b, log), { timeoutMs: CHECKUP_TIMEOUT_MS }),
     listAuditEvents: (token, { target, cursor }) => send(`/v1/admin/auditoria${query({ objetivo: target, cursor })}`, token, (b) => toAuditPage(b, log)),
     listTeam: (token) => send('/v1/admin/equipo', token, (b) => toTeamList(b, log)),

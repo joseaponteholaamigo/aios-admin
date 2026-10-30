@@ -1,21 +1,11 @@
 // Cómo se nombran el estado de un asiento y lo que ve una persona, en las palabras de «Mi equipo».
-import type { ClientRole, ItemCounts, PersonSees, SeatStatus } from '../../domain/client-users';
-import type { Label } from '../../shared/ui/badge';
+import type { ClientRole, ItemCounts, PersonSees } from '../../domain/client-users';
 
 export { badgeClass } from '../../shared/ui/badge';
+export { seatStatusLabel } from '../../shared/labels/seat-status-labels';
 
-const SEAT_STATUS: Record<SeatStatus, Label> = {
-  active: { text: 'Activa', tone: 'ok' },
-  invited: { text: 'Invitada', tone: 'accent' },
-  paused: { text: 'En pausa', tone: 'warn' },
-  revoked: { text: 'Revocada', tone: 'bad' },
-  unknown: { text: 'Desconocido', tone: '' },
-};
-
-export const seatStatusLabel = (status: SeatStatus): Label => SEAT_STATUS[status];
-
-/** Qué filtra la lista: nada, una empresa del filtro, o un id en la URL que no está entre ellas. */
-export type ListFilter = { kind: 'all' } | { kind: 'company'; name: string } | { kind: 'unknown-company' };
+/** Qué filtra la lista: nada, una empresa del filtro, un id en la URL que no está entre ellas, o solo las cuentas personales. */
+export type ListFilter = { kind: 'all' } | { kind: 'company'; name: string } | { kind: 'unknown-company' } | { kind: 'personal' };
 
 /**
  * Qué dice la lista cuando no trae a nadie. Fuera de la primera página no quiere decir que no haya
@@ -25,6 +15,7 @@ export function emptyListMessage(filter: ListFilter, laterPage: boolean): string
   if (laterPage) return 'En esta página no quedan personas vigentes.';
   if (filter.kind === 'unknown-company') return 'Esa empresa no está entre las que el panel muestra.';
   if (filter.kind === 'company') return `${filter.name} no tiene personas activas, invitadas ni en pausa.`;
+  if (filter.kind === 'personal') return 'Ninguna cuenta personal tiene personas activas, invitadas ni en pausa.';
   return 'Todavía no hay personas para mostrar.';
 }
 

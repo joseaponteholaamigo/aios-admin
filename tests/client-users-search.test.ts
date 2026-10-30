@@ -12,13 +12,14 @@ import type { ActiveSession } from '../app/shared/session/session.server';
 const searchPeople = vi.fn();
 vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ searchPeople }) }));
 const { action } = await import('../app/modules/client-users/routes/client-users');
+const { searchScope } = await import('../app/shared/search/use-background-search');
 
 const FOUND = { people: [], hasMore: false, onlySome: true };
 
-function search(text: string, company = '') {
+function search(text: string, company = '', kind = '') {
   const context = new RouterContextProvider();
   context.set(sessionContext, { sub: 'sub-ana', tokens: { accessToken: 'token-ana' } } as unknown as ActiveSession);
-  const request = new Request('https://dxxxx.cloudfront.net/client-users', { method: 'POST', body: new URLSearchParams({ text, company }) });
+  const request = new Request('https://dxxxx.cloudfront.net/client-users', { method: 'POST', body: new URLSearchParams({ text, company, kind }) });
   return action({ request, context, params: {} } as never);
 }
 
@@ -30,8 +31,20 @@ beforeEach(() => {
 describe('buscar por correo', () => {
   test('manda el texto sin espacios y en minúsculas, con la empresa elegida y el token de la sesión', async () => {
     const r = await search('  Ana@ACME ', 'acme-000001');
-    expect(searchPeople).toHaveBeenCalledWith('token-ana', { text: 'ana@acme', company: 'acme-000001' });
-    expect(r).toEqual({ text: 'ana@acme', company: 'acme-000001', result: FOUND });
+    expect(searchPeople).toHaveBeenCalledWith('token-ana', { text: 'ana@acme', company: 'acme-000001', kind: null });
+    expect(r).toEqual({ text: 'ana@acme', scope: searchScope({ company: 'acme-000001', kind: '' }), result: FOUND });
+  });
+
+  test('solo en las cuentas personales: lo pide al backend y lo devuelve en lo que buscó', async () => {
+    const r = await search('ana', '', 'personal');
+    expect(searchPeople).toHaveBeenCalledWith('token-ana', { text: 'ana', company: '', kind: 'personal' });
+    expect(r.scope).toBe(searchScope({ company: '', kind: 'personal' }));
+  });
+
+  test('⛔ un tipo de cuenta que no existe no llega al backend', async () => {
+    const r = await search('ana', '', 'otra-cosa');
+    expect(r.result).toEqual({ people: [], hasMore: false, onlySome: true });
+    expect(searchPeople).not.toHaveBeenCalled();
   });
 
   test('busca con un pedazo del correo: ya no exige uno completo', async () => {

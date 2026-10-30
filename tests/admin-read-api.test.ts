@@ -22,28 +22,57 @@ function apiAnswering(answer: (url: string) => Response) {
 }
 
 const EMPRESA = {
-  id: 'acme-000001', nombre: 'Acme', plan: 'personalizado', estado: 'active',
+  id: 'acme-000001', nombre: 'Acme', tipo: 'empresa', plan: 'personalizado', estado: 'active',
   vencimiento: { vencido: false, vencidoPor: null, hasta: '2026-12-31' }, aviso: null,
   asientos: { usados: 2, tope: 5 }, admins: 1, pagaPorStripe: true, creadaEl: '2026-10-01T00:00:00.000Z',
 };
 
 describe('las empresas', () => {
-  test('la lista: pide con la búsqueda y el cursor, y traduce cada campo', async () => {
-    const { api, seen } = apiAnswering(() => Response.json({ clientes: [EMPRESA], siguiente: 'c2', soloAlgunas: true }));
-    const r = await api.listCompanies('token-ana', { query: 'acme', cursor: 'c1' });
-    expect(seen).toEqual([{ method: 'GET', url: 'https://api.example/v1/admin/clientes?q=acme&cursor=c1', body: null, authorization: 'Bearer token-ana' }]);
+  test('la lista: pide con el tipo, el plan y el cursor en los nombres del backend, y traduce cada campo y el conteo', async () => {
+    const conteo = {
+      empresas: { total: 15, planes: { free: 1, pro: 2, team: 5, personalizado: 7 } },
+      personales: { total: 381, planes: { free: 0, pro: 4, team: 0, personalizado: 377 } },
+    };
+    const { api, seen } = apiAnswering(() => Response.json({ clientes: [EMPRESA], siguiente: 'c2', conteo, soloAlgunas: true }));
+    const r = await api.listCompanies('token-ana', { kind: 'company', plan: 'custom', cursor: 'c1' });
+    expect(seen).toEqual([{ method: 'GET', url: 'https://api.example/v1/admin/clientes?tipo=empresa&plan=personalizado&cursor=c1', body: null, authorization: 'Bearer token-ana' }]);
     expect(r).toEqual({
       kind: 'ok',
       value: {
         companies: [{
-          id: 'acme-000001', name: 'Acme', plan: 'custom', status: 'active',
+          id: 'acme-000001', name: 'Acme', kind: 'company', person: null, plan: 'custom', status: 'active',
           expiry: { expired: false, expiredBy: null, until: '2026-12-31' }, notice: null,
           seats: { used: 2, cap: 5 }, admins: 1, paysWithStripe: true, createdAt: '2026-10-01T00:00:00.000Z',
         }],
         next: 'c2',
+        counts: {
+          companies: { total: 15, plans: { free: 1, pro: 2, team: 5, custom: 7 } },
+          personal: { total: 381, plans: { free: 0, pro: 4, team: 0, custom: 377 } },
+        },
         onlySome: true,
       },
     });
+  });
+
+  test('una cuenta personal llega con su persona y su estado traducido', async () => {
+    const persona = { correo: 'maria@gmail.com', estado: 'activo', invitadoEl: 'a', aceptadoEl: 'b' };
+    const { api, seen } = apiAnswering(() => Response.json({ clientes: [{ ...EMPRESA, tipo: 'personal', persona }], siguiente: null, soloAlgunas: false }));
+    const r = await api.listCompanies('t', { kind: 'personal', plan: null });
+    expect(seen[0]?.url).toBe('https://api.example/v1/admin/clientes?tipo=personal');
+    expect(r.kind === 'ok' && r.value.companies[0]).toMatchObject({ kind: 'personal', person: { email: 'maria@gmail.com', status: 'active', invitedAt: 'a', acceptedAt: 'b' } });
+  });
+
+  test('sin conteo (el backend de antes), cada número es cero y la lista no se rompe', async () => {
+    const { api } = apiAnswering(() => Response.json({ clientes: [], siguiente: null, soloAlgunas: false }));
+    const r = await api.listCompanies('t', { kind: 'company', plan: null });
+    expect(r.kind === 'ok' && r.value.counts.personal).toEqual({ total: 0, plans: { free: 0, pro: 0, team: 0, custom: 0 } });
+  });
+
+  test('⛔ la búsqueda de cuentas manda el texto, el tipo y el plan en el cuerpo de un POST, nunca en la URL', async () => {
+    const { api, seen } = apiAnswering(() => Response.json({ clientes: [{ ...EMPRESA, tipo: 'personal', persona: null }], hayMas: true, soloAlgunas: false }));
+    const r = await api.searchCompanies('t', { text: 'maria@', kind: 'personal', plan: 'custom' });
+    expect(seen[0]).toMatchObject({ method: 'POST', url: 'https://api.example/v1/admin/clientes/buscar', body: '{"texto":"maria@","tipo":"personal","plan":"personalizado"}' });
+    expect(r.kind === 'ok' && [r.value.companies[0]?.person, r.value.hasMore, r.value.onlySome]).toEqual([null, true, false]);
   });
 
   test('la ficha trae el plan efectivo, las condiciones y el acceso; sin acceso, el motivo', async () => {
@@ -92,14 +121,14 @@ describe('las empresas', () => {
 
   test('un campo que el panel no conoce se ignora y queda en el log, sin romper', async () => {
     const { api, logs } = apiAnswering(() => Response.json({ clientes: [{ ...EMPRESA, campoNuevo: 1 }], siguiente: null, soloAlgunas: false }));
-    const r = await api.listCompanies('t', {});
+    const r = await api.listCompanies('t', { kind: 'company', plan: null });
     expect(r.kind).toBe('ok');
     expect(logs.some((l) => l.includes('campoNuevo'))).toBe(true);
   });
 
   test('⛔ una respuesta sin la forma acordada lanza ApiContractError: nunca llega torcida a la pantalla', async () => {
     const { api } = apiAnswering(() => Response.json({ clientes: [{ nombre: 'sin id' }] }));
-    await expect(api.listCompanies('t', {})).rejects.toThrow(ApiContractError);
+    await expect(api.listCompanies('t', { kind: 'company', plan: null })).rejects.toThrow(ApiContractError);
   });
 });
 
@@ -110,29 +139,37 @@ describe('las personas', () => {
     expect(seen[0]).toMatchObject({ method: 'POST', url: 'https://api.example/v1/admin/personas/buscar', body: '{"texto":"ana","empresa":"acme-000001"}' });
   });
 
+  test('solo las cuentas personales: la lista pide `tipo=personal` y la búsqueda lo manda en el cuerpo', async () => {
+    const { api, seen } = apiAnswering(() => Response.json({ personas: [], hayMas: false, siguiente: null, soloAlgunas: false }));
+    await api.listClientUsers('t', { company: '', kind: 'personal', cursor: null });
+    await api.searchPeople('t', { text: 'ana', company: '', kind: 'personal' });
+    expect(seen[0]?.url).toBe('https://api.example/v1/admin/personas?tipo=personal');
+    expect(seen[1]?.body).toBe('{"texto":"ana","empresa":"","tipo":"personal"}');
+  });
+
   test('la lista: pide con el filtro de empresa y el cursor, y trae cada persona con su empresa y su estado traducido', async () => {
     const { api, seen } = apiAnswering(() => Response.json({
-      personas: [{ correo: 'bea@otra.com', empresa: { id: 'otra-000002', nombre: 'Otra' }, rol: null, admin: true, estado: 'invitado', invitadoEl: 'a', aceptadoEl: null }],
+      personas: [{ correo: 'bea@otra.com', empresa: { id: 'otra-000002', nombre: 'Otra', tipo: 'empresa' }, rol: null, admin: true, estado: 'invitado', invitadoEl: 'a', aceptadoEl: null }],
       siguiente: 'c2', soloAlgunas: true,
-      empresas: [{ id: 'otra-000002', nombre: 'Otra', equipo: true }, { id: 'webinar-000003', nombre: 'Webinar', equipo: false }],
+      empresas: [{ id: 'otra-000002', nombre: 'Otra', tipo: 'empresa', equipo: true }, { id: 'webinar-000003', nombre: 'Webinar', tipo: 'personal', equipo: false }],
     }));
     const r = await api.listClientUsers('token-ana', { company: 'acme', cursor: 'c1' });
     expect(seen).toEqual([{ method: 'GET', url: 'https://api.example/v1/admin/personas?empresa=acme&cursor=c1', body: null, authorization: 'Bearer token-ana' }]);
     expect(r).toEqual({ kind: 'ok', value: {
-      people: [{ email: 'bea@otra.com', company: { id: 'otra-000002', name: 'Otra' }, role: null, isAdmin: true, status: 'invited', invitedAt: 'a', acceptedAt: null }],
+      people: [{ email: 'bea@otra.com', company: { id: 'otra-000002', name: 'Otra', kind: 'company' }, role: null, isAdmin: true, status: 'invited', invitedAt: 'a', acceptedAt: null }],
       next: 'c2',
-      companies: [{ id: 'otra-000002', name: 'Otra', hasTeam: true }, { id: 'webinar-000003', name: 'Webinar', hasTeam: false }],
+      companies: [{ id: 'otra-000002', name: 'Otra', kind: 'company' }, { id: 'webinar-000003', name: 'Webinar', kind: 'personal' }],
       onlySome: true,
     } });
   });
 
   test('la búsqueda que encuentra: cada persona con su empresa y su estado traducido, y si hubo más', async () => {
     const { api } = apiAnswering(() => Response.json({
-      personas: [{ correo: 'beto@acme.com', empresa: { id: 'acme-000001', nombre: 'Acme' }, rol: 'ventas', admin: false, estado: 'en-pausa', invitadoEl: 'a', aceptadoEl: null }],
+      personas: [{ correo: 'beto@acme.com', empresa: { id: 'acme-000001', nombre: 'Acme', tipo: 'personal' }, rol: 'ventas', admin: false, estado: 'en-pausa', invitadoEl: 'a', aceptadoEl: null }],
       hayMas: true, soloAlgunas: false,
     }));
     expect(await api.searchPeople('t', { text: 'beto', company: '' })).toEqual({ kind: 'ok', value: {
-      people: [{ email: 'beto@acme.com', company: { id: 'acme-000001', name: 'Acme' }, role: 'ventas', isAdmin: false, status: 'paused', invitedAt: 'a', acceptedAt: null }],
+      people: [{ email: 'beto@acme.com', company: { id: 'acme-000001', name: 'Acme', kind: 'personal' }, role: 'ventas', isAdmin: false, status: 'paused', invitedAt: 'a', acceptedAt: null }],
       hasMore: true,
       onlySome: false,
     } });
