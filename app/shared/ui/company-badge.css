@@ -7,5 +7,9 @@
 .ent b { display: block; font-size: 14px; }
 .ent small { display: block; color: var(--muted); font-family: var(--mono); font-size: 11px; }
 .logo svg { width: 16px; height: 16px; }
+/* La chica: del alto de una insignia de texto (`.badge`), para que la fila no crezca. */
+.ent--sm { gap: 8px; min-width: 0; }
+.ent--sm .logo { width: 22px; height: 22px; border-radius: 6px; font-size: 9.5px; }
+.ent--sm b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .logo--c0 { background: #1567D6; } .logo--c1 { background: #0B6B47; } .logo--c2 { background: #5B4BD6; } .logo--c3 { background: #B0543A; }
 .logo--c4 { background: #0E7490; } .logo--c5 { background: #9A3412; } .logo--c6 { background: #4338CA; } .logo--c7 { background: #047857; }

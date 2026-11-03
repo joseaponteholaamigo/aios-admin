@@ -23,7 +23,7 @@ export function ClientUsersTable({ people, emptyMessage }: { people: ClientUser[
                 <td>
                   {person.company.kind === 'personal'
                     ? <Link className="badge accent" to={`/client-users/${person.company.id}`}>Cuenta personal</Link>
-                    : <CompanyBadge id={person.company.id} name={person.company.name} to={`/client-users/${person.company.id}`} />}
+                    : <CompanyBadge id={person.company.id} name={person.company.name} to={`/client-users/${person.company.id}`} size="sm" />}
                 </td>
                 <td className="small">{roleLabel(person)}</td>
                 <td><span className={badgeClass(status.tone)}>{status.text}</span></td>

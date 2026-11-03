@@ -96,7 +96,11 @@ describe('Usuarios de clientes', () => {
     expect(html).not.toContain('Webinar 20261028');
   });
 
-  test('una persona de una empresa sigue mostrando el nombre de la empresa', () => {
-    expect(render(ClientUsersTable, { people: [persona('company')], emptyMessage: '' })).toContain('Auteco');
+  test('una persona de una empresa muestra el nombre de la empresa en una sola línea, con el id al pasar el mouse', () => {
+    const html = render(ClientUsersTable, { people: [persona('company')], emptyMessage: '' });
+    expect(html).toContain('class="ent ent--sm"');
+    expect(html).toContain('title="webinar-c1-0000a1"');
+    expect(html).toContain('<b>Auteco</b>');
+    expect(html).not.toContain('<small>webinar-c1-0000a1</small>');
   });
 });
