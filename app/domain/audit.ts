@@ -1,4 +1,5 @@
 // La auditoría del equipo, como la ve Gobernanza (M2a).
+import type { PageInfo } from './pagination';
 
 export type AuditEvent = {
   at: string;
@@ -12,4 +13,4 @@ export type AuditEvent = {
   after: unknown;
 };
 
-export type AuditPage = { events: AuditEvent[]; next: string | null; onlySome: boolean };
+export type AuditPage = { events: AuditEvent[]; page: PageInfo; onlySome: boolean };

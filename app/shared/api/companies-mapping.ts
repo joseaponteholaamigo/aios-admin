@@ -5,6 +5,7 @@ import type {
 } from '../../domain/companies';
 import { asArray, asRecord, num, numOrNull, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
 import { toAccountKind, toSeatStatus } from './client-users-mapping';
+import { toPageInfo } from './page-mapping';
 
 const CONTENT_FROM_API: Record<string, ContentBase> = { todo: 'everything', free: 'free', nada: 'nothing' };
 const ACTION_FROM_API: Record<string, AccessRule['action']> = { dar: 'grant', quitar: 'remove' };
@@ -77,9 +78,10 @@ function toAccountCounts(raw: unknown): AccountCounts {
 
 export function toCompaniesPage(body: unknown, log: Log): CompaniesPage {
   const b = asRecord(body, 'la lista de empresas');
+  const companies = asArray(b.clientes, 'clientes').map((c) => toCompany(c, log));
   return {
-    companies: asArray(b.clientes, 'clientes').map((c) => toCompany(c, log)),
-    next: strOrNull(b.siguiente),
+    companies,
+    page: toPageInfo(b.paginacion, companies.length),
     counts: toAccountCounts(b.conteo),
     onlySome: b.soloAlgunas !== false,
   };

@@ -7,7 +7,7 @@ import { CompanyBadge } from '../../../shared/ui/company-badge';
 import { formatDate } from '../../../shared/ui/format';
 import { badgeClass, roleLabel, seatStatusLabel } from '../client-user-labels';
 
-/** `emptyMessage`: qué decir sin nadie, que depende del filtro y de la página (`emptyListMessage`). */
+/** `emptyMessage`: qué decir sin nadie, que depende del filtro y del total de la lista (`emptyListMessage`). */
 export function ClientUsersTable({ people, emptyMessage }: { people: ClientUser[]; emptyMessage: string }) {
   if (people.length === 0) return <p className="empty">{emptyMessage}</p>;
   return (

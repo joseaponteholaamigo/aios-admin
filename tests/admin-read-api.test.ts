@@ -28,14 +28,15 @@ const EMPRESA = {
 };
 
 describe('las empresas', () => {
-  test('la lista: pide con el tipo, el plan y el cursor en los nombres del backend, y traduce cada campo y el conteo', async () => {
+  test('la lista: pide con el tipo, el plan y la página en los nombres del backend, y traduce cada campo, la página y el conteo', async () => {
     const conteo = {
       empresas: { total: 15, planes: { free: 1, pro: 2, team: 5, personalizado: 7 } },
       personales: { total: 381, planes: { free: 0, pro: 4, team: 0, personalizado: 377 } },
     };
-    const { api, seen } = apiAnswering(() => Response.json({ clientes: [EMPRESA], siguiente: 'c2', conteo, soloAlgunas: true }));
-    const r = await api.listCompanies('token-ana', { kind: 'company', plan: 'custom', cursor: 'c1' });
-    expect(seen).toEqual([{ method: 'GET', url: 'https://api.example/v1/admin/clientes?tipo=empresa&plan=personalizado&cursor=c1', body: null, authorization: 'Bearer token-ana' }]);
+    const paginacion = { pagina: 2, paginas: 8, total: 377, porPagina: 50 };
+    const { api, seen } = apiAnswering(() => Response.json({ clientes: [EMPRESA], paginacion, conteo, soloAlgunas: true }));
+    const r = await api.listCompanies('token-ana', { kind: 'company', plan: 'custom', page: 2 });
+    expect(seen).toEqual([{ method: 'GET', url: 'https://api.example/v1/admin/clientes?tipo=empresa&plan=personalizado&pagina=2', body: null, authorization: 'Bearer token-ana' }]);
     expect(r).toEqual({
       kind: 'ok',
       value: {
@@ -44,7 +45,7 @@ describe('las empresas', () => {
           expiry: { expired: false, expiredBy: null, until: '2026-12-31' }, notice: null,
           seats: { used: 2, cap: 5 }, admins: 1, paysWithStripe: true, createdAt: '2026-10-01T00:00:00.000Z',
         }],
-        next: 'c2',
+        page: { page: 2, pages: 8, total: 377, perPage: 50 },
         counts: {
           companies: { total: 15, plans: { free: 1, pro: 2, team: 5, custom: 7 } },
           personal: { total: 381, plans: { free: 0, pro: 4, team: 0, custom: 377 } },
@@ -56,14 +57,14 @@ describe('las empresas', () => {
 
   test('una cuenta personal llega con su persona y su estado traducido', async () => {
     const persona = { correo: 'maria@gmail.com', estado: 'activo', invitadoEl: 'a', aceptadoEl: 'b' };
-    const { api, seen } = apiAnswering(() => Response.json({ clientes: [{ ...EMPRESA, tipo: 'personal', persona }], siguiente: null, soloAlgunas: false }));
+    const { api, seen } = apiAnswering(() => Response.json({ clientes: [{ ...EMPRESA, tipo: 'personal', persona }], soloAlgunas: false }));
     const r = await api.listCompanies('t', { kind: 'personal', plan: null });
     expect(seen[0]?.url).toBe('https://api.example/v1/admin/clientes?tipo=personal');
     expect(r.kind === 'ok' && r.value.companies[0]).toMatchObject({ kind: 'personal', person: { email: 'maria@gmail.com', status: 'active', invitedAt: 'a', acceptedAt: 'b' } });
   });
 
   test('sin conteo (el backend de antes), cada número es cero y la lista no se rompe', async () => {
-    const { api } = apiAnswering(() => Response.json({ clientes: [], siguiente: null, soloAlgunas: false }));
+    const { api } = apiAnswering(() => Response.json({ clientes: [], soloAlgunas: false }));
     const r = await api.listCompanies('t', { kind: 'company', plan: null });
     expect(r.kind === 'ok' && r.value.counts.personal).toEqual({ total: 0, plans: { free: 0, pro: 0, team: 0, custom: 0 } });
   });
@@ -120,7 +121,7 @@ describe('las empresas', () => {
   });
 
   test('un campo que el panel no conoce se ignora y queda en el log, sin romper', async () => {
-    const { api, logs } = apiAnswering(() => Response.json({ clientes: [{ ...EMPRESA, campoNuevo: 1 }], siguiente: null, soloAlgunas: false }));
+    const { api, logs } = apiAnswering(() => Response.json({ clientes: [{ ...EMPRESA, campoNuevo: 1 }], soloAlgunas: false }));
     const r = await api.listCompanies('t', { kind: 'company', plan: null });
     expect(r.kind).toBe('ok');
     expect(logs.some((l) => l.includes('campoNuevo'))).toBe(true);
@@ -140,24 +141,24 @@ describe('las personas', () => {
   });
 
   test('solo las cuentas personales: la lista pide `tipo=personal` y la búsqueda lo manda en el cuerpo', async () => {
-    const { api, seen } = apiAnswering(() => Response.json({ personas: [], hayMas: false, siguiente: null, soloAlgunas: false }));
-    await api.listClientUsers('t', { company: '', kind: 'personal', cursor: null });
+    const { api, seen } = apiAnswering(() => Response.json({ personas: [], hayMas: false, soloAlgunas: false }));
+    await api.listClientUsers('t', { company: '', kind: 'personal', page: 1 });
     await api.searchPeople('t', { text: 'ana', company: '', kind: 'personal' });
     expect(seen[0]?.url).toBe('https://api.example/v1/admin/personas?tipo=personal');
     expect(seen[1]?.body).toBe('{"texto":"ana","empresa":"","tipo":"personal"}');
   });
 
-  test('la lista: pide con el filtro de empresa y el cursor, y trae cada persona con su empresa y su estado traducido', async () => {
+  test('la lista: pide con el filtro de empresa y la página, y trae cada persona con su empresa y su estado traducido', async () => {
     const { api, seen } = apiAnswering(() => Response.json({
       personas: [{ correo: 'bea@otra.com', empresa: { id: 'otra-000002', nombre: 'Otra', tipo: 'empresa' }, rol: null, admin: true, estado: 'invitado', invitadoEl: 'a', aceptadoEl: null }],
-      siguiente: 'c2', soloAlgunas: true,
+      paginacion: { pagina: 3, paginas: 3, total: 101, porPagina: 50 }, soloAlgunas: true,
       empresas: [{ id: 'otra-000002', nombre: 'Otra', tipo: 'empresa', equipo: true }, { id: 'webinar-000003', nombre: 'Webinar', tipo: 'personal', equipo: false }],
     }));
-    const r = await api.listClientUsers('token-ana', { company: 'acme', cursor: 'c1' });
-    expect(seen).toEqual([{ method: 'GET', url: 'https://api.example/v1/admin/personas?empresa=acme&cursor=c1', body: null, authorization: 'Bearer token-ana' }]);
+    const r = await api.listClientUsers('token-ana', { company: 'acme', page: 3 });
+    expect(seen).toEqual([{ method: 'GET', url: 'https://api.example/v1/admin/personas?empresa=acme&pagina=3', body: null, authorization: 'Bearer token-ana' }]);
     expect(r).toEqual({ kind: 'ok', value: {
       people: [{ email: 'bea@otra.com', company: { id: 'otra-000002', name: 'Otra', kind: 'company' }, role: null, isAdmin: true, status: 'invited', invitedAt: 'a', acceptedAt: null }],
-      next: 'c2',
+      page: { page: 3, pages: 3, total: 101, perPage: 50 },
       companies: [{ id: 'otra-000002', name: 'Otra', kind: 'company' }, { id: 'webinar-000003', name: 'Webinar', kind: 'personal' }],
       onlySome: true,
     } });
@@ -204,13 +205,23 @@ describe('las personas', () => {
 });
 
 describe('la auditoría y el equipo', () => {
-  test('la auditoría: pide con el objetivo y el cursor, y traduce cada evento', async () => {
+  test('la auditoría: pide con el objetivo, sin página la primera, y traduce cada evento', async () => {
     const { api, seen } = apiAnswering(() => Response.json({ eventos: [
       { fecha: 'f', actor: 'equipo:jose', canal: 'api', operacion: 'equipo.alta', objetivo: 'equipo#nati', motivo: 'm', antes: null, despues: null },
-    ], siguiente: null, soloAlgunas: true }));
-    const r = await api.listAuditEvents('t', { target: 'equipo#nati', cursor: 'c1' });
-    expect(seen[0]?.url).toBe('https://api.example/v1/admin/auditoria?objetivo=equipo%23nati&cursor=c1');
-    expect(r).toEqual({ kind: 'ok', value: { events: [{ at: 'f', actor: 'equipo:jose', channel: 'api', operation: 'equipo.alta', target: 'equipo#nati', reason: 'm', before: null, after: null }], next: null, onlySome: true } });
+    ], paginacion: { pagina: 1, paginas: 1, total: 1, porPagina: 50 }, soloAlgunas: true }));
+    const r = await api.listAuditEvents('t', { target: 'equipo#nati', page: 1 });
+    expect(seen[0]?.url).toBe('https://api.example/v1/admin/auditoria?objetivo=equipo%23nati');
+    expect(r).toEqual({ kind: 'ok', value: {
+      events: [{ at: 'f', actor: 'equipo:jose', channel: 'api', operation: 'equipo.alta', target: 'equipo#nati', reason: 'm', before: null, after: null }],
+      page: { page: 1, pages: 1, total: 1, perPage: 50 },
+      onlySome: true,
+    } });
+  });
+
+  test('la auditoría: una página después de la primera viaja como `pagina`', async () => {
+    const { api, seen } = apiAnswering(() => Response.json({ eventos: [], paginacion: { pagina: 3, paginas: 4, total: 160, porPagina: 50 }, soloAlgunas: false }));
+    await api.listAuditEvents('t', { target: null, page: 3 });
+    expect(seen[0]?.url).toBe('https://api.example/v1/admin/auditoria?pagina=3');
   });
 
   test('el equipo: cada persona con la forma de /yo', async () => {

@@ -6,6 +6,7 @@ import type {
 } from '../../domain/client-users';
 import type { AccountKind } from '../../domain/companies';
 import { asArray, asRecord, num, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
+import { toPageInfo } from './page-mapping';
 
 const SEAT_STATUS_FROM_API: Record<string, SeatStatus> = { activo: 'active', invitado: 'invited', 'en-pausa': 'paused', revocado: 'revoked' };
 const ROLE_BASE_FROM_API: Record<string, RoleBase> = { empresa: 'company', nada: 'nothing' };
@@ -111,9 +112,10 @@ function toClientUser(raw: unknown, log: Log): ClientUser {
 
 export function toClientUsersPage(body: unknown, log: Log): ClientUsersPage {
   const b = asRecord(body, 'la lista de personas');
+  const people = asArray(b.personas, 'personas').map((p) => toClientUser(p, log));
   return {
-    people: asArray(b.personas, 'personas').map((p) => toClientUser(p, log)),
-    next: strOrNull(b.siguiente),
+    people,
+    page: toPageInfo(b.paginacion, people.length),
     companies: asArray(b.empresas ?? [], 'empresas').map((raw) => {
       const c = asRecord(raw, 'una empresa del filtro');
       return { id: str(c.id, 'empresa.id'), name: str(c.nombre, 'empresa.nombre'), kind: toAccountKind(c.tipo) };

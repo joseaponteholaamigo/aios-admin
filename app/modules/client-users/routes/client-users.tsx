@@ -5,7 +5,7 @@
 //
 // El filtro viaja en la dirección: la lista filtrada se puede recargar y compartir. El texto de la
 // búsqueda va al servidor por POST, y en la barra del navegador solo después del `#`
-// (`use-background-search.ts`). El cursor de la lista no lleva ningún correo.
+// (`use-background-search.ts`). La página viaja por su número, que no lleva ningún correo.
 import { Link, useNavigate, useSearchParams, type ShouldRevalidateFunctionArgs } from 'react-router';
 import { z } from 'zod';
 import type { Route } from './+types/client-users';
@@ -14,9 +14,11 @@ import { fromAdminApi } from '../../../shared/api/admin-loader.server';
 import { FilterNotice } from '../../../shared/layout/filter-notice';
 import { ModuleError } from '../../../shared/layout/module-error';
 import { PageHeader } from '../../../shared/layout/page-header';
+import { pageFrom } from '../../../shared/routing/page-param';
 import { MAX_SEARCH_LENGTH, searchQuery, searchScope, useBackgroundSearch } from '../../../shared/search/use-background-search';
 import { Pager } from '../../../shared/ui/pager';
 import { emptyListMessage, type ListFilter } from '../client-user-labels';
+import { clientUsersHref } from '../client-users-href';
 import { ClientUsersFilters, type CompanyChoice } from '../components/client-users-filters';
 import { ClientUsersTable } from '../components/client-users-table';
 import { SearchResults } from '../components/search-results';
@@ -35,8 +37,8 @@ function filterFrom(params: URLSearchParams) {
 export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const { company, kind } = filterFrom(url.searchParams);
-  const cursor = url.searchParams.get('cursor');
-  return fromAdminApi({ request, context }, (api, token) => api.listClientUsers(token, { company, kind, cursor }));
+  const page = pageFrom(url.searchParams);
+  return fromAdminApi({ request, context }, (api, token) => api.listClientUsers(token, { company, kind, page }));
 }
 
 /** Buscar no cambia la lista: no hace falta volver a pedirla después de cada búsqueda. */
@@ -57,18 +59,12 @@ export async function action({ request, context }: Route.ActionArgs) {
   return { text, scope, result };
 }
 
-/** La dirección de una elección de la lista desplegable, con lo que se le agregue (el cursor). */
-function hrefOf(choice: CompanyChoice, extra: Record<string, string> = {}) {
-  const filter: Record<string, string> = choice.kind === 'personal' ? { kind: 'personal' } : choice.kind === 'company' ? { company: choice.id } : {};
-  return `?${new URLSearchParams({ ...filter, ...extra })}`;
-}
-
 export default function ClientUsers({ loaderData }: Route.ComponentProps) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { company, kind } = filterFrom(params);
   const search = useBackgroundSearch<PeopleSearch>({ company, kind: kind ?? '' });
-  const { people, next, companies, onlySome } = loaderData;
+  const { people, page, companies, onlySome } = loaderData;
   const chosen = companies.find((c) => c.id === company);
   const choice: CompanyChoice = kind ? { kind: 'personal' } : company ? { kind: 'company', id: company } : { kind: 'all' };
   const filter: ListFilter = kind ? { kind: 'personal' } : !company ? { kind: 'all' } : chosen ? { kind: 'company', name: chosen.name } : { kind: 'unknown-company' };
@@ -87,20 +83,16 @@ export default function ClientUsers({ loaderData }: Route.ComponentProps) {
         <div className="card-h"><div><h2>Personas</h2><p>Ordenadas por correo: las que hoy tienen un asiento (activas, invitadas o en pausa).</p></div></div>
         <ClientUsersFilters
           companies={companies} choice={choice} text={search.text}
-          onTextChange={search.setText} onChoiceChange={(c) => navigate(hrefOf(c))}
+          onTextChange={search.setText} onChoiceChange={(c) => navigate(clientUsersHref(c))}
           onClearAll={() => { search.setText(''); navigate('?'); }}
         />
         <div className="card-b">
           {state.kind === 'idle'
-            ? <ClientUsersTable people={people} emptyMessage={emptyListMessage(filter, params.has('cursor'))} />
+            ? <ClientUsersTable people={people} emptyMessage={emptyListMessage(filter, page)} />
             : <SearchResults state={state} query={searchQuery(search.text)} within={within} onlySome={onlySome} />}
         </div>
         {state.kind === 'idle' && (
-          <Pager
-            shown={`${people.length} persona${people.length === 1 ? '' : 's'}${within ?? ''} en esta página`}
-            firstHref={params.get('cursor') ? hrefOf(choice) : null}
-            nextHref={next ? hrefOf(choice, { cursor: next }) : null}
-          />
+          <Pager page={page} of={`${page.total} persona${page.total === 1 ? '' : 's'}${within ?? ''}`} hrefOf={(n) => clientUsersHref(choice, n)} />
         )}
       </section>
     </>

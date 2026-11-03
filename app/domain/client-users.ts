@@ -1,5 +1,6 @@
 // Las personas de los clientes y la revisión de datos, como las ve el panel (M2a).
 import type { AccountKind } from './companies';
+import type { PageInfo } from './pagination';
 
 export type ItemCounts = { skills: number; agents: number; chains: number };
 
@@ -61,7 +62,7 @@ export type ClientUser = SeatCard & { company: { id: string; name: string; kind:
 /** Una cuenta en el filtro de la lista: una empresa, o una cuenta personal (que se agrupan en una sola opción). */
 export type CompanyOption = { id: string; name: string; kind: AccountKind };
 
-export type ClientUsersPage = { people: ClientUser[]; next: string | null; companies: CompanyOption[]; onlySome: boolean };
+export type ClientUsersPage = { people: ClientUser[]; page: PageInfo; companies: CompanyOption[]; onlySome: boolean };
 
 /** Las personas cuyo correo contiene un texto. `hasMore`: hubo más que las que vinieron. */
 export type PeopleSearch = { people: ClientUser[]; hasMore: boolean; onlySome: boolean };

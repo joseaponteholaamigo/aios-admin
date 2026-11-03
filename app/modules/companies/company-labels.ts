@@ -58,11 +58,10 @@ const KIND_NAMES: Record<AccountKind, { one: string; many: string; none: string 
 export const countOf = (kind: AccountKind, n: number) => `${n} ${n === 1 ? KIND_NAMES[kind].one : KIND_NAMES[kind].many}`;
 
 /**
- * Qué dice la lista cuando no trae ninguna cuenta: con un plan elegido, que nadie lo tiene; fuera de
- * la primera página, que la lista terminó.
+ * Qué dice la lista cuando no trae ninguna cuenta: con un plan elegido, que nadie lo tiene. Una
+ * página después de la última no llega vacía: el backend da la última.
  */
-export function emptyAccountsMessage(kind: AccountKind, plan: ListPlan | null, laterPage: boolean): string {
-  if (laterPage) return `En esta página no quedan ${KIND_NAMES[kind].many}.`;
+export function emptyAccountsMessage(kind: AccountKind, plan: ListPlan | null): string {
   if (plan) return `${KIND_NAMES[kind].none} tiene el plan ${planLabel(plan).text}.`;
   return `Todavía no hay ${KIND_NAMES[kind].many} para mostrar.`;
 }

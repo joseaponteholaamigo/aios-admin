@@ -3,7 +3,7 @@
 //   · no existe (404)          → la página dice «Esa empresa no existe o no está disponible»
 //   · sin permiso (403)        → la página de permiso negado, sin tocar la sesión
 //   · la sesión no sirve (401) → se borra la sesión y va a «sin acceso», igual que un rechazo de `/yo`
-//   · pedido inválido (400/422)→ «Ese enlace ya no sirve» (un cursor viejo)
+//   · pedido inválido (400/422)→ «Ese enlace ya no sirve» (un filtro que ya no existe)
 //   · no responde, 5xx o 429   → un error con «Volver a intentar», sin tocar la sesión
 //
 // Las respuestas de error van como `data(...)` lanzado: las pinta el `ErrorBoundary` de la ruta,

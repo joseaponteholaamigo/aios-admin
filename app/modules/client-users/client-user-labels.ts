@@ -1,5 +1,6 @@
 // Cómo se nombran el estado de un asiento y lo que ve una persona, en las palabras de «Mi equipo».
 import type { ClientRole, ItemCounts, PersonSees } from '../../domain/client-users';
+import type { PageInfo } from '../../domain/pagination';
 
 export { badgeClass } from '../../shared/ui/badge';
 export { seatStatusLabel } from '../../shared/labels/seat-status-labels';
@@ -8,11 +9,11 @@ export { seatStatusLabel } from '../../shared/labels/seat-status-labels';
 export type ListFilter = { kind: 'all' } | { kind: 'company'; name: string } | { kind: 'unknown-company' } | { kind: 'personal' };
 
 /**
- * Qué dice la lista cuando no trae a nadie. Fuera de la primera página no quiere decir que no haya
- * nadie: esas entradas estaban muertas (las muestra la revisión de datos), o la lista ya terminó.
+ * Qué dice la lista cuando no trae a nadie. Con un total, la lista no está vacía: se pagina el índice
+ * de correos, y las entradas de esta página no tienen asiento (las muestra la revisión de datos).
  */
-export function emptyListMessage(filter: ListFilter, laterPage: boolean): string {
-  if (laterPage) return 'En esta página no quedan personas vigentes.';
+export function emptyListMessage(filter: ListFilter, page: PageInfo): string {
+  if (page.total > 0) return 'En esta página no quedan personas vigentes: sus entradas no tienen asiento (las muestra la revisión de datos).';
   if (filter.kind === 'unknown-company') return 'Esa empresa no está entre las que el panel muestra.';
   if (filter.kind === 'company') return `${filter.name} no tiene personas activas, invitadas ni en pausa.`;
   if (filter.kind === 'personal') return 'Ninguna cuenta personal tiene personas activas, invitadas ni en pausa.';

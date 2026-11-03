@@ -3,7 +3,8 @@
 // M2a). Los filtros se aplican solos, como en Usuarios de clientes, y la búsqueda ocupa el lugar de
 // la lista mientras tiene texto.
 //
-// La pestaña, el plan y el cursor viajan en la dirección: cada página se puede compartir y recargar.
+// La pestaña, el plan y el número de página viajan en la dirección: cada página se puede compartir y
+// recargar (spec «Paginación numerada», CA-8).
 // El texto va al servidor por POST, y en la barra del navegador solo después del `#`
 // (`use-background-search.ts`): en las cuentas personales se busca por correo.
 import { useNavigate, useSearchParams, type ShouldRevalidateFunctionArgs } from 'react-router';
@@ -14,8 +15,10 @@ import { fromAdminApi } from '../../../shared/api/admin-loader.server';
 import { FilterNotice } from '../../../shared/layout/filter-notice';
 import { ModuleError } from '../../../shared/layout/module-error';
 import { PageHeader } from '../../../shared/layout/page-header';
+import { pageFrom } from '../../../shared/routing/page-param';
 import { MAX_SEARCH_LENGTH, searchQuery, searchScope, useBackgroundSearch } from '../../../shared/search/use-background-search';
 import { Pager } from '../../../shared/ui/pager';
+import { companiesHref } from '../companies-href';
 import { countOf, emptyAccountsMessage } from '../company-labels';
 import { CompaniesFilters } from '../components/companies-filters';
 import { CompaniesSearchResults } from '../components/companies-search-results';
@@ -34,17 +37,11 @@ function filtersFrom(params: URLSearchParams): { kind: AccountKind; plan: ListPl
   return { kind: params.get('kind') === 'personal' ? 'personal' : 'company', plan: isListPlan(plan) ? plan : null };
 }
 
-/** La dirección de una pestaña con su plan y, si se pasa, su cursor. */
-function hrefOf({ kind, plan }: { kind: AccountKind; plan: ListPlan | null }, cursor?: string) {
-  const params = { ...(kind === 'personal' ? { kind } : {}), ...(plan ? { plan } : {}), ...(cursor ? { cursor } : {}) };
-  return `/companies?${new URLSearchParams(params)}`;
-}
-
 export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const { kind, plan } = filtersFrom(url.searchParams);
-  const cursor = url.searchParams.get('cursor');
-  return fromAdminApi({ request, context }, (api, token) => api.listCompanies(token, { kind, plan, cursor }));
+  const page = pageFrom(url.searchParams);
+  return fromAdminApi({ request, context }, (api, token) => api.listCompanies(token, { kind, plan, page }));
 }
 
 /** Buscar no cambia la lista: no hace falta volver a pedirla después de cada búsqueda. */
@@ -71,8 +68,8 @@ export default function Companies({ loaderData }: Route.ComponentProps) {
   const filters = filtersFrom(params);
   const { kind, plan } = filters;
   const search = useBackgroundSearch<CompaniesSearch>({ kind, plan: plan ?? '' }, kind);
-  const { companies, next, counts, onlySome } = loaderData;
-  const emptyMessage = emptyAccountsMessage(kind, plan, params.has('cursor'));
+  const { companies, page, counts, onlySome } = loaderData;
+  const emptyMessage = emptyAccountsMessage(kind, plan);
   const { state } = search;
   return (
     <>
@@ -86,8 +83,8 @@ export default function Companies({ loaderData }: Route.ComponentProps) {
       <section className="card">
         <CompaniesFilters
           kind={kind} counts={kind === 'personal' ? counts.personal : counts.companies} plan={plan} text={search.text}
-          onTextChange={search.setText} onPlanChange={(p) => navigate(hrefOf({ kind, plan: p }))}
-          onClearAll={() => { search.setText(''); navigate(hrefOf({ kind, plan: null })); }}
+          onTextChange={search.setText} onPlanChange={(p) => navigate(companiesHref({ kind, plan: p }))}
+          onClearAll={() => { search.setText(''); navigate(companiesHref({ kind, plan: null })); }}
         />
         <div className="card-b">
           {state.kind !== 'idle'
@@ -97,11 +94,7 @@ export default function Companies({ loaderData }: Route.ComponentProps) {
               : <CompaniesTable companies={companies} emptyMessage={emptyMessage} />}
         </div>
         {state.kind === 'idle' && (
-          <Pager
-            shown={`${countOf(kind, companies.length)} en esta página`}
-            firstHref={params.get('cursor') ? hrefOf(filters) : null}
-            nextHref={next ? hrefOf(filters, next) : null}
-          />
+          <Pager page={page} of={countOf(kind, page.total)} hrefOf={(n) => companiesHref(filters, n)} />
         )}
       </section>
     </>
