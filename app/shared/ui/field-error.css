@@ -1,0 +1,2 @@
+/* El error de un campo: en el color de lo que está mal, debajo del campo. */
+.field .field-error { color: var(--bad); font-size: 12px; }

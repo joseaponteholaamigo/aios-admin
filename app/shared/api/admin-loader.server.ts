@@ -22,7 +22,21 @@ import { TeamMemberContractError } from './team-member-mapping';
 /** Por qué una pantalla no pudo cargar: lo lee `ModuleError` para decir qué pasó. */
 export type ModuleErrorReason = 'not-found' | 'forbidden' | 'invalid' | 'unavailable';
 
-const fail = (reason: ModuleErrorReason, status: number) => data({ reason }, { status });
+/** La respuesta que pinta `ModuleError`, para lanzarla. */
+export const fail = (reason: ModuleErrorReason, status: number) => data({ reason }, { status });
+
+/** Cierra la sesión y manda a «sin acceso»: lo que se hace cuando la API rechaza el token (401). Para lanzarla. */
+export async function signOutToNoAccess(request: Request, sessions: () => SessionService, log: (m: string) => void) {
+  log('La API de admin rechazó el token de la sesión (401): se cierra la sesión');
+  const { cookie } = await sessions().destroy(request);
+  return redirect(NO_ACCESS_PATH, { headers: { 'Set-Cookie': cookie } });
+}
+
+/** Lo que dice el log cuando la API no dio una respuesta usable. `null` si el error es de otra cosa. */
+export function unusableAnswer(e: unknown): string | null {
+  const known = e instanceof AdminApiUnavailableError || e instanceof ApiContractError || e instanceof TeamMemberContractError;
+  return known ? `La API de admin no dio una respuesta usable: ${(e as Error).message}` : null;
+}
 
 type Deps = { api?: () => AdminReadApi; sessions?: () => SessionService; log?: (message: string) => void };
 
@@ -41,21 +55,16 @@ export async function fromAdminApi<T>(
   try {
     result = await call(api(), session.tokens.accessToken);
   } catch (e) {
-    if (e instanceof AdminApiUnavailableError || e instanceof ApiContractError || e instanceof TeamMemberContractError) {
-      log(`La API de admin no dio una respuesta usable: ${e.message}`);
-      throw fail('unavailable', 503);
-    }
-    throw e;
+    const unusable = unusableAnswer(e);
+    if (!unusable) throw e;
+    log(unusable);
+    throw fail('unavailable', 503);
   }
   switch (result.kind) {
     case 'ok': return result.value;
     case 'not-found': throw fail('not-found', 404);
     case 'forbidden': throw fail('forbidden', 403);
     case 'invalid': throw fail('invalid', 400);
-    case 'unauthorized': {
-      log('La API de admin rechazó el token de la sesión (401): se cierra la sesión');
-      const { cookie } = await sessions().destroy(request);
-      throw redirect(NO_ACCESS_PATH, { headers: { 'Set-Cookie': cookie } });
-    }
+    case 'unauthorized': throw await signOutToNoAccess(request, sessions, log);
   }
 }

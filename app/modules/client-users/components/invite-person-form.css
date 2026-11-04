@@ -1,0 +1,9 @@
+/* El formulario de invitar: dos columnas de campos, la casilla de admin y los botones al final. */
+
+.invite-person { display: grid; gap: 16px; max-width: 860px; }
+.invite-person__admin { padding-top: 0; }
+.invite-person__check { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); cursor: pointer; }
+.invite-person__check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.invite-person__actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+/* `.card-b > * + *` separa bloques apilados; en una grilla empujaría la segunda columna hacia abajo. */
+.invite-person .card-b.grid > * + * { margin-top: 0; }

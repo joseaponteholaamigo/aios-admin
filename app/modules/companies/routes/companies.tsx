@@ -7,14 +7,17 @@
 // recargar (spec «Paginación numerada», CA-8).
 // El texto va al servidor por POST, y en la barra del navegador solo después del `#`
 // (`use-background-search.ts`): en las cuentas personales se busca por correo.
-import { useNavigate, useSearchParams, type ShouldRevalidateFunctionArgs } from 'react-router';
+import { Link, useNavigate, useSearchParams, type ShouldRevalidateFunctionArgs } from 'react-router';
 import { z } from 'zod';
 import type { Route } from './+types/companies';
 import { LIST_PLANS, isListPlan, type AccountKind, type CompaniesSearch, type ListPlan } from '../../../domain/companies';
+import { can } from '../../../domain/permissions';
+import { teamMemberContext } from '../../../middleware/permissions.server';
 import { fromAdminApi } from '../../../shared/api/admin-loader.server';
 import { FilterNotice } from '../../../shared/layout/filter-notice';
 import { ModuleError } from '../../../shared/layout/module-error';
 import { PageHeader } from '../../../shared/layout/page-header';
+import { Icon } from '../../../shared/icons/icon';
 import { pageFrom } from '../../../shared/routing/page-param';
 import { MAX_SEARCH_LENGTH, searchQuery, searchScope, useBackgroundSearch } from '../../../shared/search/use-background-search';
 import { Pager } from '../../../shared/ui/pager';
@@ -41,7 +44,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const { kind, plan } = filtersFrom(url.searchParams);
   const page = pageFrom(url.searchParams);
-  return fromAdminApi({ request, context }, (api, token) => api.listCompanies(token, { kind, plan, page }));
+  const list = await fromAdminApi({ request, context }, (api, token) => api.listCompanies(token, { kind, plan, page }));
+  const member = context.get(teamMemberContext);
+  // El botón de crear solo para quien puede (CA-16): esconder no protege, la ruta también lo pide.
+  return { ...list, canCreate: member ? can(member, 'companies', 'edit') : false };
 }
 
 /** Buscar no cambia la lista: no hace falta volver a pedirla después de cada búsqueda. */
@@ -68,7 +74,7 @@ export default function Companies({ loaderData }: Route.ComponentProps) {
   const filters = filtersFrom(params);
   const { kind, plan } = filters;
   const search = useBackgroundSearch<CompaniesSearch>({ kind, plan: plan ?? '' }, kind);
-  const { companies, page, counts, onlySome } = loaderData;
+  const { companies, page, counts, onlySome, canCreate } = loaderData;
   const emptyMessage = emptyAccountsMessage(kind, plan);
   const { state } = search;
   return (
@@ -77,6 +83,9 @@ export default function Companies({ loaderData }: Route.ComponentProps) {
         crumbs={[{ label: 'Administración' }, { label: 'Empresas' }]}
         title="Empresas"
         lead="Los clientes, con su plan, sus asientos y cuándo vence lo que pagaron. Las cuentas personales, de una persona sola, van en su propia pestaña."
+        actions={canCreate
+          ? <Link className="btn primary" to={kind === 'personal' ? '/companies/new?kind=personal' : '/companies/new'}><Icon name="plus" />{kind === 'personal' ? 'Nueva cuenta personal' : 'Nueva empresa'}</Link>
+          : undefined}
       />
       <FilterNotice onlySome={onlySome} />
       <CompanyTabs kind={kind} counts={counts} />

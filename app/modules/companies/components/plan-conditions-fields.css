@@ -1,0 +1,12 @@
+/* Las condiciones de un Personalizado: tres columnas de campos, las casillas y los cupos. */
+
+.plan-conditions { display: grid; gap: 16px; }
+.plan-conditions[hidden] { display: none; }
+.plan-conditions__fixed { font-size: 13.5px; color: var(--ink-2); padding: 9px 0; }
+.plan-conditions__checks { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+.plan-conditions__check { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); cursor: pointer; }
+.plan-conditions__check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.plan-conditions__quotas { border: 1px solid var(--line-2); border-radius: 12px; padding: 12px 16px 16px; }
+.plan-conditions__quotas legend { font-size: 12px; font-weight: 600; color: var(--ink-2); padding: 0 6px; }
+.plan-conditions .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 760px) { .plan-conditions .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

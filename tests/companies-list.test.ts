@@ -10,6 +10,8 @@ import { RouterContextProvider } from 'react-router';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { sessionContext } from '../app/middleware/session.server';
 import type { ActiveSession } from '../app/shared/session/session.server';
+import { teamMemberContext } from '../app/middleware/permissions.server';
+import type { TeamMember } from '../app/domain/permissions';
 
 const listCompanies = vi.fn();
 vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ listCompanies }) }));
@@ -19,11 +21,14 @@ const { companiesHref } = await import('../app/modules/companies/companies-href'
 
 const PAGE = { companies: [], page: { page: 1, pages: 1, total: 0, perPage: 50 }, onlySome: false, counts: { companies: { total: 0, plans: {} }, personal: { total: 0, plans: {} } } };
 
-function open(url: string) {
+function open(url: string, member: TeamMember | null = null) {
   const context = new RouterContextProvider();
   context.set(sessionContext, { sub: 'sub-ana', tokens: { accessToken: 'token-ana' } } as unknown as ActiveSession);
+  if (member) context.set(teamMemberContext, member);
   return loader({ request: new Request(url), context, params: {} } as never);
 }
+
+const conEmpresas = (level: 'view' | 'edit'): TeamMember => ({ actor: 'equipo:sub', email: null, name: null, isSuperadmin: false, status: 'active', permissions: { companies: level } });
 
 beforeEach(() => {
   listCompanies.mockReset();
@@ -63,6 +68,11 @@ describe('la lista de cuentas', () => {
     expect(companiesHref({ kind: 'personal', plan: 'pro' })).toBe('/companies?kind=personal&plan=pro');
     expect(companiesHref({ kind: 'personal', plan: 'pro' }, 3)).toBe('/companies?kind=personal&plan=pro&page=3');
     expect(companiesHref({ kind: 'company', plan: null }, 1)).toBe('/companies?');
+  });
+
+  test('⛔ CA-16 de M2b · el botón de crear solo aparece con «editar» en Empresas', async () => {
+    expect((await open('https://dxxxx.cloudfront.net/companies', conEmpresas('edit'))).canCreate).toBe(true);
+    expect((await open('https://dxxxx.cloudfront.net/companies', conEmpresas('view'))).canCreate).toBe(false);
   });
 
   test('buscar no vuelve a pedir la lista; cambiar de pestaña, de plan o de página sí', () => {

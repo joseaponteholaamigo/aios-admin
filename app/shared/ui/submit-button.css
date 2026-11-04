@@ -1,0 +1,6 @@
+/* El botón que manda un formulario: desactivado mientras trabaja, con un indicador que gira. */
+
+.submit-button[disabled] { cursor: progress; }
+.submit-button__spinner { width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: submit-button-gira .7s linear infinite; }
+@keyframes submit-button-gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .submit-button__spinner { animation-duration: 2s; } }

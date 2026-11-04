@@ -43,6 +43,8 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
     path: 'companies', file: 'modules/companies/routes/companies.tsx', access: { module: 'companies', level: 'view' },
     menu: { label: 'Empresas', group: 'administration', icon: 'empresas' },
   },
+  // Antes que `:companyId`: la tabla se lee en orden, y `new` no es una empresa.
+  { path: 'companies/new', file: 'modules/companies/routes/company-new.tsx', access: { module: 'companies', level: 'edit' } },
   { path: 'companies/:companyId', file: 'modules/companies/routes/company.tsx', access: { module: 'companies', level: 'view' } },
   {
     path: 'client-users', file: 'modules/client-users/routes/client-users.tsx', access: { module: 'clientUsers', level: 'view' },
@@ -51,6 +53,7 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   // Antes que `:companyId`: la tabla se lee en orden, y `checkup` no es una empresa.
   { path: 'client-users/checkup', file: 'modules/client-users/routes/checkup.tsx', access: { module: 'clientUsers', level: 'view' } },
   { path: 'client-users/:companyId', file: 'modules/client-users/routes/company-people.tsx', access: { module: 'clientUsers', level: 'view' } },
+  { path: 'client-users/:companyId/invite', file: 'modules/client-users/routes/invite-person.tsx', access: { module: 'clientUsers', level: 'edit' } },
   { path: 'team', file: 'modules/team/routes/team.tsx', access: 'superadmin', menu: { label: 'Equipo ensō', group: 'administration', icon: 'people' } },
   {
     path: 'governance', file: 'modules/governance/routes/governance.tsx', access: { module: 'governance', level: 'view' },

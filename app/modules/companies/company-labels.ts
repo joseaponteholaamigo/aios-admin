@@ -74,3 +74,22 @@ export function searchSummary(kind: AccountKind, query: string, plan: ListPlan |
   const more = found.hasMore ? ` Se muestran las primeras ${found.count}: escribe más para acotar.` : '';
   return `${countOf(kind, found.count)} con «${query}» ${where}${inPlan}.${more}`;
 }
+
+/** El aviso al volver de crear una cuenta, en la dirección: nunca lleva un correo (CB-5 de la spec de M2b). */
+const CREATED = 'creada';
+const CREATED_WITHOUT_EMAIL = 'creada-sin-correo';
+
+/** Lo que la creación le pone a la dirección de la ficha (CA-18). */
+export function createdNoticeParams({ invitationSent, movedFrom }: { invitationSent: boolean; movedFrom: string | null }) {
+  return new URLSearchParams({ aviso: invitationSent ? CREATED : CREATED_WITHOUT_EMAIL, ...(movedFrom ? { movida: '1' } : {}) });
+}
+
+/** Qué dice la ficha al llegar de crearla, o `null` si no viene de ahí. */
+export function createdNotice(params: URLSearchParams): string | null {
+  const notice = params.get('aviso');
+  if (notice !== CREATED && notice !== CREATED_WITHOUT_EMAIL) return null;
+  const text = notice === CREATED
+    ? 'Cuenta creada. Le enviamos la invitación a su admin.'
+    : 'Cuenta creada, pero el correo de invitación no salió: el admin puede entrar igual con su correo.';
+  return params.get('movida') === '1' ? `${text} Su cuenta personal anterior se borró.` : text;
+}

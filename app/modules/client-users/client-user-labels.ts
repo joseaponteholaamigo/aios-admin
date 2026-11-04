@@ -39,3 +39,22 @@ export function seesLabel(sees: PersonSees, roles: ClientRole[]): string {
 }
 
 export const countsLabel = (c: ItemCounts) => `${c.skills} skills · ${c.agents} agentes · ${c.chains} cadenas`;
+
+/** El aviso al volver de invitar, en la dirección: nunca lleva el correo (CB-5 de la spec de M2b). */
+const INVITED = 'invitada';
+const INVITED_WITHOUT_EMAIL = 'invitada-sin-correo';
+
+/** Lo que la invitación le pone a la dirección de las personas de la cuenta (CA-22). */
+export function invitedNoticeParams({ invitationSent, movedFrom }: { invitationSent: boolean; movedFrom: string | null }) {
+  return new URLSearchParams({ aviso: invitationSent ? INVITED : INVITED_WITHOUT_EMAIL, ...(movedFrom ? { movida: '1' } : {}) });
+}
+
+/** Qué dicen las personas de la cuenta al llegar de invitar, o `null` si no viene de ahí. */
+export function invitedNotice(params: URLSearchParams): string | null {
+  const notice = params.get('aviso');
+  if (notice !== INVITED && notice !== INVITED_WITHOUT_EMAIL) return null;
+  const text = notice === INVITED
+    ? 'Persona invitada. Le enviamos la invitación por correo.'
+    : 'Persona invitada, pero el correo de invitación no salió: puede entrar igual con su correo.';
+  return params.get('movida') === '1' ? `${text} Su cuenta personal anterior se borró.` : text;
+}

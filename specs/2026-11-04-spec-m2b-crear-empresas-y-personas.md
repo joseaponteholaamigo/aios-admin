@@ -58,6 +58,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
   - la cuenta se crea con `crearTenant` y su credencial con `emitirCredencial`, como el alta en lote;
   - el Personalizado se aplica con `planearPersonalizado` y `aplicarPersonalizado`, el mismo camino que `npm run tenant -- personalizar`, con el motivo;
   - el admin se invita con `gobierno.invitar` (`admin: true`), que le manda el correo (decisión F);
+  - en lo que ve el cliente (su bitácora de gobierno, la de su cuenta y el correo) firma `equipo-enso`, «el equipo de ENSŌ», nunca el id interno de quien lo hizo; quién fue exactamente queda en la auditoría del equipo (CA-7);
   - responde 201 con la cuenta en la forma de la lista (`resumenDeCliente`) y `correoDeInvitacion`, que dice si el correo salió;
   - la respuesta nunca trae la license key (decisión 1).
 
@@ -188,7 +189,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 
 - **Dado** un formulario válido,
 - **cuando** se guarda,
-- **entonces** lleva a la ficha de la cuenta nueva con un aviso: «Creada. Le enviamos la invitación a <correo>». Si el correo no salió: «Creada, pero el correo de invitación no salió: la persona puede entrar igual con su correo».
+- **entonces** lleva a la ficha de la cuenta nueva con un aviso: «Cuenta creada. Le enviamos la invitación a su admin.». Si el correo no salió: «Cuenta creada, pero el correo de invitación no salió: el admin puede entrar igual con su correo.». El aviso viaja en la dirección (`?aviso=`), así que no nombra el correo (CB-5).
 
 ### CA-19: Los errores, junto a su campo
 
@@ -211,7 +212,8 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 - **entonces**:
   - el botón queda desactivado hasta que llega la respuesta, cambia su texto («Creando…», «Invitando…», «Moviendo…») y muestra un indicador de carga, con `aria-busy`. No se puede oprimir de nuevo ni mandar el formulario con Enter;
   - con la respuesta, vuelve a estar disponible si hubo un error, y si salió bien la pantalla cambia;
-  - es un solo botón compartido (`app/shared/ui/`), el mismo en los tres formularios.
+  - es un solo botón compartido (`app/shared/ui/`), el mismo en los tres formularios;
+  - el botón principal va **antes** que el de mover en el formulario: con Enter, el navegador usa el primer botón, y si fuera el de mover, Enter en cualquier campo borraría una cuenta personal.
 
   Además, el formulario lleva una `clave` nueva al dibujarse, que viaja en cada reintento (CA-6). Así, si la página todavía no cargó su JavaScript y el botón no puede bloquearse, el backend igual crea una sola cuenta.
 
@@ -267,14 +269,34 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 - **cuando** se usa,
 - **entonces** todo sigue igual: las rutas son nuevas y no cambia ninguna respuesta de lectura.
 
+### CB-7: Lo que dejaron ver las revisiones (quality-gate y seguridad, 2026-11-04)
+
+- **Un corte en el panel vuelve al formulario, no a la página de error.** Un 5xx o un corte del panel a los 25 s devuelven el rechazo `unavailable` con lo escrito y la misma clave, y el formulario dice que no se sabe si se hizo. La página de error pediría el formulario con otra clave, y reintentar ahí sí crearía otra cuenta.
+- **La clave es también un candado.** Mientras un pedido la tiene (hasta 35 s), otro con la misma clave recibe 409 `alta-en-curso`. Dos pedidos a la vez crean una sola cuenta y un solo `empresas.crear`.
+- **Mover se puede retomar.** El borrado del producto empieza por la ficha: si se corta, el correo ya se ve libre. Antes de borrar queda una marca en la cuenta destino (`movidas:<destino>`). Cada reintento que pide mover la termina primero y recién ahí anota `usuarios.mover-desde-cuenta-personal`, una sola vez.
+- **Antes de borrar se mira la cuenta otra vez:** que siga siendo personal, sin cliente ni suscripción de Stripe y con una sola persona.
+- **El motivo es del equipo.** La bitácora que ve el cliente dice «alta desde el panel de ENSŌ»; el motivo real queda solo en la auditoría del equipo.
+- **Si la cuenta ya quedó creada** y el pedido terminó en un rechazo, la respuesta trae `cuentaCreada`, y el formulario la nombra con su enlace.
+- **El correo y el nombre se validan en el backend.**
+  - El correo: hasta 254 caracteres y sin `< > ( ) [ ] , ; : "`, porque SES podría leer otra dirección.
+  - El nombre: sin `@`, que armaría el id con un correo, y sin caracteres invisibles.
+  - Los asientos: hasta 1000.
+  - Los cupos con nombre de objeto (`constructor`) se rechazan.
+
+**Sigue abierto, para decidir aparte:**
+- la opción B del MFA, que mover necesita para funcionar en producción;
+- si invitar a alguien como admin a una cuenta que ya tiene admin pide superadministrador;
+- un vencimiento (TTL) para las filas de clave;
+- guardar el formulario al volver de ingresar el código.
+
 ## Infraestructura
 
 - **Dos funciones nuevas:**
-  - `AdminCrearCliente` y `AdminInvitarPersona`, que escriben. Necesitan:
-    - leer y escribir en `tenants` y escribir en `eventos`;
-    - leer el bucket de bundles (si el paquete estándar del plan está publicado, como pide `planearPersonalizado`);
+  - `AdminCrearCliente` y `AdminInvitarPersona`, que escriben, con lo justo:
+    - leer y escribir en `tenants`, y en `eventos` solo agregar (`PutItem`);
+    - leer el bucket de bundles, solo crear (si el paquete estándar del plan está publicado, como pide `planearPersonalizado`);
     - enviar por el canal de invitaciones de SES, como `TeamMiembros`;
-    - para mover, lo que borra `borrarCliente` (`sitiosDeUnCliente`).
+    - para mover, lo que borra `borrarCliente`, solo listar y borrar: `Query` y `DeleteItem` en `teampublishes`, `ListBucket` y `DeleteObject` en `teambundles`. Nunca escribir ahí.
 - **Las rutas nuevas** van en `infra/equipo.js`, con el mismo autorizador del equipo.
 - **El diff del despliegue** debe mostrar solo esas funciones, sus rutas y sus permisos, sin `[-]`.
 
