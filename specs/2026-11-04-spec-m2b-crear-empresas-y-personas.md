@@ -17,7 +17,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 | 2 | **Qué se llena al crear:** nombre; tipo (lo pone la pestaña); plan **Personalizado** o **Free**; correo del admin, obligatorio. En Personalizado, todo lo del plan: contenido, asientos, equipo, horarios, fecha de fin y cupos. Pro y Team no se ofrecen: necesitan una suscripción de Stripe y se compran en la web. El precio propio de Stripe y «suscripción cancelada» quedan en la consola. | Jose, 2026-11-03 |
 | 5 | **El paquete a medida no se elige al crear.** Es de un cliente concreto (hoy, el de Auteco): ofrecerlo en el formulario permitiría darle por error a otra empresa las skills de ese cliente. Una cuenta nueva recibe siempre el contenido estándar. Atar cada paquete a su empresa, sin que nadie lo elija, es su propia spec. | Jose, 2026-11-04 |
 | 3 | **La empresa gana a la cuenta personal.** Si el correo que se invita tiene una cuenta personal que no paga por Stripe, el panel avisa y, si se confirma, borra esa cuenta e invita a la persona, en un solo paso. Si la cuenta personal paga por Stripe, se bloquea. Si el correo es de otra empresa, se bloquea siempre. | Jose, 2026-11-04 |
-| 4 | **Motivo obligatorio** al crear, invitar y mover, con su entrada en la auditoría. | Decisión 4 del plan (2026-10-27) |
+| 4 | **Motivo obligatorio** al invitar y al mover, con su entrada en la auditoría. **Al crear no se pide** (Jose, 2026-11-04): la auditoría guarda igual quién creó la cuenta y cuándo, con el motivo «alta desde el panel». | Decisión 4 del plan (2026-10-27); Jose, 2026-11-04 |
 | F | **Cada persona que invita el equipo recibe su correo de invitación**, como desde «Mi equipo», y el texto dice «el equipo de ENSŌ». | Decisión F del plan |
 | 10 | **Crear e invitar piden el nivel «editar»** del módulo. **Mover desde una cuenta personal borra una cuenta**, así que es del superadministrador y pide un MFA reciente (opción B: `auth_time` de menos de 15 min). | Decisión 10 y opción B del plan |
 
@@ -52,7 +52,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 
 ### CA-1: Crear un Personalizado con todas sus condiciones
 
-- **Dado** `POST /v1/admin/clientes` con `{ nombre, tipo: 'empresa', plan: 'personalizado', condiciones: { contenido, asientos, equipo, horarios, hasta, cupos }, admin, motivo, clave }`,
+- **Dado** `POST /v1/admin/clientes` con `{ nombre, tipo: 'empresa', plan: 'personalizado', condiciones: { contenido, asientos, equipo, horarios, hasta, cupos }, admin, motivo?, clave }`,
 - **cuando** se aplica,
 - **entonces**:
   - la cuenta se crea con `crearTenant` y su credencial con `emitirCredencial`, como el alta en lote;
@@ -98,7 +98,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 
 - **Dado** una cuenta creada,
 - **cuando** se mira Gobernanza,
-- **entonces** hay un evento `empresas.crear` con el actor `equipo:<sub>`, el motivo y lo creado (`id`, `nombre`, `tipo`, `plan`, `condiciones`). La invitación queda en la bitácora de gobierno de la cuenta, igual que desde «Mi equipo».
+- **entonces** hay un evento `empresas.crear` con el actor `equipo:<sub>`, el motivo («alta desde el panel» si no llegó ninguno) y lo creado (`id`, `nombre`, `tipo`, `plan`, `condiciones`). La invitación queda en la bitácora de gobierno de la cuenta, igual que desde «Mi equipo».
 
 ### Backend: invitar a una persona
 
@@ -180,10 +180,9 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
   - nombre;
   - plan: Personalizado o Free;
   - en Personalizado: contenido (todo, Free o nada), asientos, equipo, horarios, fecha de fin o ninguna y los cupos de radar, proyectos, skills y cadenas (un número o «sin tope»);
-  - correo del admin;
-  - motivo.
+  - correo del admin.
 
-  Viene lleno con el caso más común: Personalizado, contenido todo, 2 asientos, equipo sí, horarios sí, sin fecha y cupos sin tope. «Nueva cuenta personal» viene con 1 asiento y sin equipo, y esos dos campos no se pueden cambiar.
+  No pide motivo (decisión 4). Viene lleno con el caso más común: Personalizado, contenido todo, 2 asientos, equipo sí, horarios sí, sin fecha y cupos sin tope. «Nueva cuenta personal» viene con 1 asiento y sin equipo, y esos dos campos no se pueden cambiar.
 
 ### CA-18: Al guardar
 
@@ -195,7 +194,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 
 - **Dado** una respuesta 409 o 422 del backend,
 - **cuando** vuelve al formulario,
-- **entonces** el formulario conserva lo escrito y muestra el error junto a su campo: el correo de otra empresa, diciendo cuál; las condiciones rechazadas, una por una; el motivo vacío.
+- **entonces** el formulario conserva lo escrito y muestra el error junto a su campo: el correo de otra empresa, diciendo cuál; las condiciones rechazadas, una por una.
 
 ### CA-20: La confirmación de mover
 

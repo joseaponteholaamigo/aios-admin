@@ -35,7 +35,6 @@ export type NewAccount = {
   /** Solo en Personalizado. */
   conditions: PlanConditions | null;
   adminEmail: string;
-  reason: string;
   /** La clave del formulario: la misma en cada reintento, para que crear dos veces sea crear una (CA-6). */
   key: string;
   moveFromPersonal: boolean;

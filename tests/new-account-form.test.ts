@@ -16,7 +16,7 @@ function formOf(fields: Record<string, string>) {
 }
 
 const EMPRESA = {
-  kind: 'company', name: ' Acme ', plan: 'custom', adminEmail: ' Ana@Acme.com ', reason: ' contrato firmado ', key: KEY,
+  kind: 'company', name: ' Acme ', plan: 'custom', adminEmail: ' Ana@Acme.com ', key: KEY,
   content: 'all', seats: '3', team: 'on', schedules: 'on', endsOn: '', 'quota-radar': '5', 'quota-projects': '', 'quota-skills': '', 'quota-chains': '0',
 };
 
@@ -24,7 +24,7 @@ describe('el formulario de crear una cuenta', () => {
   test('un Personalizado llega con sus condiciones; un cupo vacío no viaja y queda sin tope', () => {
     expect(readNewAccount(formOf(EMPRESA))).toEqual({
       account: {
-        kind: 'company', name: 'Acme', plan: 'custom', adminEmail: 'ana@acme.com', reason: 'contrato firmado', key: KEY, moveFromPersonal: false,
+        kind: 'company', name: 'Acme', plan: 'custom', adminEmail: 'ana@acme.com', key: KEY, moveFromPersonal: false,
         conditions: { content: 'all', seats: 3, team: true, schedules: true, endsOn: null, quotas: { radar: 5, chains: 0 } },
       },
     });
@@ -47,8 +47,8 @@ describe('el formulario de crear una cuenta', () => {
   });
 
   test('cada campo mal escrito vuelve con su error, junto a su campo', () => {
-    const r = readNewAccount(formOf({ ...EMPRESA, name: ' ', adminEmail: 'ana-acme', reason: '', seats: '0', endsOn: '4/11/2026', 'quota-radar': '-1' }));
-    expect('errors' in r && Object.keys(r.errors).sort()).toEqual(['adminEmail', 'name', 'reason']);
+    const r = readNewAccount(formOf({ ...EMPRESA, name: ' ', adminEmail: 'ana-acme', seats: '0', endsOn: '4/11/2026', 'quota-radar': '-1' }));
+    expect('errors' in r && Object.keys(r.errors).sort()).toEqual(['adminEmail', 'name']);
     const plan = readNewAccount(formOf({ ...EMPRESA, seats: '0', endsOn: '4/11/2026', 'quota-radar': '-1' }));
     expect('errors' in plan && Object.keys(plan.errors).sort()).toEqual(['endsOn', 'quota-radar', 'seats']);
   });

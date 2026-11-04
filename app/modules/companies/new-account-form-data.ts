@@ -8,7 +8,6 @@ import type { AccountKind } from '../../domain/companies';
 import { MOVE_FIELD, MOVE_VALUE } from '../../shared/ui/move-from-personal-notice';
 
 export const NAME_MAX = 120;
-export const REASON_MAX = 500;
 
 /** El caso más común al abrir el formulario (CA-17). Una cuenta personal: un asiento y sin equipo. */
 export function defaultConditions(kind: AccountKind): PlanConditions {
@@ -33,7 +32,6 @@ const ACCOUNT = z.object({
   name: z.string().trim().min(1, 'Escribe el nombre.').max(NAME_MAX, `El nombre va hasta ${NAME_MAX} caracteres.`),
   plan: z.enum(CREATION_PLANS, 'Elige el plan.'),
   adminEmail: z.string().trim().regex(EMAIL, 'Escribe un correo válido.').max(254, 'Ese correo es demasiado largo.'),
-  reason: z.string().trim().min(1, 'Escribe el motivo: queda en la auditoría.').max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`),
   key: z.string().regex(/^[A-Za-z0-9-]{16,64}$/, 'El formulario está incompleto: vuelve a abrirlo.'),
 });
 
@@ -73,7 +71,7 @@ function readConditions(form: FormData, kind: AccountKind, errors: Errors): Plan
 
 /** El pedido del formulario (`{ account }`) o sus errores por campo (`{ errors }`). */
 export function readNewAccount(form: FormData): { account: NewAccount } | { errors: Errors } {
-  const base = ACCOUNT.safeParse(Object.fromEntries(['kind', 'name', 'plan', 'adminEmail', 'reason', 'key'].map((k) => [k, form.get(k) ?? ''])));
+  const base = ACCOUNT.safeParse(Object.fromEntries(['kind', 'name', 'plan', 'adminEmail', 'key'].map((k) => [k, form.get(k) ?? ''])));
   const errors: Errors = base.success ? {} : errorsOf(base.error.issues);
   const kind = base.success ? base.data.kind : 'company';
   const conditions = base.success && base.data.plan === 'custom' ? readConditions(form, kind, errors) : null;

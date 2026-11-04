@@ -31,7 +31,7 @@ function contextFor(m: TeamMember) {
   return context;
 }
 
-const formFields = { kind: 'company', name: 'Acme', plan: 'free', adminEmail: 'ana@acme.com', reason: 'contrato firmado', key: KEY, intent: 'submit' };
+const formFields = { kind: 'company', name: 'Acme', plan: 'free', adminEmail: 'ana@acme.com', key: KEY, intent: 'submit' };
 function post(fields: Record<string, string>) {
   const body = new FormData();
   for (const [k, v] of Object.entries(fields)) body.append(k, v);

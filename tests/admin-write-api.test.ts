@@ -23,7 +23,7 @@ function apiAnswering(respond: () => Response) {
 }
 
 const ACCOUNT: NewAccount = {
-  kind: 'company', name: 'Acme', plan: 'custom', adminEmail: 'ana@acme.com', reason: 'contrato', key: 'clave-de-prueba-0001', moveFromPersonal: false,
+  kind: 'company', name: 'Acme', plan: 'custom', adminEmail: 'ana@acme.com', key: 'clave-de-prueba-0001', moveFromPersonal: false,
   conditions: { content: 'all', seats: 3, team: true, schedules: true, endsOn: null, quotas: { radar: 5, projects: null, chains: 0 } },
 };
 
@@ -40,7 +40,7 @@ describe('crear una cuenta', () => {
     expect(seen[0]).toEqual({
       url: 'https://api.example/v1/admin/clientes',
       body: {
-        nombre: 'Acme', tipo: 'empresa', plan: 'personalizado', admin: 'ana@acme.com', motivo: 'contrato', clave: 'clave-de-prueba-0001',
+        nombre: 'Acme', tipo: 'empresa', plan: 'personalizado', admin: 'ana@acme.com', clave: 'clave-de-prueba-0001',
         condiciones: { contenido: 'todo', asientos: 3, equipo: true, horarios: true, hasta: null, cupos: { radar: 5, proyectos: null, cadenas: 0 } },
       },
     });

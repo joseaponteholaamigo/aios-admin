@@ -11,7 +11,7 @@ import { FieldError } from '../../../shared/ui/field-error';
 import { FormRejection } from '../../../shared/ui/form-rejection';
 import { MoveFromPersonalNotice, SUBMIT_FIELD, SUBMIT_VALUE } from '../../../shared/ui/move-from-personal-notice';
 import { SubmitButton } from '../../../shared/ui/submit-button';
-import { defaultConditions, NAME_MAX, REASON_MAX, type FormValues } from '../new-account-form-data';
+import { defaultConditions, NAME_MAX, type FormValues } from '../new-account-form-data';
 import { PlanConditionsFields } from './plan-conditions-fields';
 import './new-account-form.css';
 
@@ -77,12 +77,7 @@ export function NewAccountForm({ kind, formKey, canMove, values, errors, rejecti
       </section>
       <section className="card">
         <div className="card-b">
-          <div className="field">
-            <label htmlFor="reason">Motivo</label>
-            <input id="reason" name="reason" required maxLength={REASON_MAX} defaultValue={values?.reason ?? ''} placeholder="Ej: contrato firmado el 4 de noviembre" />
-            <small>Queda en la auditoría, en Gobernanza.</small>
-            <FieldError message={errors.reason ?? errors.key} />
-          </div>
+          <FieldError message={errors.key} />
           <div className="new-account__actions">
             <SubmitButton label={personal ? 'Crear cuenta personal' : 'Crear empresa'} busyLabel="Creando…" name={SUBMIT_FIELD} value={SUBMIT_VALUE} />
             <Link className="btn ghost" to={personal ? '/companies?kind=personal' : '/companies'}>Cancelar</Link>

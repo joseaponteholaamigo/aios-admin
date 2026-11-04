@@ -27,7 +27,7 @@ export function toBackendAccount(a: NewAccount) {
   return {
     nombre: a.name, tipo: KIND_TO_API[a.kind], plan: a.plan === 'custom' ? 'personalizado' : 'free',
     ...(a.conditions ? { condiciones: conditionsToApi(a.conditions) } : {}),
-    admin: a.adminEmail, motivo: a.reason, clave: a.key,
+    admin: a.adminEmail, clave: a.key,
     ...(a.moveFromPersonal ? { moverDesdeCuentaPersonal: true } : {}),
   };
 }
