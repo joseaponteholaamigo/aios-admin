@@ -14,7 +14,8 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 | # | Decisión | Quién y cuándo |
 |---|---|---|
 | 1 | **El panel no muestra la license key.** La cuenta se crea con su credencial, igual que el alta en lote, pero la llave nunca sale del backend: cada persona entra a ENSŌ con su correo. | Jose, 2026-11-03 |
-| 2 | **Qué se llena al crear:** nombre; tipo (lo pone la pestaña); plan **Personalizado** o **Free**; correo del admin, obligatorio. En Personalizado, todo lo del plan: contenido, asientos, equipo, horarios, fecha de fin, cupos y paquete a medida. Pro y Team no se ofrecen: necesitan una suscripción de Stripe y se compran en la web. El precio propio de Stripe y «suscripción cancelada» quedan en la consola. | Jose, 2026-11-03 |
+| 2 | **Qué se llena al crear:** nombre; tipo (lo pone la pestaña); plan **Personalizado** o **Free**; correo del admin, obligatorio. En Personalizado, todo lo del plan: contenido, asientos, equipo, horarios, fecha de fin y cupos. Pro y Team no se ofrecen: necesitan una suscripción de Stripe y se compran en la web. El precio propio de Stripe y «suscripción cancelada» quedan en la consola. | Jose, 2026-11-03 |
+| 5 | **El paquete a medida no se elige al crear.** Es de un cliente concreto (hoy, el de Auteco): ofrecerlo en el formulario permitiría darle por error a otra empresa las skills de ese cliente. Una cuenta nueva recibe siempre el contenido estándar. Atar cada paquete a su empresa, sin que nadie lo elija, es su propia spec. | Jose, 2026-11-04 |
 | 3 | **La empresa gana a la cuenta personal.** Si el correo que se invita tiene una cuenta personal que no paga por Stripe, el panel avisa y, si se confirma, borra esa cuenta e invita a la persona, en un solo paso. Si la cuenta personal paga por Stripe, se bloquea. Si el correo es de otra empresa, se bloquea siempre. | Jose, 2026-11-04 |
 | 4 | **Motivo obligatorio** al crear, invitar y mover, con su entrada en la auditoría. | Decisión 4 del plan (2026-10-27) |
 | F | **Cada persona que invita el equipo recibe su correo de invitación**, como desde «Mi equipo», y el texto dice «el equipo de ENSŌ». | Decisión F del plan |
@@ -25,7 +26,6 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 - **Backend:**
   - `POST /v1/admin/clientes`: crear una empresa o una cuenta personal;
   - `POST /v1/admin/clientes/{id}/personas`: invitar a una persona a una cuenta;
-  - `GET /v1/admin/paquetes`: los paquetes a medida publicados, para el formulario;
   - mover desde una cuenta personal, dentro de las dos primeras.
 - **Panel:**
   - «Nueva empresa» y «Nueva cuenta personal» en Empresas, con su formulario;
@@ -52,7 +52,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 
 ### CA-1: Crear un Personalizado con todas sus condiciones
 
-- **Dado** `POST /v1/admin/clientes` con `{ nombre, tipo: 'empresa', plan: 'personalizado', condiciones: { contenido, asientos, equipo, horarios, hasta, cupos }, paquete?, admin, motivo, clave }`,
+- **Dado** `POST /v1/admin/clientes` con `{ nombre, tipo: 'empresa', plan: 'personalizado', condiciones: { contenido, asientos, equipo, horarios, hasta, cupos }, admin, motivo, clave }`,
 - **cuando** se aplica,
 - **entonces**:
   - la cuenta se crea con `crearTenant` y su credencial con `emitirCredencial`, como el alta en lote;
@@ -75,7 +75,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 
 ### CA-4: Todo se valida antes de escribir
 
-- **Dado** un pedido con nombre vacío o de más de 120 caracteres, un correo sin forma de correo, condiciones que `planearPersonalizado` rechaza, un paquete que no está publicado, sin motivo o con un cuerpo de más de 16 KB,
+- **Dado** un pedido con nombre vacío o de más de 120 caracteres, un correo sin forma de correo, condiciones que `planearPersonalizado` rechaza, un campo que el pedido no admite (como `paquete`, decisión 5), sin motivo o con un cuerpo de más de 16 KB,
 - **cuando** se pide,
 - **entonces** responde 422, o 413 por el tamaño, con lo que hay que corregir (los rechazos de `planearPersonalizado`, tal cual), y no escribe nada.
 
@@ -97,7 +97,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 
 - **Dado** una cuenta creada,
 - **cuando** se mira Gobernanza,
-- **entonces** hay un evento `empresas.crear` con el actor `equipo:<sub>`, el motivo y lo creado (`id`, `nombre`, `tipo`, `plan`, `condiciones`, `paquete`). La invitación queda en la bitácora de gobierno de la cuenta, igual que desde «Mi equipo».
+- **entonces** hay un evento `empresas.crear` con el actor `equipo:<sub>`, el motivo y lo creado (`id`, `nombre`, `tipo`, `plan`, `condiciones`). La invitación queda en la bitácora de gobierno de la cuenta, igual que desde «Mi equipo».
 
 ### Backend: invitar a una persona
 
@@ -145,7 +145,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 - **cuando** se mira Gobernanza,
 - **entonces** hay un evento `usuarios.mover-desde-cuenta-personal` con el actor, el motivo, `desde` (la cuenta borrada) y `hacia` (la cuenta destino).
 
-### Backend: permisos y paquetes
+### Backend: permisos y contenido
 
 ### CA-14: Quién puede qué
 
@@ -157,11 +157,11 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
   - mover pide además ser superadministrador con MFA reciente (CA-11);
   - con «ver» o sin el módulo responde 403, y una cuenta que el filtro de clientes esconde responde 404, como si no existiera.
 
-### CA-15: Los paquetes a medida publicados
+### CA-15: Una cuenta nueva recibe el contenido estándar
 
-- **Dado** `GET /v1/admin/paquetes`, con `empresas: ver`,
-- **cuando** responde,
-- **entonces** trae los paquetes a medida con bundle publicado para algún tier (hoy, `cliente-auteco`). Es la misma fuente con la que `planearPersonalizado` decide si un paquete existe.
+- **Dado** una cuenta creada desde el panel,
+- **cuando** se mira su paquete,
+- **entonces** es el estándar de su plan: el de Pro para un Personalizado, como en `npm run tenant -- personalizar` sin `--paquete`, y el de Free para Free. Ningún pedido puede elegir un paquete a medida (decisión 5).
 
 ### Panel: crear
 
@@ -178,11 +178,11 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 - **entonces** pide:
   - nombre;
   - plan: Personalizado o Free;
-  - en Personalizado: contenido (todo, Free o nada), asientos, equipo, horarios, fecha de fin o ninguna, los cupos de radar, proyectos, skills y cadenas (un número o «sin tope») y el paquete a medida (ninguno o uno de los publicados, CA-15);
+  - en Personalizado: contenido (todo, Free o nada), asientos, equipo, horarios, fecha de fin o ninguna y los cupos de radar, proyectos, skills y cadenas (un número o «sin tope»);
   - correo del admin;
   - motivo.
 
-  Viene lleno con el caso más común: Personalizado, contenido todo, 2 asientos, equipo sí, horarios sí, sin fecha, cupos sin tope y sin paquete. «Nueva cuenta personal» viene con 1 asiento y sin equipo, y esos dos campos no se pueden cambiar.
+  Viene lleno con el caso más común: Personalizado, contenido todo, 2 asientos, equipo sí, horarios sí, sin fecha y cupos sin tope. «Nueva cuenta personal» viene con 1 asiento y sin equipo, y esos dos campos no se pueden cambiar.
 
 ### CA-18: Al guardar
 
@@ -269,13 +269,12 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 
 ## Infraestructura
 
-- **Tres funciones nuevas:**
+- **Dos funciones nuevas:**
   - `AdminCrearCliente` y `AdminInvitarPersona`, que escriben. Necesitan:
     - leer y escribir en `tenants` y escribir en `eventos`;
-    - leer el bucket de bundles (si el paquete está publicado);
+    - leer el bucket de bundles (si el paquete estándar del plan está publicado, como pide `planearPersonalizado`);
     - enviar por el canal de invitaciones de SES, como `TeamMiembros`;
     - para mover, lo que borra `borrarCliente` (`sitiosDeUnCliente`).
-  - `AdminPaquetes`, que lee el bucket de bundles.
 - **Las rutas nuevas** van en `infra/equipo.js`, con el mismo autorizador del equipo.
 - **El diff del despliegue** debe mostrar solo esas funciones, sus rutas y sus permisos, sin `[-]`.
 
