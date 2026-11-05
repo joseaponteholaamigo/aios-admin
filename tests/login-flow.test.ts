@@ -72,6 +72,13 @@ describe('empezar', () => {
     expect(p.get('acr_values')).toBeNull();
   });
 
+  test('⛔ todo ingreso pide un código de menos de 15 minutos, aunque no venga con mfa=1', async () => {
+    // EL DEFECTO: Cognito renueva `auth_time` en un inicio silencioso. Sin `max_age`, un ingreso
+    // normal con la sesión de Cognito de hace una hora le daría al backend un MFA «reciente».
+    const p = new URL((await start()).location).searchParams;
+    expect(p.get('max_age')).toBe('900');
+  });
+
   test('cada ingreso tiene su propio state y nonce, y la cookie lo ata al navegador', async () => {
     const [a, b] = [await start(), await start()];
     const state = (l: string) => new URL(l).searchParams.get('state');

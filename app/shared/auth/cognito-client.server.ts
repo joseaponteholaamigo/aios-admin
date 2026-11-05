@@ -6,7 +6,16 @@ import type { SessionTokens } from '../session/types';
 
 export const ADMIN_SCOPE = 'admin/acceso';
 export const LOGIN_SCOPES = ['openid', 'email', 'profile', ADMIN_SCOPE];
-/** Volver a pedir el MFA: contraseña + TOTP, con menos de 15 minutos (decisión E). */
+/**
+ * El MFA reciente: contraseña + TOTP, con menos de 15 minutos (decisión E, opción B).
+ *
+ * ⚠️ `max_age` va en TODOS los logins, no solo con `mfa=1`. Cognito pone en `auth_time` la hora
+ * de cualquier inicio, también el silencioso, y el backend se fía de `auth_time`. Sin `max_age`,
+ * un inicio silencioso con la sesión de Cognito de hace una hora daría un `auth_time` de ahora.
+ * Con `max_age`, Cognito vuelve a pedir el código si el último pasó hace más de 15 minutos.
+ * `acr_values` va solo con `mfa=1`: Cognito todavía no manda `acr`, y así el log lo muestra el
+ * día que llegue.
+ */
 export const FRESH_MFA = { acr: 'urn:cognito:loa:4', maxAgeSeconds: 900 };
 const TIMEOUT_MS = 5000;
 
@@ -80,7 +89,8 @@ export function createCognitoClient({
         nonce,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
-        ...(freshMfa ? { acr_values: FRESH_MFA.acr, max_age: String(FRESH_MFA.maxAgeSeconds) } : {}),
+        max_age: String(FRESH_MFA.maxAgeSeconds),
+        ...(freshMfa ? { acr_values: FRESH_MFA.acr } : {}),
       });
       return `${config.loginUrl}/oauth2/authorize?${params}`;
     },
