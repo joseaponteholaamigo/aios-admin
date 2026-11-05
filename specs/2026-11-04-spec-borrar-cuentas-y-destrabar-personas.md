@@ -5,7 +5,7 @@
   - Sobre cuentas: «¿Deberíamos tener la opción de borrar los clientes desde el superadmin?», y después «Sí».
   - Sobre personas: «También deberíamos contemplar cómo borrar un usuario específico solo de Cognito o completo, ya que hay usuarios que pueden perder el vínculo de la autenticación de dos factores y no pueden ingresar». Pidió que fuera en esta misma spec.
   - El plan del superadmin (`docs/2026-10-20-plan-superadmin-aws.md`, §3.2) ya reserva al superadministrador, con MFA reciente, «borrar personas o empresas».
-- **Estado:** decisiones cerradas (2026-11-05); falta lo de «Antes de empezar»
+- **Estado:** decisiones cerradas (2026-11-05); falta probar el restablecimiento con una cuenta de prueba («Antes de empezar»)
 - **Repos:** `aios-backend` (worktree `aios-backend-superadmin`) y `aios-admin`, los dos en la rama `superadmin_v2`.
 
 ## Objetivo
@@ -46,7 +46,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 
 ## Antes de empezar
 
-- **Aplicar y probar la opción B del MFA.** Hoy `exigirMfaReciente` (`src/lib/admin/puerta-del-equipo.js`) pide `acr = urn:cognito:loa:4`, y en producción mover responde siempre 401. Todo lo de esta spec respondería igual. Falta la prueba de Jose: que un login silencioso no renueve `auth_time`.
+- **La opción B del MFA ya está aplicada y desplegada (2026-11-05):** backend `b96ef72` y panel `733c67f`. Jose la probó en producción: con `max_age=900`, Cognito cuenta los 15 minutos desde el código real y no desde un inicio silencioso, y el botón «Sign in as…» pide contraseña y código (el cliente del panel tiene `ALLOW_USER_AUTH`).
 - **Comprobar el restablecimiento con una cuenta de prueba**, antes de construir CA-1. Se llama `AdminDeleteSoftwareToken` sobre esa cuenta y se entra a ENSŌ: el login gestionado tiene que pedir el QR nuevo (el reto `MFA_SETUP`).
   - Es una acción sobre la cuenta `enso`: se avisa antes y la corre Jose.
   - El SDK del backend (`@aws-sdk/client-cognito-identity-provider` 3.1138.0) ya trae `AdminDeleteSoftwareTokenCommand`. La operación es de agosto de 2026, y el CLI de AWS puede no tenerla todavía.
@@ -426,7 +426,7 @@ Los tests nuevos del backend van en la lista de `npm test` de `package.json`: si
 
 ## Riesgos y preguntas abiertas
 
-- **Lo de «Antes de empezar»:** sin la opción B del MFA, nada de esto funciona en producción. Si el login gestionado no pide el QR después de `AdminDeleteSoftwareToken`, la acción «restablecer» cambia.
+- **Lo de «Antes de empezar»:** si el login gestionado no pide el QR después de `AdminDeleteSoftwareToken`, la acción «restablecer» cambia.
 - **El borrado que pide el propio cliente no borra los logins.** Con esta spec, los dos borrados quedan distintos. Igualarlos es otra spec.
 - **El id de una cuenta personal lleva el nombre de la persona** (por ejemplo `mateo-folador-d35e8f`), y sobrevive en la auditoría y en `borrado-hecho`. Pasa igual con el borrado del cliente. Si se seudonimiza, se decide aparte.
 - **Con el filtro de clientes en una lista**, la auditoría de una cuenta borrada deja de verse en Gobernanza, porque su id ya no está en la lista.
