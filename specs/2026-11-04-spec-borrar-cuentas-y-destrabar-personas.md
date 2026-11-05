@@ -28,7 +28,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 | 2 | **Las tres son solo del superadministrador, con MFA reciente y sin motivo.** Antes de hacerla, un diálogo le explica qué le va a pasar a la persona y le pide confirmar (CA-10). Cada una queda anotada: quién, qué, a qué cuenta y cuándo (CA-6). Es solo del superadministrador porque restablecer el segundo factor es justo lo que pide quien robó una contraseña («perdí el celular, restablézcanme»). | Jose, 2026-11-05 |
 | 3 | **Restablecer y borrar el login le mandan un correo a la persona.** El texto dice qué pasó, qué tiene que hacer y que escriba si no lo pidió. Borrar a la persona no manda correo. | Jose, 2026-11-05 |
 | 4 | **Las tres cierran todas las sesiones abiertas de la persona** (`AdminUserGlobalSignOut`), por si el celular perdido tenía una abierta. Sin esto, una sesión sigue viva hasta 30 días (`refreshTokenValidity`); con esto, el ENSŌ de ese equipo deja de funcionar cuando vence su pase de una hora (`accessTokenValidity`). | Jose, 2026-11-05 |
-| 5 | **El código del segundo factor también puede llegar por correo, como segunda opción.** La persona elige al configurarlo: la app de códigos o un código por correo. Quien eligió el correo y pierde el celular entra sin pedirle nada al equipo. Es un cambio del pool de clientes (`mfaSecondFactor`, en `infra/aios-stack.js`), y el pool ya cumple lo que pide Cognito: manda por SES y está en el plan Essentials. **Riesgo aceptado:** quien entre al correo de una persona puede cambiarle la contraseña con «¿Olvidaste tu contraseña?» y recibir el código en ese mismo correo. | Jose, 2026-11-05 |
+| 5 | **El código del segundo factor llega solo por la app de códigos, nunca por correo.** Cognito no permite el código por correo en un pool que recupera la contraseña solo por correo, y con razón: quien entrara al correo de una persona tendría los dos factores. A quien pierde el celular se lo destraba con «Restablecer» (decisión 1). | Jose, 2026-11-05 |
 | 6 | **Borrar a la persona borra su asiento; no lo deja revocado.** El registro de quién estuvo queda en la bitácora de gobierno de la cuenta (`invito`, `borro-persona`), que no se va con la persona. El correo queda libre, y volver a invitarla a la misma cuenta funciona como con alguien nuevo. Revocar desde «Mi equipo» sigue igual: deja el asiento `revocado`. | Jose, 2026-11-05 |
 | 7 | **El correo de una persona nunca va en una URL**, ni del panel ni de la API: siempre en el cuerpo del pedido. Las direcciones quedan en los registros de CloudFront y de API Gateway. | Regla de seguridad del workspace |
 
@@ -51,21 +51,15 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
   - Es una acción sobre la cuenta `enso`: se avisa antes y la corre Jose.
   - El SDK del backend (`@aws-sdk/client-cognito-identity-provider` 3.1138.0) ya trae `AdminDeleteSoftwareTokenCommand`. La operación es de agosto de 2026, y el CLI de AWS puede no tenerla todavía.
   - Si el login gestionado no pide el QR, restablecer pasa a ser «borrar el login», y esta spec se corrige antes de seguir.
-- **Comprobar el correo como segundo factor con cuentas de prueba**, después de desplegar el cambio del pool (CA-28):
-  - alguien que se registra puede elegir entre la app y el correo (CA-29);
-  - alguien que ya tenía la app sigue entrando igual (CA-30);
-  - y si alguien que tiene la app puede pedir el código por correo al entrar. Si el login gestionado no lo ofrece, restablecer podría pasarla al correo (`AdminSetUserMFAPreference`) en vez de pedirle un QR nuevo, y esta spec se corrige antes de construir CA-1.
 
 ## Orden de construcción
 
-1. El correo como segundo factor (CA-28): es solo infraestructura, sale antes que lo demás y baja los pedidos de restablecer.
-2. El adaptador del pool de Cognito de clientes (`src/lib/admin/identidades-de-clientes.js`). Lo usan las dos partes.
-3. Las acciones sobre una persona: hoy no hay forma de destrabar a alguien sin la consola.
-4. El borrado de cuentas: mientras tanto, para pruebas existe el script.
+1. El adaptador del pool de Cognito de clientes (`src/lib/admin/identidades-de-clientes.js`). Lo usan las dos partes.
+2. Las acciones sobre una persona: hoy no hay forma de destrabar a alguien sin la consola.
+3. El borrado de cuentas: mientras tanto, para pruebas existe el script.
 
 ## Alcance
 
-- **Infraestructura:** el correo como segunda opción del segundo factor en el pool de clientes, con el texto del correo en español.
 - **Backend:**
   - `POST /v1/admin/clientes/{id}/personas/restablecer-mfa`, con `{ correo }`;
   - `POST /v1/admin/clientes/{id}/personas/borrar-login`, con `{ correo }`;
@@ -82,6 +76,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 
 - **Los proyectos compartidos donde estaba una persona borrada.** Quedan como quedan hoy cuando «Mi equipo» revoca a alguien.
 - **Logins sin asiento** de borrados anteriores. Siguen con `npm run reset:pruebas`.
+- **El código del segundo factor por correo.** Cognito no lo permite mientras la contraseña se recupere solo por correo (decisión 5).
 - **Restablecer la contraseña.** La persona ya lo hace sola desde «¿Olvidaste tu contraseña?», por correo.
 - **Cambiar el rol o la condición de admin** de una persona.
 - **Suspender, reactivar o revocar una cuenta** (`/suspender`, `/reactivar`, `/revocar` del plan, AD-12).
@@ -268,25 +263,6 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Y** mientras haya borrados pendientes (CA-22), Empresas muestra «Hay borrados sin terminar», con un enlace a la confirmación de cada uno
 - **Y** un rechazo `mfa-reciente` muestra el enlace para volver a ingresar el código (`FormRejection`).
 
-### El correo como segundo factor
-
-### CA-28: El pool de clientes acepta el código por correo
-- **Dado** la plantilla sintetizada del stack
-- **Entonces** el pool de clientes (`Usuarios`) tiene `EnabledMfas` con `SOFTWARE_TOKEN_MFA` y `EMAIL_OTP`, sin `SMS_MFA`, y el segundo factor sigue obligatorio (`MfaConfiguration: ON`)
-- **Y** el correo del código tiene asunto y texto en español (`EmailAuthenticationSubject` y `EmailAuthenticationMessage`), junto a `CORREO_DE_VERIFICACION`
-- **Y** el pool del equipo ENSŌ no cambia: sigue solo con la app.
-
-### CA-29: Quien se registra elige la app o el correo
-- **Dado** una persona con asiento que se registra después del despliegue
-- **Cuando** llega a configurar el segundo factor
-- **Entonces** puede elegir la app de códigos o el correo
-- **Y** si eligió el correo, cada vez que entra le llega un código a su correo desde el remitente de ENSŌ, y con ese código entra.
-
-### CA-30: Quien ya tenía la app sigue igual
-- **Dado** una persona que ya tenía la app vinculada antes del despliegue
-- **Cuando** entra
-- **Entonces** le pide el código de la app, como siempre: el cambio no le pide nada nuevo.
-
 ## Casos borde y de error
 
 ### Acciones sobre una persona
@@ -297,7 +273,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Y** cuando se pide borrarla, se salta el login, borra el asiento y responde 200.
 
 ### CB-2: Una persona sin app de códigos vinculada
-- **Dado** una persona con login que nunca terminó de vincular su app, o que usa solo el correo como segundo factor
+- **Dado** una persona con login que nunca terminó de vincular su app
 - **Cuando** se pide restablecer
 - **Entonces** responde 200 igual (no hay nada que desvincular), cierra sus sesiones y lo anota.
 
@@ -411,8 +387,6 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 | CA-10, CA-11, CA-12, CA-24, CA-26, CA-27 | componente | tests del panel, junto a los de `new-account-form` e `invite-person-form` |
 | CA-25, CB-20 | unit de la `action` | tests del panel, junto a los de `company-new` |
 | CA-2 | manual con una cuenta de prueba | Jose, al cerrar «Antes de empezar» y de nuevo después del deploy |
-| CA-28 | síntesis de la plantilla | `tests/infra-stack.test.js`: hoy exige `EnabledMfas` igual a `['SOFTWARE_TOKEN_MFA']` y hay que cambiarlo |
-| CA-29, CA-30 | manual con cuentas de prueba | Jose, después de desplegar el cambio del pool |
 | CA-3, CA-4, CA-14, CA-15 en producción | manual | Jose, con cuentas de prueba: después de borrar el login, la persona se registra y vuelve a su cuenta; después de borrar la cuenta, el correo queda libre y su login ya no entra |
 
 Los tests nuevos del backend van en la lista de `npm test` de `package.json`: si no, no corren.
@@ -430,9 +404,7 @@ Los tests nuevos del backend van en la lista de `npm test` de `package.json`: si
 - El texto del correo de aviso, junto a `src/lib/correo-de-invitacion.js`.
 - `src/handlers/`: un handler por ruta nueva, de 30 líneas o menos.
 - `src/lib/admin/rutas-de-escritura.js`: los estados de `sin-login` (409), `ultimo-admin` (409), `borrar-incompleto` (503), `confirmacion` (422), `cuenta-con-cobro` (409), `borrado-en-curso` (409) y `borrado-incompleto` (503).
-- `src/lambda.js` (`RUTAS_ADMIN`) e `infra/equipo.js` (las funciones y sus permisos).
-- `infra/aios-stack.js`: el correo en `mfaSecondFactor` del pool de clientes, el texto de ese correo, y el id y el ARN del pool para las funciones nuevas.
-- `tests/infra-stack.test.js`: el segundo factor del pool de clientes con la app y el correo.
+- `src/lambda.js` (`RUTAS_ADMIN`), `infra/equipo.js` (las funciones y sus permisos) e `infra/aios-stack.js` (el id y el ARN del pool de clientes para esas funciones).
 - `package.json`: los tests nuevos en `npm test`.
 
 **Panel (`aios-admin`)**
@@ -454,7 +426,6 @@ Los tests nuevos del backend van en la lista de `npm test` de `package.json`: si
 
 ## Riesgos y preguntas abiertas
 
-- **El correo como segundo factor cambia el login de todos los clientes reales**, no solo el de quien se destraba. Lo despliega Jose, con aviso antes, y CA-30 se prueba enseguida.
 - **Lo de «Antes de empezar»:** sin la opción B del MFA, nada de esto funciona en producción. Si el login gestionado no pide el QR después de `AdminDeleteSoftwareToken`, la acción «restablecer» cambia.
 - **El borrado que pide el propio cliente no borra los logins.** Con esta spec, los dos borrados quedan distintos. Igualarlos es otra spec.
 - **El id de una cuenta personal lleva el nombre de la persona** (por ejemplo `mateo-folador-d35e8f`), y sobrevive en la auditoría y en `borrado-hecho`. Pasa igual con el borrado del cliente. Si se seudonimiza, se decide aparte.
