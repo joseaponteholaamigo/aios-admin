@@ -55,6 +55,8 @@ export type WriteRejection =
   | { code: 'unknown-role'; roles: string[] }
   | { code: 'no-seats'; used: number; cap: number | null }
   | { code: 'already-has-seat' | 'seat-revoked' | 'seats-unknown' }
+  /** La cuenta ya mandó hoy todas las invitaciones de su tope diario; `retryAt`, desde cuándo se puede volver a invitar. */
+  | { code: 'daily-invite-cap'; retryAt: string | null }
   | { code: 'key-used' | 'key-expired' | 'filter-on' | 'move-incomplete' | 'recent-mfa' | 'not-found' | 'in-progress' }
   /** La API no respondió a tiempo, o respondió un 5xx: no se sabe si se hizo. */
   | { code: 'unavailable' };

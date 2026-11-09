@@ -14,7 +14,8 @@ const TIMEOUT_MS = 25000;
 
 /**
  * Lo que respondió el backend: el dato, un rechazo para el formulario, «no tienes permiso» o «tu
- * sesión ya no sirve». Un 5xx, un 429 o no responder **lanzan** `AdminApiUnavailableError`.
+ * sesión ya no sirve». Un 5xx, un 429 sin código (el freno de API Gateway) o no responder **lanzan**
+ * `AdminApiUnavailableError`. Un 429 con código es un rechazo: el tope diario de invitaciones.
  */
 export type WriteResult<T> =
   | { kind: 'ok'; value: T }
@@ -28,7 +29,7 @@ export type AdminWriteApi = {
 };
 
 /** Los estados cuyo cuerpo trae un rechazo para el formulario. */
-const REJECTION_STATUSES = new Set([401, 404, 409, 413, 422, 503]);
+const REJECTION_STATUSES = new Set([401, 404, 409, 413, 422, 429, 503]);
 
 async function readJson(response: Response, path: string): Promise<unknown> {
   try {

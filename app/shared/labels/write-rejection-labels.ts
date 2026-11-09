@@ -1,6 +1,7 @@
 // Qué dice un formulario cuando el backend no creó o no invitó (spec «Crear empresas e invitar
 // personas», CA-19 y CA-20), y junto a qué campo va.
 import type { WriteRejection } from '../../domain/account-creation';
+import { formatDateTime } from '../ui/format';
 
 /** Dónde se muestra un rechazo: junto al correo, al plan, al rol, o arriba del formulario. */
 export type RejectionPlace = 'email' | 'plan' | 'role' | 'form';
@@ -38,6 +39,10 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'already-has-seat': return 'Esa persona ya tiene un asiento en esta cuenta.';
     case 'seat-revoked': return 'A esa persona se le quitó el asiento en esta cuenta: invitarla no se lo devuelve.';
     case 'seats-unknown': return 'Todavía no se sabe cuántos asientos tiene la cuenta: vuelve a intentar en unos segundos.';
+    case 'daily-invite-cap':
+      return rejection.retryAt
+        ? `La cuenta ya mandó hoy todas las invitaciones de su tope diario. Se puede volver a invitar desde el ${formatDateTime(rejection.retryAt)} (hora de Bogotá).`
+        : 'La cuenta ya mandó hoy todas las invitaciones de su tope diario: vuelve a intentar mañana.';
     case 'key-used': return 'Este formulario ya se usó con otros datos: vuelve a abrirlo.';
     case 'key-expired': return 'Este formulario es de hace más de un día: vuelve a abrirlo.';
     case 'filter-on': return 'Con el filtro de clientes puesto, el panel no crea cuentas: no las vería.';

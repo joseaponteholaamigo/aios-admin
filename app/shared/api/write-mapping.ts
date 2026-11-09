@@ -59,6 +59,7 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'ya-tiene-asiento': () => ({ code: 'already-has-seat' }),
   'asiento-revocado': () => ({ code: 'seat-revoked' }),
   'cupo-desconocido': () => ({ code: 'seats-unknown' }),
+  'tope-diario': (b) => ({ code: 'daily-invite-cap', retryAt: strOrNull(b.reintentarEl) }),
   'clave-usada': () => ({ code: 'key-used' }),
   'clave-vencida': () => ({ code: 'key-expired' }),
   'alta-en-curso': () => ({ code: 'in-progress' }),

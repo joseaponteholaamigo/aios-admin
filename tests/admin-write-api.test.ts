@@ -91,4 +91,19 @@ describe('invitar a una persona', () => {
     expect(seen[0]).toEqual({ url: 'https://api.example/v1/admin/clientes/acme-1a2b3c/personas', body: { correo: 'beto@acme.com', admin: false, rol: 'ventas', motivo: 'lo pidió' } });
     expect(r).toEqual({ kind: 'ok', value: { invitationSent: true, movedFrom: null } });
   });
+
+  // EL DEFECTO: con el tope diario de invitaciones de la cuenta lleno, el backend responde 429
+  // `tope-diario`. Leído como «la API no responde», el equipo vería una página de error y volvería a
+  // intentar sin saber que hasta el día siguiente no sale ninguna invitación.
+  test('⛔ el tope diario de invitaciones vuelve al formulario con desde cuándo reintentar', async () => {
+    const { api } = apiAnswering(() => Response.json({ codigo: 'tope-diario', reintentarEl: '2026-11-10T00:00:00.000Z' }, { status: 429 }));
+    const r = await api.invitePerson('t', 'acme-1a2b3c', { email: 'beto@acme.com', isAdmin: false, role: null, reason: 'lo pidió', moveFromPersonal: false });
+    expect(r).toEqual({ kind: 'rejected', rejection: { code: 'daily-invite-cap', retryAt: '2026-11-10T00:00:00.000Z' }, createdAccountId: null });
+  });
+
+  test('un 429 sin código, como el freno de API Gateway, sigue siendo «la API no responde»', async () => {
+    const { api } = apiAnswering(() => Response.json({ message: 'Too Many Requests' }, { status: 429 }));
+    await expect(api.invitePerson('t', 'acme-1a2b3c', { email: 'beto@acme.com', isAdmin: false, role: null, reason: 'lo pidió', moveFromPersonal: false }))
+      .rejects.toBeInstanceOf(AdminApiUnavailableError);
+  });
 });
