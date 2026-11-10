@@ -60,7 +60,8 @@ export default function CompanyPeople({ loaderData, actionData }: Route.Componen
       />
       <DoneNotice text={invitedNotice(params) ?? personActionNotice(params)} />
       <PeoplePanel
-        people={people.people} roles={people.roles} companyName={people.company.name}
+        people={people.people} roles={people.roles} companyId={people.company.id} companyName={people.company.name}
+        personal={people.company.kind === 'personal'}
         canAct={canActOnPeople} lastAttempt={actionData ?? null}
       />
       <div className="grid g2">

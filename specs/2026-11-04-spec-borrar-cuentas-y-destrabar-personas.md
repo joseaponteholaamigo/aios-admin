@@ -146,6 +146,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 ### CA-9: Las acciones solo las ve el superadministrador
 - **Dado** las personas de una cuenta (`client-users/:companyId`)
 - **Cuando** las ve un superadministrador, entonces cada persona tiene «Restablecer verificación en dos pasos», «Borrar login» y «Borrar persona»
+- **Y** en una cuenta personal, en lugar de «Borrar persona», el menú lleva a «Borrar cuenta»: su única persona no se borra sola (CB-4)
 - **Y** cuando las ve alguien que no lo es, no aparece ninguna.
 
 ### CA-10: Cada acción se confirma en su diálogo
@@ -291,7 +292,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Dado** la persona es la única admin de la cuenta (`dejariaSinAdmin`)
 - **Cuando** se pide borrarla
 - **Entonces** responde 409 con `codigo: 'ultimo-admin'`, y no cambia ni el asiento ni el login
-- **Y** en una cuenta personal esto siempre pasa: para sacar a esa persona se borra la cuenta.
+- **Y** en una cuenta personal esto siempre pasa: para sacar a esa persona se borra la cuenta. Por eso el panel ni ofrece borrarla ahí (CA-9).
 
 ### CB-5: Borrar a alguien que «Mi equipo» ya revocó
 - **Dado** una persona con el asiento revocado y el login todavía vivo

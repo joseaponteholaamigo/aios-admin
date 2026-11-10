@@ -90,10 +90,20 @@ describe('la acción de la página de personas', () => {
 
 describe('lo que se ve', () => {
   test('⛔ el menú de acciones aparece solo para el superadministrador (CA-9)', () => {
-    const panel = (canAct: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyName: 'Acme', canAct, lastAttempt: null }));
+    const panel = (canAct: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal: false, canAct, lastAttempt: null }));
 
     expect(panel(true)).toContain('Restablecer verificación en dos pasos');
     expect(panel(false)).not.toContain('Acciones');
+  });
+
+  test('⛔ en una cuenta personal no se ofrece borrar a su única persona: se ofrece borrar la cuenta (CB-4)', () => {
+    const panel = (personal: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal, canAct: true, lastAttempt: null }));
+
+    expect(panel(true)).not.toContain('Borrar persona');
+    expect(panel(true)).toContain(`href="/companies/${COMPANY}/delete"`);
+    expect(panel(true)).toContain('Borrar login');
+    expect(panel(false)).toContain('Borrar persona');
+    expect(panel(false)).not.toContain('/delete"');
   });
 
   test('⛔ el diálogo dice a quién y qué le pasa, y manda la acción y el correo en el cuerpo (CA-10)', () => {

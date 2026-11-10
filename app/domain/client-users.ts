@@ -37,7 +37,8 @@ export type GovernanceEntry = { action: string; actor: string | null; about: str
 export type CompanyDomain = { slug: string; skills: string[] };
 
 export type CompanyPeople = {
-  company: { id: string; name: string };
+  /** `kind`: en una cuenta personal, la única persona no se borra sola; se borra la cuenta. */
+  company: { id: string; name: string; kind: AccountKind };
   domains: CompanyDomain[];
   counts: ItemCounts;
   roles: ClientRole[];

@@ -178,7 +178,7 @@ describe('las personas', () => {
 
   test('las personas de una empresa: lo que ve cada una y la empresa a la que pertenecen', async () => {
     const { api } = apiAnswering(() => Response.json({
-      cliente: { id: 'acme-000001', nombre: 'Acme' },
+      cliente: { id: 'acme-000001', nombre: 'Acme', tipo: 'personal' },
       empresa: { dominios: [{ slug: 'convert', skills: ['copy'] }], cuenta: { skills: 1, agentes: 0, cadenas: 0 } },
       roles: [{ slug: 'ventas', label: 'Ventas', base: 'nada', vacio: false, reglas: [{}, {}], personas: 1 }],
       personas: [{ correo: 'beto@acme.com', rol: 'ventas', admin: false, estado: 'activo', ve: { tipo: 'rol', rol: 'ventas', ajustes: 1 }, cuenta: { skills: 1, agentes: 0, cadenas: 0 }, invitadoEl: 'a', aceptadoEl: null }],
@@ -186,7 +186,7 @@ describe('las personas', () => {
       bitacora: [{ accion: 'invito', actor: 'ana@acme.com', sobre: 'beto@acme.com', cuando: 'c' }],
     }));
     const r = await api.getCompanyPeople('t', 'acme-000001');
-    expect(r.kind === 'ok' && r.value.company).toEqual({ id: 'acme-000001', name: 'Acme' });
+    expect(r.kind === 'ok' && r.value.company).toEqual({ id: 'acme-000001', name: 'Acme', kind: 'personal' });
     expect(r.kind === 'ok' && r.value.people[0]?.sees).toEqual({ kind: 'role', role: 'ventas', adjustments: 1 });
     expect(r.kind === 'ok' && r.value.roles[0]).toEqual({ slug: 'ventas', label: 'Ventas', base: 'nothing', empty: false, people: 1, rules: 2 });
     expect(r.kind === 'ok' && r.value.people[0]?.status).toBe('active');

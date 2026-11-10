@@ -67,7 +67,7 @@ export function toCompanyPeople(body: unknown, log: Log): CompanyPeople {
   const client = asRecord(b.cliente, 'cliente');
   const company = asRecord(b.empresa, 'empresa');
   return {
-    company: { id: str(client.id, 'cliente.id'), name: str(client.nombre, 'cliente.nombre') },
+    company: { id: str(client.id, 'cliente.id'), name: str(client.nombre, 'cliente.nombre'), kind: toAccountKind(client.tipo) },
     domains: asArray(company.dominios ?? [], 'empresa.dominios').map((raw) => {
       const d = asRecord(raw, 'un dominio');
       return { slug: str(d.slug, 'dominio.slug'), skills: asArray(d.skills ?? [], 'dominio.skills').map(String) };

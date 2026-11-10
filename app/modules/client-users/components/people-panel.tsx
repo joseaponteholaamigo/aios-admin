@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import type { WriteRejection } from '../../../domain/account-creation';
 import type { ClientPerson, ClientRole } from '../../../domain/client-users';
-import type { PersonActionRequest } from '../../../domain/person-actions';
+import { PERSON_ACTIONS, type PersonActionRequest } from '../../../domain/person-actions';
 import { FormRejection } from '../../../shared/ui/form-rejection';
 import { PeopleTable } from './people-table';
 import { PersonActionDialog } from './person-action-dialog';
@@ -16,7 +16,10 @@ export type PersonActionAttempt = { attempt: PersonActionRequest | null; rejecti
 type PeoplePanelProps = {
   people: ClientPerson[];
   roles: ClientRole[];
+  companyId: string;
   companyName: string;
+  /** Una cuenta personal: su única persona no se borra sola (CB-4), se borra la cuenta. */
+  personal: boolean;
   canAct: boolean;
   lastAttempt: PersonActionAttempt | null;
 };
@@ -24,7 +27,10 @@ type PeoplePanelProps = {
 const sameRequest = (a: PersonActionRequest | null, b: PersonActionRequest | null) =>
   Boolean(a && b && a.action === b.action && a.email === b.email);
 
-export function PeoplePanel({ people, roles, companyName, canAct, lastAttempt }: PeoplePanelProps) {
+/** Lo que se le puede hacer a una persona de una cuenta personal: todo menos borrarla. */
+const PERSONAL_ACCOUNT_ACTIONS = PERSON_ACTIONS.filter((a) => a !== 'delete-person');
+
+export function PeoplePanel({ people, roles, companyId, companyName, personal, canAct, lastAttempt }: PeoplePanelProps) {
   const location = useLocation();
   const [chosen, setChosen] = useState<PersonActionRequest | null>(lastAttempt?.attempt ?? null);
   // El botón «Acciones» de la fila: al cerrar el diálogo el foco vuelve ahí, y no al principio de la página.
@@ -37,7 +43,11 @@ export function PeoplePanel({ people, roles, companyName, canAct, lastAttempt }:
       <PeopleTable
         people={people} roles={roles}
         actions={canAct ? (person) => (
-          <PersonActionsMenu onChoose={(action, button) => { trigger.current = button; setChosen({ action, email: person.email }); }} />
+          <PersonActionsMenu
+            actions={personal ? PERSONAL_ACCOUNT_ACTIONS : PERSON_ACTIONS}
+            deleteAccountHref={personal ? `/companies/${encodeURIComponent(companyId)}/delete` : undefined}
+            onChoose={(action, button) => { trigger.current = button; setChosen({ action, email: person.email }); }}
+          />
         ) : undefined}
       />
       {lastAttempt && !lastAttempt.attempt && <FormRejection rejection={lastAttempt.rejection} />}
