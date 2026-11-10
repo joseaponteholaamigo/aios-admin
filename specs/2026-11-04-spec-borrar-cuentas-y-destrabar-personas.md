@@ -63,6 +63,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
   - `POST /v1/admin/clientes/{id}/personas/restablecer-mfa`, con `{ correo }`;
   - `POST /v1/admin/clientes/{id}/personas/borrar-login`, con `{ correo }`;
   - `POST /v1/admin/clientes/{id}/personas/borrar`, con `{ correo }`;
+  - las tres son una sola ruta, `POST /v1/admin/clientes/{id}/personas/{accion}`, servida por una sola función (`adminAccionSobrePersona`);
   - `GET /v1/admin/clientes/{id}/borrado`: la vista previa de lo que se borra;
   - `POST /v1/admin/clientes/{id}/borrado`, con `{ confirmo }` y `motivo` opcional;
   - `GET /v1/admin/borrados-pendientes`: los borrados que empezaron y no terminaron.
@@ -117,6 +118,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 ### CA-5: Restablecer y borrar el login avisan a la persona; borrarla no
 - **Dado** una acción que terminó bien
 - **Entonces**, si fue restablecer o borrar el login, sale un correo a la persona por la puerta de correo (`asegurarPuertaDeCorreo`) que dice qué pasó, qué tiene que hacer y que escriba si no lo pidió, y la respuesta dice `correoDeAviso: 'enviado'`
+  - Restablecer avisa solo si desvinculó una app: a quien no tenía no le toca escanear ningún QR (CB-2).
 - **Y** si el correo falla, la acción se mantiene y la respuesta dice `correoDeAviso: 'no-enviado'`
 - **Y** borrar a la persona no manda correo.
 
@@ -164,7 +166,9 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Entonces** el diálogo lo dice en palabras simples:
   - `mfa-reciente`: con el enlace para volver a ingresar el código (`FormRejection`);
   - `ultimo-admin`: «es la única admin: nombra a otra admin antes de borrarla»;
-  - `sin-login`: «esta persona todavía no se registró: no tiene login».
+  - `sin-login`, con `asiento: 'invitado'`: «esta persona todavía no se registró: no tiene login»; con otro estado: «esta persona no tiene login: ya se borró, o nunca entró con este correo» (CB-8);
+  - `correo-de-otra-empresa`: «el login de este correo es de otra cuenta: desde aquí no se toca» (CB-7);
+  - `accion-incompleta` y `borrar-incompleto`: «no se terminó: vuelve a intentar, y se termina lo que faltó» (CB-6, CB-21).
 
 ### Borrar una cuenta: backend
 
@@ -268,13 +272,13 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 
 ### CB-1: Una persona invitada que nunca se registró
 - **Dado** una persona con asiento `invitado` y sin usuario en el pool
-- **Cuando** se pide restablecer o borrar el login, entonces responde 409 con `codigo: 'sin-login'`
+- **Cuando** se pide restablecer o borrar el login, entonces responde 409 con `codigo: 'sin-login'` y el estado del asiento (`asiento: 'invitado'`)
 - **Y** cuando se pide borrarla, se salta el login, borra el asiento y responde 200.
 
 ### CB-2: Una persona sin app de códigos vinculada
 - **Dado** una persona con login que nunca terminó de vincular su app, o que entra con Google o Microsoft
 - **Cuando** se pide restablecer
-- **Entonces** responde 200 igual (no hay nada que desvincular), cierra sus sesiones y lo anota
+- **Entonces** responde 200 igual (no hay nada que desvincular), cierra sus sesiones y lo anota, sin mandar el aviso del QR
 - **Y** el backend sabe que no hay app por `ConfiguredUserAuthFactors` (`AdminGetUserAuthFactors`) sin `SOFTWARE_TOKEN`, nunca por `UserMFASettingList`, que viene vacía aunque haya app («Antes de empezar»).
 
 ### CB-3: Un correo que no tiene asiento en esa cuenta
@@ -301,14 +305,21 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 
 ### CB-7: Un login que usa otra cuenta
 - **Dado** el índice de correos dice que ese correo es de otra cuenta (un asiento huérfano en esta, dato heredado)
-- **Cuando** se pide borrar el login, entonces responde 409 `correo-de-otra-empresa` y no lo borra
+- **Cuando** se pide restablecer o borrar el login, entonces responde 409 `correo-de-otra-empresa` y no toca el login
 - **Y** cuando se pide borrarla, borra el asiento de esta cuenta, no toca el índice de la otra y conserva el login.
 
 ### CB-8: Repetir la misma acción
 - **Dado** una acción que ya terminó
 - **Cuando** llega el mismo pedido otra vez (un reintento, un doble clic que se coló)
 - **Entonces** no falla ni deshace nada, y la respuesta dice el estado en que quedó la persona
-- **Y** borrar a una persona que ya se borró responde 404 `no-existe` (CB-3), sin cambiar nada.
+- **Y** borrar a una persona que ya se borró responde 404 `no-existe` (CB-3), sin cambiar nada
+- **Y** borrar otra vez el login de alguien que ya entró responde 409 `sin-login` con `asiento: 'activo'`, sin volver a llamar a Cognito.
+
+### CB-21: Cognito falla a mitad de restablecer o de borrar el login
+- **Dado** que restablecer o borrar el login ya hizo una parte (desvincular la app, o borrar uno de dos logins)
+- **Cuando** falla Cognito
+- **Entonces** responde 503 con `codigo: 'accion-incompleta'`, no anota nada y el aviso del log no lleva el correo
+- **Y** repetir el pedido termina lo que faltó y lo anota una sola vez: las dos acciones se pueden repetir sin daño.
 
 ### CB-9: Una cuenta escondida por el filtro de clientes
 - **Dado** `AIOS_ADMIN_CLIENTES` limita las cuentas visibles y la de la persona no está entre ellas
@@ -425,6 +436,9 @@ Los tests nuevos del backend van en la lista de `npm test` de `package.json`: si
 - **Antes de restablecer la verificación o borrar un login, se confirma que quien lo pide es la persona.** Por ejemplo, que lo pida el admin de su empresa, o que escriba desde ese mismo correo. El panel no puede comprobarlo, y es la defensa contra «perdí el celular» dicho por quien robó la contraseña.
 
 ## Riesgos y preguntas abiertas
+
+- **Las mayúsculas del correo en Cognito, sin comprobar.** El backend busca los logins con `ListUsers` y el filtro `email = "<correo en minúsculas>"`. Si ese filtro distingue mayúsculas, a quien se registró como `Juan.Perez@Empresa.com` no se lo encuentra: restablecer y borrar el login responden `sin-login`, y borrar a la persona borra el asiento y deja el login suelto. Se comprueba con una lectura en el pool de clientes antes del deploy; si distingue, se corrige antes de desplegar.
+- **La dirección de ayuda del correo de aviso** (`CONTACTO_DE_AYUDA`) la confirma Jose antes del deploy. Tiene que ser una dirección que alguien del equipo lea.
 
 - **El borrado que pide el propio cliente no borra los logins.** Con esta spec, los dos borrados quedan distintos. Igualarlos es otra spec.
 - **El id de una cuenta personal lleva el nombre de la persona** (por ejemplo `mateo-folador-d35e8f`), y sobrevive en la auditoría y en `borrado-hecho`. Pasa igual con el borrado del cliente. Si se seudonimiza, se decide aparte.
