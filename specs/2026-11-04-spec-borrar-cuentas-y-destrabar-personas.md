@@ -26,7 +26,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 | | **Borrar solo el login.** Sirve cuando restablecer no alcanza. La persona se vuelve a registrar con el mismo correo y conserva su asiento, su rol y su acceso, porque el asiento se ata al correo y no al usuario de Cognito. El registro la acepta porque tiene asiento (`src/lib/pre-registro.js`). | |
 | | **Borrar a la persona por completo.** Se borran su login, su asiento, su fila del índice de correos y sus ajustes de acceso. Es para quien ya no va en esa cuenta. | |
 | 2 | **Las tres son solo del superadministrador, con MFA reciente y sin motivo.** Antes de hacerla, un diálogo le explica qué le va a pasar a la persona y le pide confirmar (CA-10). Cada una queda anotada: quién, qué, a qué cuenta y cuándo (CA-6). Es solo del superadministrador porque restablecer el segundo factor es justo lo que pide quien robó una contraseña («perdí el celular, restablézcanme»). | Jose, 2026-11-05 |
-| 3 | **Restablecer y borrar el login le mandan un correo a la persona.** El texto dice qué pasó, qué tiene que hacer y que escriba si no lo pidió. Borrar a la persona no manda correo. | Jose, 2026-11-05 |
+| 3 | **Restablecer y borrar el login le mandan un correo a la persona.** El texto dice qué pasó y qué tiene que hacer, sin una dirección de contacto (el remitente es `noreply@`). Borrar a la persona no manda correo. | Jose, 2026-11-05; sin contacto, Jose, 2026-11-10 |
 | 4 | **Las tres cierran todas las sesiones abiertas de la persona** (`AdminUserGlobalSignOut`), por si el celular perdido tenía una abierta. Sin esto, una sesión sigue viva hasta 30 días (`refreshTokenValidity`); con esto, el ENSŌ de ese equipo deja de funcionar cuando vence su pase de una hora (`accessTokenValidity`). | Jose, 2026-11-05 |
 | 5 | **El código del segundo factor llega solo por la app de códigos, nunca por correo.** Cognito no permite el código por correo en un pool que recupera la contraseña solo por correo, y con razón: quien entrara al correo de una persona tendría los dos factores. A quien pierde el celular se lo destraba con «Restablecer» (decisión 1). | Jose, 2026-11-05 |
 | 6 | **Borrar a la persona borra su asiento; no lo deja revocado.** El registro de quién estuvo queda en la bitácora de gobierno de la cuenta (`invito`, `borro-persona`), que no se va con la persona. El correo queda libre, y volver a invitarla a la misma cuenta funciona como con alguien nuevo. Revocar desde «Mi equipo» sigue igual: deja el asiento `revocado`. | Jose, 2026-11-05 |
@@ -118,7 +118,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 
 ### CA-5: Restablecer y borrar el login avisan a la persona; borrarla no
 - **Dado** una acción que terminó bien
-- **Entonces**, si fue restablecer o borrar el login, sale un correo a la persona por la puerta de correo (`asegurarPuertaDeCorreo`) que dice qué pasó, qué tiene que hacer y que escriba si no lo pidió, y la respuesta dice `correoDeAviso: 'enviado'`
+- **Entonces**, si fue restablecer o borrar el login, sale un correo a la persona por la puerta de correo (`asegurarPuertaDeCorreo`) que dice qué pasó y qué tiene que hacer, y la respuesta dice `correoDeAviso: 'enviado'`
   - Restablecer avisa solo si desvinculó una app: a quien no tenía no le toca escanear ningún QR (CB-2).
 - **Y** si el correo falla, la acción se mantiene y la respuesta dice `correoDeAviso: 'no-enviado'`
 - **Y** borrar a la persona no manda correo.
@@ -438,7 +438,6 @@ Los tests nuevos del backend van en la lista de `npm test` de `package.json`: si
 
 ## Riesgos y preguntas abiertas
 
-- **La dirección de ayuda del correo de aviso** (`CONTACTO_DE_AYUDA`) la confirma Jose antes del deploy. Tiene que ser una dirección que alguien del equipo lea.
 
 - **El borrado que pide el propio cliente no borra los logins.** Con esta spec, los dos borrados quedan distintos. Igualarlos es otra spec.
 - **El id de una cuenta personal lleva el nombre de la persona** (por ejemplo `mateo-folador-d35e8f`), y sobrevive en la auditoría y en `borrado-hecho`. Pasa igual con el borrado del cliente. Si se seudonimiza, se decide aparte.
