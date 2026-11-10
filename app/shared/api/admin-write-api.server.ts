@@ -5,7 +5,9 @@
 // es «el enlace ya no sirve», es un rechazo que el formulario muestra junto a su campo. Por eso aquí
 // se lee el cuerpo de los errores, y allá no.
 import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, WriteRejection } from '../../domain/account-creation';
+import type { AccountDeletion, DeletedAccount } from '../../domain/account-deletion';
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
+import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { personActionPath, toBackendAccount, toBackendPerson, toCreatedAccount, toInvitedPerson, toPersonActionDone, toWriteRejection } from './write-mapping';
@@ -28,6 +30,7 @@ export type AdminWriteApi = {
   createAccount(token: string, account: NewAccount): Promise<WriteResult<CreatedAccount>>;
   invitePerson(token: string, companyId: string, person: NewPerson): Promise<WriteResult<InvitedPerson>>;
   personAction(token: string, companyId: string, request: PersonActionRequest): Promise<WriteResult<PersonActionDone>>;
+  deleteAccount(token: string, companyId: string, deletion: AccountDeletion): Promise<WriteResult<DeletedAccount>>;
 };
 
 /** Los estados cuyo cuerpo trae un rechazo para el formulario. */
@@ -74,5 +77,7 @@ export function createAdminWriteApi({
       post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/personas`, token, toBackendPerson(person), toInvitedPerson),
     personAction: (token, companyId, { action, email }) =>
       post(personActionPath(companyId, action), token, { correo: email }, (b) => toPersonActionDone(action, b)),
+    deleteAccount: (token, companyId, deletion) =>
+      post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/borrado`, token, toBackendDeletion(deletion), toDeletedAccount),
   };
 }

@@ -1,5 +1,6 @@
 /* El diálogo de una acción sobre una persona. El botón de confirmar es rojo: las tres acciones le
    cambian algo a una persona real, y dos no se deshacen. */
+/* `.btn.` delante: `.adm button { color: inherit }` pesa más que una sola clase y el texto saldría oscuro. */
 .person-action-dialog { width: min(520px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
 .person-action-dialog::backdrop { background: color-mix(in srgb, var(--ink) 40%, transparent); }
 .person-action-dialog__form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
@@ -7,5 +8,5 @@
 .person-action-dialog__form p { font-size: 14px; color: var(--ink-2); }
 .person-action-dialog__check { color: var(--muted); font-size: 13px; }
 .person-action-dialog__buttons { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
-.person-action-dialog__confirm { background: var(--bad); color: var(--panel); border-color: var(--bad); }
-.person-action-dialog__confirm:hover { background: color-mix(in srgb, var(--bad) 85%, var(--ink)); border-color: var(--bad); }
+.btn.person-action-dialog__confirm { background: var(--bad); color: var(--panel); border-color: var(--bad); }
+.btn.person-action-dialog__confirm:hover { background: color-mix(in srgb, var(--bad) 85%, var(--ink)); border-color: var(--bad); }

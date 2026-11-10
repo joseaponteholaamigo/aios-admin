@@ -41,7 +41,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 | 10 | **Se confirma escribiendo el id de la cuenta**, igual que el borrado que pide el propio cliente (el campo `confirmo` de `/v1/team/cuenta`). | Jose, 2026-11-04 |
 | 11 | **No se borra una cuenta cuya suscripción de Stripe sigue cobrando.** Primero se cancela en Stripe; si no, Stripe le sigue cobrando a una cuenta que ya no existe. Una suscripción cancelada no frena, ni la de un Personalizado que la descartó (CB-12). La regla de base es la de `compra.js` (`tieneSuscripcionActiva`), no la de mover. | Jose, 2026-11-04 |
 | 12 | **Borrar una cuenta borra también a sus personas: sus asientos y sus logins.** La única excepción es el login de quien tiene su correo en otra cuenta, que se conserva para no dejarla afuera de esa otra. | Jose, 2026-11-05 |
-| 13 | **El borrado es `borrarCliente`** (`src/lib/borrado.js`), el mismo que usan el borrado del cliente y mover. Esta spec no escribe lógica de borrado nueva. Lo que agrega: la vista previa, la marca para retomar un borrado cortado, los logins y la auditoría. | Jose, 2026-11-04 |
+| 13 | **El borrado es `borrarCliente`** (`src/lib/borrado.js`), el mismo que usan el borrado del cliente y mover. Esta spec no escribe lógica de borrado nueva. Lo que agrega: la vista previa, la marca para retomar un borrado cortado, los logins y la auditoría. **Los logins se borran antes que `borrarCliente`:** borrados los asientos, ya no se sabe qué correos tenía la cuenta, y la marca no los guarda (CB-18). La marca es también el candado contra dos borrados a la vez (CB-15). | Jose, 2026-11-04 |
 | 14 | **No se manda correo** a las personas de una cuenta borrada. El borrado se acuerda con el admin de la cuenta, y es él quien le avisa a su equipo. | Jose, 2026-11-05 |
 
 ## Antes de empezar
@@ -198,7 +198,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 
 ### CA-16: La auditoría guarda quién, cuándo y por qué, sin datos de las personas
 - **Dado** un borrado completo (CA-14)
-- **Entonces** la tabla `eventos` tiene un solo renglón `clientes.borrar`, con objetivo `tenant#<id>`, actor `equipo:<sub>`, canal `api` y el motivo si se dio
+- **Entonces** la tabla `eventos` tiene un solo renglón `clientes.borrar`, con objetivo `tenant#<id>`, actor `equipo:<sub>`, canal `api` y el motivo escrito, o «borrado desde el panel» si quedó en blanco (CA-19). Un motivo con un correo se rechaza con 422 `invalido`: ese renglón no se borra nunca
 - **Y** en `antes` van solo el tipo, el plan y cuántas personas había, y en `despues`, `completo` y la cuenta por sitio
 - **Y** ese renglón no lleva ningún correo ni el nombre de la cuenta.
 
@@ -217,7 +217,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Cuando** `confirmo` falta, está vacío o no es el id (también si solo cambian mayúsculas o espacios), entonces recibe 422 con `codigo: 'confirmacion'`
 - **Cuando** el motivo pasa de 500 caracteres (`LARGO_DEL_MOTIVO`), entonces recibe 422 con `codigo: 'invalido'`
 - **Y** en los dos casos no se borra nada
-- **Y** un motivo que falta o está en blanco no es un error: se borra igual, y la auditoría queda sin motivo.
+- **Y** un motivo que falta o está en blanco no es un error: se borra igual, y la auditoría queda con el motivo por defecto «borrado desde el panel». La auditoría del equipo exige un motivo en todo lo que entra por la API; la creación de una cuenta hace lo mismo con «alta desde el panel».
 
 ### CA-20: Una suscripción que cobra frena el borrado; una cancelada no
 - **Dado** una cuenta cuya suscripción de Stripe sigue cobrando

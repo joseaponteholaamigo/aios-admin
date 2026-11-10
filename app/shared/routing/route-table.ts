@@ -46,6 +46,8 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   // Antes que `:companyId`: la tabla se lee en orden, y `new` no es una empresa.
   { path: 'companies/new', file: 'modules/companies/routes/company-new.tsx', access: { module: 'companies', level: 'edit' } },
   { path: 'companies/:companyId', file: 'modules/companies/routes/company.tsx', access: { module: 'companies', level: 'view' } },
+  // Borrar una cuenta: solo el superadministrador (CA-23). Tener «editar» en Empresas no alcanza.
+  { path: 'companies/:companyId/delete', file: 'modules/companies/routes/company-delete.tsx', access: 'superadmin' },
   {
     path: 'client-users', file: 'modules/client-users/routes/client-users.tsx', access: { module: 'clientUsers', level: 'view' },
     menu: { label: 'Usuarios de clientes', group: 'administration', icon: 'usuarios' },

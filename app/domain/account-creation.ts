@@ -2,6 +2,7 @@
 // M2b): lo que se pide y por qué el backend puede negarse. Los nombres del backend se traducen en
 // `app/shared/api/write-mapping.ts`: aquí no aparece ninguno.
 import type { AccountKind, Company } from './companies';
+import type { DeletionSite } from './account-deletion';
 import type { SeatStatus } from './client-users';
 
 /** Los planes que se eligen al crear: Pro y Team se compran en la web (decisión 2). */
@@ -62,6 +63,9 @@ export type WriteRejection =
   /** Las acciones sobre una persona: sin login (con el estado de su asiento), la única admin, o un corte que se termina repitiendo. */
   | { code: 'no-login'; seat: SeatStatus | null }
   | { code: 'last-admin' | 'action-incomplete' | 'delete-incomplete' }
+  /** Borrar una cuenta: sin la confirmación exacta, cobrando, con otro borrado en curso, o a medias (con lo que falló). */
+  | { code: 'confirmation' | 'account-charging' | 'deletion-in-progress' }
+  | { code: 'deletion-incomplete'; sites: DeletionSite[] }
   /** La API no respondió a tiempo, o respondió un 5xx: no se sabe si se hizo. */
   | { code: 'unavailable' };
 

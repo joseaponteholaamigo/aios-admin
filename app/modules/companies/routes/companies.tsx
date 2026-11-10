@@ -20,14 +20,28 @@ import { PageHeader } from '../../../shared/layout/page-header';
 import { Icon } from '../../../shared/icons/icon';
 import { pageFrom } from '../../../shared/routing/page-param';
 import { MAX_SEARCH_LENGTH, searchQuery, searchScope, useBackgroundSearch } from '../../../shared/search/use-background-search';
+import { DoneNotice } from '../../../shared/ui/done-notice';
 import { Pager } from '../../../shared/ui/pager';
+import { deletedNotice } from '../account-deletion-labels';
 import { companiesHref } from '../companies-href';
 import { countOf, emptyAccountsMessage } from '../company-labels';
 import { CompaniesFilters } from '../components/companies-filters';
 import { CompaniesSearchResults } from '../components/companies-search-results';
 import { CompaniesTable } from '../components/companies-table';
 import { CompanyTabs } from '../components/company-tabs';
+import { PendingDeletionsNotice } from '../components/pending-deletions-notice';
 import { PersonalAccountsTable } from '../components/personal-accounts-table';
+
+/**
+ * Los borrados pendientes no son la lista: si el backend no los puede dar (no responde, o niega), la
+ * lista sigue sin el aviso. Todo lo demás sube: el redirect de un 401, que cierra la sesión, y un error
+ * del código, que no tiene que desaparecer en silencio con el aviso (CA-27).
+ */
+function withoutPendingIfUnavailable(e: unknown): [] {
+  const reason = (e as { data?: { reason?: unknown } } | null)?.data?.reason;
+  if (reason === 'unavailable' || reason === 'forbidden') return [];
+  throw e;
+}
 
 const SEARCH = z.object({ text: z.string().min(1).max(MAX_SEARCH_LENGTH), kind: z.enum(['company', 'personal']), plan: z.enum(['', ...LIST_PLANS]) });
 
@@ -44,10 +58,16 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const { kind, plan } = filtersFrom(url.searchParams);
   const page = pageFrom(url.searchParams);
-  const list = await fromAdminApi({ request, context }, (api, token) => api.listCompanies(token, { kind, plan, page }));
   const member = context.get(teamMemberContext);
+  const [list, pendingDeletions] = await Promise.all([
+    fromAdminApi({ request, context }, (api, token) => api.listCompanies(token, { kind, plan, page })),
+    // Los borrados a medias, solo para el superadministrador (CA-27).
+    member?.isSuperadmin === true
+      ? fromAdminApi({ request, context }, (api, token) => api.listPendingDeletions(token)).catch(withoutPendingIfUnavailable)
+      : Promise.resolve([]),
+  ]);
   // El botón de crear solo para quien puede (CA-16): esconder no protege, la ruta también lo pide.
-  return { ...list, canCreate: member ? can(member, 'companies', 'edit') : false };
+  return { ...list, pendingDeletions, canCreate: member ? can(member, 'companies', 'edit') : false };
 }
 
 /** Buscar no cambia la lista: no hace falta volver a pedirla después de cada búsqueda. */
@@ -74,7 +94,7 @@ export default function Companies({ loaderData }: Route.ComponentProps) {
   const filters = filtersFrom(params);
   const { kind, plan } = filters;
   const search = useBackgroundSearch<CompaniesSearch>({ kind, plan: plan ?? '' }, kind);
-  const { companies, page, counts, onlySome, canCreate } = loaderData;
+  const { companies, page, counts, onlySome, canCreate, pendingDeletions } = loaderData;
   const emptyMessage = emptyAccountsMessage(kind, plan);
   const { state } = search;
   return (
@@ -87,6 +107,8 @@ export default function Companies({ loaderData }: Route.ComponentProps) {
           ? <Link className="btn primary" to={kind === 'personal' ? '/companies/new?kind=personal' : '/companies/new'}><Icon name="plus" />{kind === 'personal' ? 'Nueva cuenta personal' : 'Nueva empresa'}</Link>
           : undefined}
       />
+      <DoneNotice text={deletedNotice(params)} />
+      <PendingDeletionsNotice pending={pendingDeletions} />
       <FilterNotice onlySome={onlySome} />
       <CompanyTabs kind={kind} counts={counts} />
       <section className="card">

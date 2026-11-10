@@ -1,0 +1,8 @@
+/* La confirmación del borrado de una cuenta. El botón es rojo: lo que borra no se recupera. */
+/* `.btn.` delante: `.adm button { color: inherit }` pesa más que una sola clase y el texto saldría oscuro. */
+.delete-account-form { display: flex; flex-direction: column; gap: 16px; max-width: 640px; }
+.field .delete-account-form__reason { min-height: 80px; font-family: var(--sans); font-size: 13.5px; }
+.delete-account-form__warning { font-size: 13px; color: var(--bad); }
+.delete-account-form__unfinished { font-size: 13px; color: var(--ink-2); }
+.btn.delete-account-form__confirm { align-self: flex-start; background: var(--bad); color: var(--panel); border-color: var(--bad); }
+.btn.delete-account-form__confirm:hover { background: color-mix(in srgb, var(--bad) 85%, var(--ink)); border-color: var(--bad); }

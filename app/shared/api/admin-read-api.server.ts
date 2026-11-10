@@ -4,6 +4,7 @@
 // Aparte de `AdminApi` (`/yo`), a propósito: quien solo arma el menú no depende de todo esto.
 // Llama con el access token de la sesión, que nunca sale del servidor del panel, y traduce cada
 // respuesta aquí mismo: el resto del panel no ve un nombre del backend.
+import type { DeletionPreview, PendingDeletion } from '../../domain/account-deletion';
 import type { AuditPage } from '../../domain/audit';
 import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '../../domain/client-users';
 import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan } from '../../domain/companies';
@@ -13,6 +14,7 @@ import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
 import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } from './client-users-mapping';
 import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory } from './companies-mapping';
+import { toDeletionPreview, toPendingDeletions } from './deletion-mapping';
 import { toTeamList } from './team-member-mapping';
 
 const TIMEOUT_MS = 5000;
@@ -47,6 +49,9 @@ export type AdminReadApi = {
   getDataCheckup(token: string): Promise<ApiResult<DataCheckup>>;
   listAuditEvents(token: string, q: { target?: string | null; page?: number }): Promise<ApiResult<AuditPage>>;
   listTeam(token: string): Promise<ApiResult<TeamMember[]>>;
+  /** Lo que se borraría de una cuenta, sin borrar nada. Solo el superadministrador. */
+  getDeletionPreview(token: string, id: string): Promise<ApiResult<DeletionPreview>>;
+  listPendingDeletions(token: string): Promise<ApiResult<PendingDeletion[]>>;
 };
 
 const STATUS_RESULT: Record<number, ApiResult<never>['kind']> = { 400: 'invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found', 422: 'invalid' };
@@ -111,5 +116,7 @@ export function createAdminReadApi({
     getDataCheckup: (token) => send('/v1/admin/doctor', token, (b) => toDataCheckup(b, log), { timeoutMs: CHECKUP_TIMEOUT_MS }),
     listAuditEvents: (token, { target, page }) => send(`/v1/admin/auditoria${query({ objetivo: target, pagina: pageToApi(page) })}`, token, (b) => toAuditPage(b, log)),
     listTeam: (token) => send('/v1/admin/equipo', token, (b) => toTeamList(b, log)),
+    getDeletionPreview: (token, id) => send(`${company(id)}/borrado`, token, (b) => toDeletionPreview(b, log)),
+    listPendingDeletions: (token) => send('/v1/admin/borrados-pendientes', token, toPendingDeletions),
   };
 }

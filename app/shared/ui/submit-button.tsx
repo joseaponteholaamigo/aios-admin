@@ -25,12 +25,14 @@ type SubmitButtonProps = {
   name?: string;
   value?: string;
   className?: string;
+  /** Desactivado aunque no haya un pedido en camino: por ejemplo, hasta que se escriba la confirmación. */
+  disabled?: boolean;
 };
 
-export function SubmitButton({ label, busyLabel, name, value, className = 'btn primary' }: SubmitButtonProps) {
+export function SubmitButton({ label, busyLabel, name, value, className = 'btn primary', disabled = false }: SubmitButtonProps) {
   const { busy, mine } = submitState(useNavigation(), name, value);
   return (
-    <button type="submit" className={`${className} submit-button`} name={name} value={value} disabled={busy} aria-busy={mine || undefined}>
+    <button type="submit" className={`${className} submit-button`} name={name} value={value} disabled={busy || disabled} aria-busy={mine || undefined}>
       {mine && <span className="submit-button__spinner" aria-hidden="true" />}
       {mine ? busyLabel : label}
     </button>

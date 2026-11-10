@@ -27,11 +27,16 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   ]);
   const member = context.get(teamMemberContext);
   // El enlace a sus personas solo para quien puede abrirlas: esconder no protege, pero no tienta.
-  return { file, history, canSeePeople: member ? can(member, 'clientUsers', 'view') : false };
+  return {
+    file, history,
+    canSeePeople: member ? can(member, 'clientUsers', 'view') : false,
+    // Borrar la cuenta, solo el superadministrador (CA-23): la ruta también lo pide.
+    canDelete: member?.isSuperadmin === true,
+  };
 }
 
 export default function Company({ loaderData }: Route.ComponentProps) {
-  const { file, history, canSeePeople } = loaderData;
+  const { file, history, canSeePeople, canDelete } = loaderData;
   const [params] = useSearchParams();
   const [plan, status] = [planLabel(file.plan), statusLabel(file)];
   const personal = file.kind === 'personal';
@@ -49,7 +54,12 @@ export default function Company({ loaderData }: Route.ComponentProps) {
             <span className={badgeClass(plan.tone)}>{plan.text}</span> <span className={badgeClass(status.tone)}>{status.text}</span>
           </>
         }
-        actions={canSeePeople && !personal ? <Link className="btn" to={`/client-users/${file.id}`}>Ver sus personas</Link> : undefined}
+        actions={(canSeePeople && !personal) || canDelete ? (
+          <>
+            {canSeePeople && !personal && <Link className="btn" to={`/client-users/${file.id}`}>Ver sus personas</Link>}
+            {canDelete && <Link className="btn" to={`/companies/${file.id}/delete`}>Borrar cuenta</Link>}
+          </>
+        ) : undefined}
       />
       <DoneNotice text={createdNotice(params)} />
       <div className="grid g-main">

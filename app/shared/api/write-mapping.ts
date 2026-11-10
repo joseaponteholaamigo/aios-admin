@@ -6,6 +6,7 @@ import type { AccountKind } from '../../domain/companies';
 import type { PersonAction, PersonActionDone } from '../../domain/person-actions';
 import { ApiContractError, asRecord, num, numOrNull, str, strOrNull, type Log } from './api-reading';
 import { toSeatStatus } from './client-users-mapping';
+import { toDeletionSite } from './deletion-mapping';
 import { toCompany } from './companies-mapping';
 
 const KIND_TO_API: Record<AccountKind, string> = { company: 'empresa', personal: 'personal' };
@@ -73,6 +74,10 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'ultimo-admin': () => ({ code: 'last-admin' }),
   'accion-incompleta': () => ({ code: 'action-incomplete' }),
   'borrar-incompleto': () => ({ code: 'delete-incomplete' }),
+  confirmacion: () => ({ code: 'confirmation' }),
+  'cuenta-con-cobro': () => ({ code: 'account-charging' }),
+  'borrado-en-curso': () => ({ code: 'deletion-in-progress' }),
+  'borrado-incompleto': (b) => ({ code: 'deletion-incomplete', sites: strings(b.sitios).map(toDeletionSite) }),
 };
 
 /**
