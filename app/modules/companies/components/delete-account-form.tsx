@@ -30,7 +30,7 @@ export function DeleteAccountForm({ preview, values, rejection }: DeleteAccountF
   if (preview.charging) {
     return (
       <div className="banner" role="alert">
-        <p>Esta cuenta tiene una suscripción de Stripe que sigue cobrando. Primero hay que cancelarla en Stripe; después se puede borrar desde aquí.</p>
+        <p>Esta cuenta tiene una suscripción de Stripe que no está cancelada y puede volver a cobrar. Primero hay que cancelarla en Stripe; después se puede borrar desde aquí.</p>
       </div>
     );
   }

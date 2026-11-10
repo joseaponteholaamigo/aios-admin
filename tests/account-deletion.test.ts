@@ -185,6 +185,7 @@ describe('lo que se ve', () => {
 
     expect(confirmButton(html)).toBeNull();
     expect(html).toContain('Primero hay que cancelarla en Stripe');
+    expect(html).toContain('no está cancelada');
   });
 
   test('un borrado a medias se ofrece como «Terminar el borrado», y dice qué falló (CA-27)', () => {

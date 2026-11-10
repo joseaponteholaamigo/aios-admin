@@ -39,7 +39,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 | 8 | **Solo el superadministrador, con MFA reciente** (opción B: `auth_time` de menos de 15 min). Tener «editar» en Empresas no alcanza. | Plan §3.2; Jose, 2026-11-04 |
 | 9 | **Motivo opcional.** El formulario tiene el campo «Motivo», pero se puede borrar sin llenarlo. Si se llena, queda en la auditoría del equipo, que es lo único que sobrevive al borrado: la bitácora del cliente se borra con él. | Jose, 2026-11-05 |
 | 10 | **Se confirma escribiendo el id de la cuenta**, igual que el borrado que pide el propio cliente (el campo `confirmo` de `/v1/team/cuenta`). | Jose, 2026-11-04 |
-| 11 | **No se borra una cuenta cuya suscripción de Stripe sigue cobrando.** Primero se cancela en Stripe; si no, Stripe le sigue cobrando a una cuenta que ya no existe. Una suscripción cancelada no frena, ni la de un Personalizado que la descartó (CB-12). La regla de base es la de `compra.js` (`tieneSuscripcionActiva`), no la de mover. | Jose, 2026-11-04 |
+| 11 | **No se borra una cuenta cuya suscripción de Stripe sigue cobrando, o puede volver a cobrar.** Primero se cancela en Stripe; si no, Stripe le sigue cobrando a una cuenta que ya no existe. Frenan también `unpaid`, `paused` e `incomplete`: hoy no cobran, pero Stripe los puede reanudar. Solo deja borrar una suscripción que Stripe ya no revive (`canceled`, `incomplete_expired`), o la de un Personalizado que la descartó (CB-12). La base es la regla de `compra.js` (`sigueCobrando`), más estricta para el borrado (`impideBorrar`); la de compra no cambia. | Jose, 2026-11-04; los estados que pueden volver, Jose, 2026-11-10 |
 | 12 | **Borrar una cuenta borra también a sus personas: sus asientos y sus logins.** La única excepción es el login de quien tiene su correo en otra cuenta, que se conserva para no dejarla afuera de esa otra. | Jose, 2026-11-05 |
 | 13 | **El borrado es `borrarCliente`** (`src/lib/borrado.js`), el mismo que usan el borrado del cliente y mover. Esta spec no escribe lógica de borrado nueva. Lo que agrega: la vista previa, la marca para retomar un borrado cortado, los logins y la auditoría. **Los logins se borran antes que `borrarCliente`:** borrados los asientos, ya no se sabe qué correos tenía la cuenta, y la marca no los guarda (CB-18). La marca es también el candado contra dos borrados a la vez (CB-15). | Jose, 2026-11-04 |
 | 14 | **No se manda correo** a las personas de una cuenta borrada. El borrado se acuerda con el admin de la cuenta, y es él quien le avisa a su equipo. | Jose, 2026-11-05 |
@@ -223,7 +223,8 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Dado** una cuenta cuya suscripción de Stripe sigue cobrando
 - **Cuando** se pide el borrado
 - **Entonces** recibe 409 con `codigo: 'cuenta-con-cobro'`, no se borra nada y la vista previa dice `cobra: true`
-- **Y** si la suscripción está cancelada, el borrado sigue como en CA-14.
+- **Y** frena igual con una suscripción en `unpaid`, `paused` o `incomplete`
+- **Y** si la suscripción está cancelada (`canceled`) o venció sin pagar (`incomplete_expired`), el borrado sigue como en CA-14.
 
 ### CA-21: Un borrado cortado se termina al repetirlo
 - **Dado** un borrado que se cortó después de borrar la ficha (la cuenta ya no está en la lista)

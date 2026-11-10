@@ -61,7 +61,7 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'delete-incomplete':
       return 'No se terminó. Vuelve a oprimir el botón: se termina lo que faltó.';
     case 'confirmation': return 'Lo escrito no es el id de la cuenta: escríbelo exacto para confirmar.';
-    case 'account-charging': return 'La suscripción de Stripe de esta cuenta sigue cobrando: primero hay que cancelarla en Stripe.';
+    case 'account-charging': return 'La suscripción de Stripe de esta cuenta no está cancelada y puede volver a cobrar: primero hay que cancelarla en Stripe.';
     case 'deletion-in-progress': return 'Esta cuenta ya se está borrando: espera unos segundos y recarga la página.';
     case 'deletion-incomplete':
       return `El borrado no terminó. Falló en: ${rejection.sites.map(deletionSiteLabel).join(', ') || '—'}. Oprime «Terminar el borrado»: se termina lo que faltó.`;
