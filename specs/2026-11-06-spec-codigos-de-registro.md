@@ -27,7 +27,7 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
 | 11 | **Los códigos viven en una tabla aparte, `aios-codigos`**, en el stack del backend: el código, sus reservas y sus canjes. La función pública solo toca esa tabla. Va en el backend y no en `AiosAdministrator` porque la usan reservar, canjear y el pre-registro, que son del registro de los clientes. El pre-registro falla cerrado: si la tabla faltara por un problema del stack del superadmin, nadie podría registrarse, ni con invitación. Y así la dependencia sigue en un solo sentido: el superadmin usa lo del backend por nombre, nunca al revés. | Propuesta técnica; Jose preguntó el 2026-11-06 si iba en el stack del superadmin |
 | 12 | **Cada código dice cuántos créditos al mes da**, un entero de 0 a 1.000, con 1.000 por omisión. La cuenta creada los guarda (`creditosAlMes`) y la bolsa del mes de esa persona es ese número, no los 1.000 fijos de la regla M4 de la spec de créditos. Al comprar Pro, vuelve a los 1.000 de Pro. Así un código para una promoción abierta puede salir barato: cada crédito se paga en OpenRouter. | Jose, 2026-11-10 (opción B) |
 | 13 | **Comprar Pro desde una cuenta de código.** «Comprar Pro» aparece desde el aviso de 30 días antes del fin y después de vencido. Al confirmarse el pago, la cuenta deja de ser Personalizado y queda en el Pro de Stripe, con su mismo id, su persona y lo que tenga. Si paga antes del fin, Stripe empieza a cobrar el día siguiente a `hasta` (`subscription_data.trial_end`), para que no pierda los días gratis. Si faltan menos de 48 h, el mínimo que acepta Stripe, cobra al pagar. Solo pueden comprar así las cuentas que salieron de un código (`origen: 'codigo'`): las del webinar no tienen fin y no lo necesitan. | Jose, 2026-11-10 (la compra); el cómo, propuesta técnica |
-| 14 | **Una huella del correo al borrar.** Al borrar una cuenta o una persona, se borra su correo, pero queda en `aios-codigos` una huella: un HMAC-SHA256 del correo normalizado, con una clave que no sale del backend. Con ella el canje reconoce a quien ya tuvo cuenta (decisión 4), y nadie puede averiguar un correo probando candidatos. En el detalle de un código, el canje de una cuenta borrada dice «cuenta borrada», sin correo. | Jose, 2026-11-10 (solo personas nuevas); la huella, propuesta técnica |
+| 14 | **Una huella del correo al borrar.** Al borrar una cuenta o una persona, se borra su correo, pero queda en `aios-codigos` una huella: un HMAC-SHA256 del correo normalizado, con una clave que genera el stack en Secrets Manager y no sale de AWS. Con ella el canje reconoce a quien ya tuvo cuenta (decisión 4), y nadie puede averiguar un correo probando candidatos. En el detalle de un código, el canje de una cuenta borrada dice «cuenta borrada», sin correo. | Jose, 2026-11-10 (solo personas nuevas); la huella, propuesta técnica |
 | 15 | **Las ramas son las del superadmin**, `superadmin_v2`, en los tres repos. En `aios-tower` se crea desde `branch-qa`, en un worktree aparte, para no cambiar la copia en la que corre el ENSŌ de desarrollo. | Jose, 2026-11-10 |
 
 ## Alcance
@@ -83,7 +83,7 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
   - el Pro dura 2 meses desde el canje;
   - sin tocar «Créditos al mes»
 - **Entonces** el backend guarda el código en `aios-codigos` con estado `activo`, 0 usos, 1.000 créditos al mes y el freno diario en 200
-- **Y** el código tiene 12 caracteres al azar, de un alfabeto sin letras que se confunden, agrupados como `ENSO-XXXX-XXXX`
+- **Y** el código tiene 12 caracteres al azar, de un alfabeto sin letras que se confunden, agrupados como `ENSO-XXXX-XXXX-XXXX`
 - **Y** la auditoría tiene `codigos.crear` con el actor `equipo:<sub>` y la etiqueta, sin correos de clientes.
 
 ### CA-2: Crear un código escrito a mano
@@ -93,8 +93,8 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
 - **Y** se rechaza con 422, sin guardar nada, si:
   - tiene menos de 8 caracteres;
   - lleva algo distinto de letras, números y guiones;
-  - no tiene tope;
-  - ya existe un código con ese texto, sin importar mayúsculas.
+  - no tiene tope
+- **Y** se rechaza con 409 (`codigo-existe`), sin guardar nada, si ya existe un código con ese texto, sin importar mayúsculas.
 
 ### CA-3: Las fechas y la duración del plan
 - **Dado** el formulario de crear
@@ -103,9 +103,11 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
   - N días o N meses desde el canje;
   - hasta una fecha fija (`AAAA-MM-DD`);
   - sin fin
+- **Y** las dos fechas del código van con su zona horaria (`2026-11-30T23:59:00-05:00`): sin ella, en producción el código vencería cinco horas antes
 - **Y** se rechaza con 422 si:
-  - «válido hasta» ya pasó, o es anterior a «válido desde»;
-  - la fecha fija del plan ya pasó o es anterior a «válido hasta»;
+  - una fecha no trae zona, o no existe en el calendario (`2026-11-31`);
+  - «válido hasta» ya pasó, es anterior a «válido desde» o está a más de 1.095 días: ningún código es infinito;
+  - la fecha fija del plan ya pasó o es anterior al último día en que se puede canjear (el de Bogotá 24 h después de «válido hasta», CB-5);
   - N no es un entero entre 1 y 36 (meses) o entre 1 y 1095 (días);
   - «Créditos al mes» no es un entero entre 0 y 1.000.
 
@@ -126,6 +128,7 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
 - **Dado** una persona con `codigos: editar` y un código activo
 - **Cuando** lo pausa
 - **Entonces** reservar responde «código pausado» hasta que lo reanude
+- **Y** reanudarlo reinicia el freno del día: si lo había pausado el freno, la reserva siguiente no lo vuelve a pausar
 - **Y** cuando lo revoca, ya no se puede reanudar, y quienes lo canjearon conservan su plan
 - **Y** cada acción queda en la auditoría (`codigos.pausar`, `codigos.reanudar`, `codigos.revocar`).
 
@@ -401,7 +404,7 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
 ## Riesgos y preguntas abiertas
 
 - **Los créditos dependen de otra rama.** La bolsa del mes vive en la spec de créditos (`feat/backend-casa-teo`), que todavía no está en `branch-qa`. Esa spec fija 1.000 para todos (M4) y tiene que leer `creditosAlMes` de la cuenta. Si los códigos salen antes, el número queda guardado y los créditos llegan con esa mezcla.
-- **La clave del HMAC no se puede perder ni cambiar:** con otra clave, las huellas viejas dejan de reconocer a nadie. Va en Secrets Manager, creada a mano y con `RETAIN`, como las otras claves del backend.
+- **La clave del HMAC no se puede perder ni cambiar:** con otra clave, las huellas viejas dejan de reconocer a nadie. La genera el stack del backend dentro de Secrets Manager (`aios/huella-de-correo`, con `RETAIN` y en la política del stack): nadie la escribe ni la ve, y nunca pasa por el repo.
 
 - **El formulario de registro de Cognito con el correo puesto.** Hoy `login_hint` no rellena el registro (`server/services/login-de-persona.js:146-149`). Hay que probar si la pantalla gestionada abre directo en «crear cuenta» con el correo; si no, la persona pulsa «Crear cuenta» y escribe el mismo correo. CA-14 no depende de eso.
 - **El orden del despliegue:** backend (tabla, funciones, pre-registro), después `AiosAdministrator`, después el panel, y al final una versión nueva de ENSŌ. ENSŌ llega a Windows por la Microsoft Store, que revisa cada versión antes de publicarla. Hasta entonces, un código solo sirve a quien tenga la versión nueva.
