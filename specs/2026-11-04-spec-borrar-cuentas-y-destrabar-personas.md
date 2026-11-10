@@ -5,7 +5,7 @@
   - Sobre cuentas: «¿Deberíamos tener la opción de borrar los clientes desde el superadmin?», y después «Sí».
   - Sobre personas: «También deberíamos contemplar cómo borrar un usuario específico solo de Cognito o completo, ya que hay usuarios que pueden perder el vínculo de la autenticación de dos factores y no pueden ingresar». Pidió que fuera en esta misma spec.
   - El plan del superadmin (`docs/2026-10-20-plan-superadmin-aws.md`, §3.2) ya reserva al superadministrador, con MFA reciente, «borrar personas o empresas».
-- **Estado:** decisiones cerradas (2026-11-05); falta probar el restablecimiento con una cuenta de prueba («Antes de empezar»)
+- **Estado:** decisiones cerradas (2026-11-05) y restablecimiento probado en producción (2026-11-10): lista para construir
 - **Repos:** `aios-backend` (worktree `aios-backend-superadmin`) y `aios-admin`, los dos en la rama `superadmin_v2`.
 
 ## Objetivo
@@ -47,10 +47,9 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 ## Antes de empezar
 
 - **La opción B del MFA ya está aplicada y desplegada (2026-11-05):** backend `b96ef72` y panel `733c67f`. Jose la probó en producción: con `max_age=900`, Cognito cuenta los 15 minutos desde el código real y no desde un inicio silencioso, y el botón «Sign in as…» pide contraseña y código (el cliente del panel tiene `ALLOW_USER_AUTH`).
-- **Comprobar el restablecimiento con una cuenta de prueba**, antes de construir CA-1. Se llama `AdminDeleteSoftwareToken` sobre esa cuenta y se entra a ENSŌ: el login gestionado tiene que pedir el QR nuevo (el reto `MFA_SETUP`).
-  - Es una acción sobre la cuenta `enso`: se avisa antes y la corre Jose.
-  - El SDK del backend (`@aws-sdk/client-cognito-identity-provider` 3.1138.0) ya trae `AdminDeleteSoftwareTokenCommand`. La operación es de agosto de 2026, y el CLI de AWS puede no tenerla todavía.
-  - Si el login gestionado no pide el QR, restablecer pasa a ser «borrar el login», y esta spec se corrige antes de seguir.
+- **El restablecimiento se probó en producción el 2026-11-10, y funciona.** Jose corrió `AdminDeleteSoftwareToken` (con el SDK del backend, `@aws-sdk/client-cognito-identity-provider` 3.1138.0) sobre una cuenta de prueba suya del pool de clientes y entró a ENSŌ: después de la contraseña, el login con marca mostró «Configurar MFA con una aplicación de autenticación», con el QR nuevo.
+  - **Para saber si alguien tiene la app vinculada no sirve `AdminGetUser`:** su `UserMFASettingList` vino vacía aunque la app estaba vinculada. Lo que sí lo dice es `AdminGetUserAuthFactors`: su `ConfiguredUserAuthFactors` trae `SOFTWARE_TOKEN` mientras hay app, y deja de traerlo al desvincularla (CB-2).
+  - Desvincular la app no toca la contraseña: la persona entra con la misma.
 
 ## Orden de construcción
 
@@ -273,9 +272,10 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Y** cuando se pide borrarla, se salta el login, borra el asiento y responde 200.
 
 ### CB-2: Una persona sin app de códigos vinculada
-- **Dado** una persona con login que nunca terminó de vincular su app
+- **Dado** una persona con login que nunca terminó de vincular su app, o que entra con Google o Microsoft
 - **Cuando** se pide restablecer
-- **Entonces** responde 200 igual (no hay nada que desvincular), cierra sus sesiones y lo anota.
+- **Entonces** responde 200 igual (no hay nada que desvincular), cierra sus sesiones y lo anota
+- **Y** el backend sabe que no hay app por `ConfiguredUserAuthFactors` (`AdminGetUserAuthFactors`) sin `SOFTWARE_TOKEN`, nunca por `UserMFASettingList`, que viene vacía aunque haya app («Antes de empezar»).
 
 ### CB-3: Un correo que no tiene asiento en esa cuenta
 - **Cuando** se pide cualquiera de las tres acciones
@@ -316,7 +316,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 
 ### CB-10: Permisos mínimos de las acciones sobre una persona
 - **Dado** la plantilla sintetizada
-- **Entonces** la función de las tres acciones tiene sobre el ARN del pool de clientes solo `cognito-idp:ListUsers`, `AdminDeleteSoftwareToken`, `AdminUserGlobalSignOut` y `AdminDeleteUser`
+- **Entonces** la función de las tres acciones tiene sobre el ARN del pool de clientes solo `cognito-idp:ListUsers`, `AdminGetUserAuthFactors`, `AdminDeleteSoftwareToken`, `AdminUserGlobalSignOut` y `AdminDeleteUser`
 - **Y** en `eventos` solo `PutItem`, y el permiso de SES de las invitaciones (`permitirInvitaciones`)
 - **Y** ningún permiso de Cognito sobre el pool del equipo.
 
@@ -404,7 +404,7 @@ Los tests nuevos del backend van en la lista de `npm test` de `package.json`: si
 - El texto del correo de aviso, junto a `src/lib/correo-de-invitacion.js`.
 - `src/handlers/`: un handler por ruta nueva, de 30 líneas o menos.
 - `src/lib/admin/rutas-de-escritura.js`: los estados de `sin-login` (409), `ultimo-admin` (409), `borrar-incompleto` (503), `confirmacion` (422), `cuenta-con-cobro` (409), `borrado-en-curso` (409) y `borrado-incompleto` (503).
-- `src/lambda.js` (`RUTAS_ADMIN`), `infra/equipo.js` (las funciones y sus permisos) e `infra/aios-stack.js` (el id y el ARN del pool de clientes para esas funciones).
+- `src/lambda.js` (`RUTAS_ADMIN`), `infra/equipo.js` (las funciones y sus permisos) e `infra/administrator-stack.js` (el id y el ARN del pool de clientes para esas funciones). Las funciones van en el stack del superadmin, `AiosAdministrator`, que lee el id del pool de clientes del parámetro `/aios/usuarios/pool-id` que publica el backend. `AiosBackend` no cambia.
 - `package.json`: los tests nuevos en `npm test`.
 
 **Panel (`aios-admin`)**
@@ -426,7 +426,6 @@ Los tests nuevos del backend van en la lista de `npm test` de `package.json`: si
 
 ## Riesgos y preguntas abiertas
 
-- **Lo de «Antes de empezar»:** si el login gestionado no pide el QR después de `AdminDeleteSoftwareToken`, la acción «restablecer» cambia.
 - **El borrado que pide el propio cliente no borra los logins.** Con esta spec, los dos borrados quedan distintos. Igualarlos es otra spec.
 - **El id de una cuenta personal lleva el nombre de la persona** (por ejemplo `mateo-folador-d35e8f`), y sobrevive en la auditoría y en `borrado-hecho`. Pasa igual con el borrado del cliente. Si se seudonimiza, se decide aparte.
 - **Con el filtro de clientes en una lista**, la auditoría de una cuenta borrada deja de verse en Gobernanza, porque su id ya no está en la lista.
