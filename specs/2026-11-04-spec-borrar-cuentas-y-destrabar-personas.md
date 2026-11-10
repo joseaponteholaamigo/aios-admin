@@ -50,6 +50,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **El restablecimiento se probó en producción el 2026-11-10, y funciona.** Jose corrió `AdminDeleteSoftwareToken` (con el SDK del backend, `@aws-sdk/client-cognito-identity-provider` 3.1138.0) sobre una cuenta de prueba suya del pool de clientes y entró a ENSŌ: después de la contraseña, el login con marca mostró «Configurar MFA con una aplicación de autenticación», con el QR nuevo.
   - **Para saber si alguien tiene la app vinculada no sirve `AdminGetUser`:** su `UserMFASettingList` vino vacía aunque la app estaba vinculada. Lo que sí lo dice es `AdminGetUserAuthFactors`: su `ConfiguredUserAuthFactors` trae `SOFTWARE_TOKEN` mientras hay app, y deja de traerlo al desvincularla (CB-2).
   - Desvincular la app no toca la contraseña: la persona entra con la misma.
+  - **El filtro `email = "…"` de `ListUsers` no distingue mayúsculas** (comprobado el mismo día en el pool de clientes: en minúsculas y en mayúsculas devuelve el mismo usuario). Por eso basta buscar con el correo normalizado.
 
 ## Orden de construcción
 
@@ -437,7 +438,6 @@ Los tests nuevos del backend van en la lista de `npm test` de `package.json`: si
 
 ## Riesgos y preguntas abiertas
 
-- **Las mayúsculas del correo en Cognito, sin comprobar.** El backend busca los logins con `ListUsers` y el filtro `email = "<correo en minúsculas>"`. Si ese filtro distingue mayúsculas, a quien se registró como `Juan.Perez@Empresa.com` no se lo encuentra: restablecer y borrar el login responden `sin-login`, y borrar a la persona borra el asiento y deja el login suelto. Se comprueba con una lectura en el pool de clientes antes del deploy; si distingue, se corrige antes de desplegar.
 - **La dirección de ayuda del correo de aviso** (`CONTACTO_DE_AYUDA`) la confirma Jose antes del deploy. Tiene que ser una dirección que alguien del equipo lea.
 
 - **El borrado que pide el propio cliente no borra los logins.** Con esta spec, los dos borrados quedan distintos. Igualarlos es otra spec.
