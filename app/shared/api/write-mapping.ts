@@ -3,7 +3,9 @@
 // cada rechazo de vuelta a los del panel.
 import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, PlanConditions, Quotas, WriteRejection } from '../../domain/account-creation';
 import type { AccountKind } from '../../domain/companies';
+import type { PersonAction, PersonActionDone } from '../../domain/person-actions';
 import { ApiContractError, asRecord, num, numOrNull, str, strOrNull, type Log } from './api-reading';
+import { toSeatStatus } from './client-users-mapping';
 import { toCompany } from './companies-mapping';
 
 const KIND_TO_API: Record<AccountKind, string> = { company: 'empresa', personal: 'personal' };
@@ -67,6 +69,10 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'mover-incompleto': () => ({ code: 'move-incomplete' }),
   'mfa-reciente': () => ({ code: 'recent-mfa' }),
   'no-existe': () => ({ code: 'not-found' }),
+  'sin-login': (b) => ({ code: 'no-login', seat: b.asiento == null ? null : toSeatStatus(b.asiento) }),
+  'ultimo-admin': () => ({ code: 'last-admin' }),
+  'accion-incompleta': () => ({ code: 'action-incomplete' }),
+  'borrar-incompleto': () => ({ code: 'delete-incomplete' }),
 };
 
 /**
@@ -90,4 +96,24 @@ export function toCreatedAccount(body: unknown, log: Log): CreatedAccount {
 export function toInvitedPerson(body: unknown): InvitedPerson {
   const b = asRecord(body, 'la invitación');
   return { invitationSent: b.correoDeInvitacion === 'enviado', movedFrom: strOrNull(b.movidaDesde) };
+}
+
+/** Cada acción sobre una persona, como va en la ruta del backend (`…/personas/<acción>`). */
+const PERSON_ACTION_TO_API: Record<PersonAction, string> = { 'reset-mfa': 'restablecer-mfa', 'delete-login': 'borrar-login', 'delete-person': 'borrar' };
+
+/** La ruta de una acción sobre una persona. Sin el correo: va en el cuerpo (CA-8). */
+export const personActionPath = (companyId: string, action: PersonAction) =>
+  `/v1/admin/clientes/${encodeURIComponent(companyId)}/personas/${PERSON_ACTION_TO_API[action]}`;
+
+const NOTICE_EMAIL: Record<string, 'sent' | 'not-sent'> = { enviado: 'sent', 'no-enviado': 'not-sent' };
+
+/** Lo que responde una acción sobre una persona. */
+export function toPersonActionDone(action: PersonAction, body: unknown): PersonActionDone {
+  const b = asRecord(body, 'la acción sobre la persona');
+  const state = asRecord(b.estado, 'el estado de la persona');
+  return {
+    action,
+    appUnlinked: typeof state.appDesvinculada === 'boolean' ? state.appDesvinculada : null,
+    noticeEmail: typeof b.correoDeAviso === 'string' ? NOTICE_EMAIL[b.correoDeAviso] ?? null : null,
+  };
 }

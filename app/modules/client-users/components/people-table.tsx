@@ -1,10 +1,14 @@
 // Las personas de una empresa: su rol, su estado, qué ven y cuánto reciben, como en «Mi equipo»,
-// más cuándo las invitaron y cuándo entraron.
+// más cuándo las invitaron y cuándo entraron. Con `actions`, una columna más para lo que se le puede
+// hacer a cada una (solo la recibe el superadministrador).
+import type { ReactNode } from 'react';
 import type { ClientPerson, ClientRole } from '../../../domain/client-users';
 import { formatDate } from '../../../shared/ui/format';
 import { badgeClass, countsLabel, seatStatusLabel, seesLabel } from '../client-user-labels';
 
-export function PeopleTable({ people, roles }: { people: ClientPerson[]; roles: ClientRole[] }) {
+type PeopleTableProps = { people: ClientPerson[]; roles: ClientRole[]; actions?: (person: ClientPerson) => ReactNode };
+
+export function PeopleTable({ people, roles, actions }: PeopleTableProps) {
   return (
     <section className="card">
       <div className="card-h"><div><h2>Personas</h2><p>Las que hoy ocupan un asiento o lo tienen en pausa.</p></div></div>
@@ -12,7 +16,7 @@ export function PeopleTable({ people, roles }: { people: ClientPerson[]; roles: 
         {people.length === 0 ? <p className="empty">Esta empresa todavía no tiene personas.</p> : (
           <div className="tbl-wrap">
             <table className="tbl">
-              <thead><tr><th>Correo</th><th>Estado</th><th>Ve</th><th>Recibe</th><th>Invitada</th><th>Entró</th></tr></thead>
+              <thead><tr><th>Correo</th><th>Estado</th><th>Ve</th><th>Recibe</th><th>Invitada</th><th>Entró</th>{actions && <th>Acciones</th>}</tr></thead>
               <tbody>
                 {people.map((person) => {
                   const status = seatStatusLabel(person.status);
@@ -26,6 +30,7 @@ export function PeopleTable({ people, roles }: { people: ClientPerson[]; roles: 
                       <td className="small mono">{countsLabel(person.counts)}</td>
                       <td className="small">{formatDate(person.invitedAt)}</td>
                       <td className="small">{formatDate(person.acceptedAt)}</td>
+                      {actions && <td>{actions(person)}</td>}
                     </tr>
                   );
                 })}

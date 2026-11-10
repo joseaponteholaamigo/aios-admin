@@ -107,3 +107,45 @@ describe('invitar a una persona', () => {
       .rejects.toBeInstanceOf(AdminApiUnavailableError);
   });
 });
+
+describe('una acción sobre una persona', () => {
+  const BETO = { action: 'reset-mfa' as const, email: 'beto@acme.com' };
+
+  test('⛔ pide la acción en la ruta y el correo en el cuerpo: la dirección nunca lleva un @ (CA-8)', async () => {
+    const { api, seen } = apiAnswering(() => Response.json({ accion: 'restablecer-mfa', estado: { appDesvinculada: true, sesionesCerradas: true }, correoDeAviso: 'enviado' }));
+    await api.personAction('t', 'acme-1a2b3c', BETO);
+    await api.personAction('t', 'acme-1a2b3c', { action: 'delete-person', email: 'beto@acme.com' });
+
+    expect(seen.map((s) => s.url)).toEqual([
+      'https://api.example/v1/admin/clientes/acme-1a2b3c/personas/restablecer-mfa',
+      'https://api.example/v1/admin/clientes/acme-1a2b3c/personas/borrar',
+    ]);
+    expect(seen[0]?.body).toEqual({ correo: 'beto@acme.com' });
+    expect(seen.some((s) => s.url.includes('@'))).toBe(false);
+  });
+
+  test('lee si se desvinculó la app y si salió el aviso; sin aviso, `null`', async () => {
+    const conAviso = apiAnswering(() => Response.json({ estado: { appDesvinculada: true }, correoDeAviso: 'no-enviado' })).api;
+    const sinAviso = apiAnswering(() => Response.json({ estado: { loginBorrado: true, asientoBorrado: true } })).api;
+
+    expect(await conAviso.personAction('t', 'acme-1a2b3c', BETO)).toEqual({ kind: 'ok', value: { action: 'reset-mfa', appUnlinked: true, noticeEmail: 'not-sent' } });
+    expect(await sinAviso.personAction('t', 'acme-1a2b3c', { action: 'delete-person', email: 'beto@acme.com' }))
+      .toEqual({ kind: 'ok', value: { action: 'delete-person', appUnlinked: null, noticeEmail: null } });
+  });
+
+  test('⛔ cada rechazo de una acción vuelve al diálogo, también los 503 que se terminan repitiendo (CA-12)', async () => {
+    const casos: [number, object, object][] = [
+      [409, { codigo: 'sin-login', asiento: 'activo' }, { code: 'no-login', seat: 'active' }],
+      [409, { codigo: 'ultimo-admin' }, { code: 'last-admin' }],
+      [409, { codigo: 'correo-de-otra-empresa', empresa: null }, { code: 'email-in-other-company', company: null }],
+      [503, { codigo: 'accion-incompleta' }, { code: 'action-incomplete' }],
+      [503, { codigo: 'borrar-incompleto' }, { code: 'delete-incomplete' }],
+      [401, { codigo: 'mfa-reciente' }, { code: 'recent-mfa' }],
+      [404, { codigo: 'no-existe' }, { code: 'not-found' }],
+    ];
+    for (const [status, body, rejection] of casos) {
+      const { api } = apiAnswering(() => Response.json(body, { status }));
+      expect(await api.personAction('t', 'acme-1a2b3c', BETO)).toEqual({ kind: 'rejected', rejection, createdAccountId: null });
+    }
+  });
+});

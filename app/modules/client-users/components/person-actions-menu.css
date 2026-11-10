@@ -1,0 +1,6 @@
+/* El menú de acciones de una persona. Como `popover`, vive en la capa de arriba: `position: fixed`
+   con la posición que le da el componente al abrirse, en vez del centro que le pone el navegador. */
+.person-actions-menu { position: fixed; inset: auto; margin: 0; flex-direction: column; min-width: 260px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.person-actions-menu:popover-open { display: flex; }
+.person-actions-menu__item { text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font-size: 13px; cursor: pointer; }
+.person-actions-menu__item:hover, .person-actions-menu__item:focus-visible { background: var(--panel-2); }

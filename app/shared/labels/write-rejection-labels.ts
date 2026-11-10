@@ -47,9 +47,17 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'key-expired': return 'Este formulario es de hace más de un día: vuelve a abrirlo.';
     case 'filter-on': return 'Con el filtro de clientes puesto, el panel no crea cuentas: no las vería.';
     case 'move-incomplete': return 'No se terminó de borrar la cuenta personal. Vuelve a intentar: el panel termina lo que faltó.';
-    case 'recent-mfa': return 'Para borrar una cuenta personal tienes que volver a ingresar tu código de verificación.';
+    case 'recent-mfa': return 'Para hacer esta acción tienes que volver a ingresar tu código de verificación.';
     case 'not-found': return 'Esa cuenta no existe o no está disponible.';
     case 'in-progress': return 'Este formulario ya se está procesando: espera unos segundos y vuelve a oprimir el botón.';
     case 'unavailable': return 'La API no respondió a tiempo y no sabemos si se hizo. Vuelve a oprimir el botón: con este mismo formulario no se repite.';
+    case 'no-login':
+      return rejection.seat === 'invited'
+        ? 'Esta persona todavía no se registró: no tiene login.'
+        : 'Esta persona no tiene login: ya se borró, o nunca entró con este correo.';
+    case 'last-admin': return 'Es la única admin de la cuenta: nombra a otra admin antes de borrarla.';
+    case 'action-incomplete':
+    case 'delete-incomplete':
+      return 'No se terminó. Vuelve a oprimir el botón: se termina lo que faltó.';
   }
 }

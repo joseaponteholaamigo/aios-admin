@@ -5,13 +5,14 @@ import type { WriteRejection } from '../../domain/account-creation';
 import { Icon } from '../icons/icon';
 import { rejectionMessage } from '../labels/write-rejection-labels';
 
-export function FormRejection({ rejection }: { rejection: WriteRejection }) {
+/** `message` reemplaza el texto general cuando la pantalla sabe decirlo mejor (un mismo código, otro contexto). */
+export function FormRejection({ rejection, message }: { rejection: WriteRejection; message?: string }) {
   const { pathname, search } = useLocation();
   return (
     <div className="banner" role="alert">
       <Icon name="alert" />
       <p>
-        {rejectionMessage(rejection)}{' '}
+        {message ?? rejectionMessage(rejection)}{' '}
         {rejection.code === 'recent-mfa' && <Link to={`/auth/login?mfa=1&returnTo=${encodeURIComponent(pathname + search)}`}>Ingresar el código</Link>}
       </p>
     </div>
