@@ -46,6 +46,8 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   // Antes que `:companyId`: la tabla se lee en orden, y `new` no es una empresa.
   { path: 'companies/new', file: 'modules/companies/routes/company-new.tsx', access: { module: 'companies', level: 'edit' } },
   { path: 'companies/:companyId', file: 'modules/companies/routes/company.tsx', access: { module: 'companies', level: 'view' } },
+  // Cambiar los asientos de un Personalizado (spec «Créditos por persona» de aios-tower, CA-19).
+  { path: 'companies/:companyId/seats', file: 'modules/companies/routes/company-seats.tsx', access: { module: 'companies', level: 'edit' } },
   // Borrar una cuenta: solo el superadministrador (CA-23). Tener «editar» en Empresas no alcanza.
   { path: 'companies/:companyId/delete', file: 'modules/companies/routes/company-delete.tsx', access: 'superadmin' },
   {
@@ -56,7 +58,16 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   { path: 'client-users/checkup', file: 'modules/client-users/routes/checkup.tsx', access: { module: 'clientUsers', level: 'view' } },
   { path: 'client-users/:companyId', file: 'modules/client-users/routes/company-people.tsx', access: { module: 'clientUsers', level: 'view' } },
   { path: 'client-users/:companyId/invite', file: 'modules/client-users/routes/invite-person.tsx', access: { module: 'clientUsers', level: 'edit' } },
+  // El diálogo de «Créditos» de una persona (spec «Créditos por persona» de aios-tower): su saldo es de
+  // Consumo; cargarle créditos, de Empresas. Las dos solo responden a un POST, con el correo en el cuerpo.
+  { path: 'client-users/:companyId/credits', file: 'modules/client-users/routes/person-credits.tsx', access: { module: 'usage', level: 'view' } },
+  { path: 'client-users/:companyId/credits/load', file: 'modules/client-users/routes/person-credits-load.tsx', access: { module: 'companies', level: 'edit' } },
   { path: 'team', file: 'modules/team/routes/team.tsx', access: 'superadmin', menu: { label: 'Equipo ensō', group: 'administration', icon: 'people' } },
+  {
+    // La bitácora de créditos (spec «Créditos por persona» de aios-tower, CA-27 a CA-32).
+    path: 'usage', file: 'modules/usage/routes/usage.tsx', access: { module: 'usage', level: 'view' },
+    menu: { label: 'Consumo', group: 'business', icon: 'consumo' },
+  },
   {
     path: 'governance', file: 'modules/governance/routes/governance.tsx', access: { module: 'governance', level: 'view' },
     menu: { label: 'Gobernanza', group: 'business', icon: 'gobernanza' },

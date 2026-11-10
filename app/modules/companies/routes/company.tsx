@@ -10,7 +10,7 @@ import { fromAdminApi } from '../../../shared/api/admin-loader.server';
 import { ModuleError } from '../../../shared/layout/module-error';
 import { PageHeader } from '../../../shared/layout/page-header';
 import { DoneNotice } from '../../../shared/ui/done-notice';
-import { badgeClass, createdNotice, planLabel, statusLabel } from '../company-labels';
+import { badgeClass, createdNotice, planLabel, seatsChangedNotice, seatsEditable, statusLabel } from '../company-labels';
 import { CompanyAccessCard } from '../components/company-access-card';
 import { CompanyHistoryCard } from '../components/company-history-card';
 import { CompanyPersonCard } from '../components/company-person-card';
@@ -32,11 +32,13 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     canSeePeople: member ? can(member, 'clientUsers', 'view') : false,
     // Borrar la cuenta, solo el superadministrador (CA-23): la ruta también lo pide.
     canDelete: member?.isSuperadmin === true,
+    // Cambiar los asientos de un Personalizado: «editar» en Empresas (CA-19, CA-20).
+    canEditSeats: member ? can(member, 'companies', 'edit') && seatsEditable(file) : false,
   };
 }
 
 export default function Company({ loaderData }: Route.ComponentProps) {
-  const { file, history, canSeePeople, canDelete } = loaderData;
+  const { file, history, canSeePeople, canDelete, canEditSeats } = loaderData;
   const [params] = useSearchParams();
   const [plan, status] = [planLabel(file.plan), statusLabel(file)];
   const personal = file.kind === 'personal';
@@ -54,14 +56,15 @@ export default function Company({ loaderData }: Route.ComponentProps) {
             <span className={badgeClass(plan.tone)}>{plan.text}</span> <span className={badgeClass(status.tone)}>{status.text}</span>
           </>
         }
-        actions={(canSeePeople && !personal) || canDelete ? (
+        actions={(canSeePeople && !personal) || canDelete || canEditSeats ? (
           <>
             {canSeePeople && !personal && <Link className="btn" to={`/client-users/${file.id}`}>Ver sus personas</Link>}
+            {canEditSeats && <Link className="btn" to={`/companies/${file.id}/seats`}>Cambiar asientos</Link>}
             {canDelete && <Link className="btn" to={`/companies/${file.id}/delete`}>Borrar cuenta</Link>}
           </>
         ) : undefined}
       />
-      <DoneNotice text={createdNotice(params)} />
+      <DoneNotice text={createdNotice(params) ?? seatsChangedNotice(params)} />
       <div className="grid g-main">
         <div className="grid">
           <CompanyPlanCard file={file} />

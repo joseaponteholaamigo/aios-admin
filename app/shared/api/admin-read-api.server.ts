@@ -5,6 +5,7 @@
 // Llama con el access token de la sesión, que nunca sale del servidor del panel, y traduce cada
 // respuesta aquí mismo: el resto del panel no ve un nombre del backend.
 import type { DeletionPreview, PendingDeletion } from '../../domain/account-deletion';
+import type { CreditLogFilters, CreditLogPage, PersonCredits } from '../../domain/credits';
 import type { AuditPage } from '../../domain/audit';
 import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '../../domain/client-users';
 import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan } from '../../domain/companies';
@@ -15,6 +16,7 @@ import { toAuditPage } from './audit-mapping';
 import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } from './client-users-mapping';
 import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory } from './companies-mapping';
 import { toDeletionPreview, toPendingDeletions } from './deletion-mapping';
+import { creditLogFiltersToApi, toCreditLogPage, toPersonCredits } from './credits-mapping';
 import { toTeamList } from './team-member-mapping';
 
 const TIMEOUT_MS = 5000;
@@ -52,6 +54,10 @@ export type AdminReadApi = {
   /** Lo que se borraría de una cuenta, sin borrar nada. Solo el superadministrador. */
   getDeletionPreview(token: string, id: string): Promise<ApiResult<DeletionPreview>>;
   listPendingDeletions(token: string): Promise<ApiResult<PendingDeletion[]>>;
+  /** El saldo de créditos de una persona de esa cuenta. Por POST: el correo no va en la URL. */
+  getPersonCredits(token: string, companyId: string, email: string): Promise<ApiResult<PersonCredits>>;
+  /** Una página de la bitácora de créditos de todas las empresas. Por POST: el filtro puede llevar un correo. */
+  listCreditLog(token: string, filters: CreditLogFilters): Promise<ApiResult<CreditLogPage>>;
 };
 
 const STATUS_RESULT: Record<number, ApiResult<never>['kind']> = { 400: 'invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found', 422: 'invalid' };
@@ -118,5 +124,7 @@ export function createAdminReadApi({
     listTeam: (token) => send('/v1/admin/equipo', token, (b) => toTeamList(b, log)),
     getDeletionPreview: (token, id) => send(`${company(id)}/borrado`, token, (b) => toDeletionPreview(b, log)),
     listPendingDeletions: (token) => send('/v1/admin/borrados-pendientes', token, toPendingDeletions),
+    getPersonCredits: (token, id, email) => send(`${company(id)}/saldo`, token, toPersonCredits, { body: { correo: email } }),
+    listCreditLog: (token, filters) => send('/v1/admin/creditos/bitacora', token, toCreditLogPage, { body: creditLogFiltersToApi(filters) }),
   };
 }

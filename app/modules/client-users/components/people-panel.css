@@ -1,0 +1,2 @@
+/* Los botones de cada persona: «Créditos» y «Acciones», juntos en su celda. */
+.people-panel__actions { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }

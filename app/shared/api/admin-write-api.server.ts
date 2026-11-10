@@ -7,6 +7,8 @@
 import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, WriteRejection } from '../../domain/account-creation';
 import type { AccountDeletion, DeletedAccount } from '../../domain/account-deletion';
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
+import type { CreditLoad, LoadedLot, SeatsChange, SeatsChanged } from '../../domain/credits';
+import { toBackendLoad, toBackendSeatsChange, toLoadedLot, toSeatsChanged } from './credits-mapping';
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
@@ -31,6 +33,10 @@ export type AdminWriteApi = {
   invitePerson(token: string, companyId: string, person: NewPerson): Promise<WriteResult<InvitedPerson>>;
   personAction(token: string, companyId: string, request: PersonActionRequest): Promise<WriteResult<PersonActionDone>>;
   deleteAccount(token: string, companyId: string, deletion: AccountDeletion): Promise<WriteResult<DeletedAccount>>;
+  /** Los asientos de una empresa Personalizado. */
+  changeSeats(token: string, companyId: string, change: SeatsChange): Promise<WriteResult<SeatsChanged>>;
+  /** Cargar créditos a una persona de esa cuenta: un lote que vence a un mes. */
+  loadCredits(token: string, companyId: string, load: CreditLoad): Promise<WriteResult<LoadedLot>>;
 };
 
 /** Los estados cuyo cuerpo trae un rechazo para el formulario. */
@@ -49,11 +55,11 @@ export function createAdminWriteApi({
   fetchImpl = fetch,
   log = (message: string) => console.warn(message),
 }: { baseUrl: string; fetchImpl?: typeof fetch; log?: Log }): AdminWriteApi {
-  async function post<T>(path: string, token: string, body: unknown, map: (b: unknown) => T): Promise<WriteResult<T>> {
+  async function post<T>(path: string, token: string, body: unknown, map: (b: unknown) => T, method: 'POST' | 'PATCH' = 'POST'): Promise<WriteResult<T>> {
     let response: Response;
     try {
       response = await fetchImpl(`${baseUrl}${path}`, {
-        method: 'POST',
+        method,
         headers: { authorization: `Bearer ${token}`, accept: 'application/json', 'content-type': 'application/json' },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -79,5 +85,9 @@ export function createAdminWriteApi({
       post(personActionPath(companyId, action), token, { correo: email }, (b) => toPersonActionDone(action, b)),
     deleteAccount: (token, companyId, deletion) =>
       post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/borrado`, token, toBackendDeletion(deletion), toDeletedAccount),
+    changeSeats: (token, companyId, change) =>
+      post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/condiciones`, token, toBackendSeatsChange(change), toSeatsChanged, 'PATCH'),
+    // El correo va en el cuerpo, como en las acciones sobre una persona: nunca en la URL.
+    loadCredits: (token, companyId, load) => post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/creditos`, token, toBackendLoad(load), toLoadedLot),
   };
 }

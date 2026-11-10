@@ -5,7 +5,9 @@
 .pag { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 20px; border-top: 1px solid var(--line-2); font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
 .pag .btns { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .pag-num, .pag-step { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 7px; padding: 4px 10px; font-family: var(--mono); font-size: 11.5px; transition: border-color .15s; }
-a.pag-num[href]:hover, a.pag-step[href]:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+a.pag-num[href]:hover, a.pag-step[href]:hover, button.pag-num:hover, button.pag-step:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+/* En una lista que se pide por POST cada página es un botón del formulario (`submitName`). */
+button.pag-num, button.pag-step { cursor: pointer; }
 .pag-num.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
 .pag-step[aria-disabled="true"] { opacity: .4; cursor: default; }
 .pag-gap { min-width: 20px; text-align: center; }

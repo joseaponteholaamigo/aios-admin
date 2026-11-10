@@ -68,3 +68,30 @@ export async function fromAdminApi<T>(
     case 'unauthorized': throw await signOutToNoAccess(request, sessions, log);
   }
 }
+
+/**
+ * Como `fromAdminApi`, para un pedido por detrás de la pantalla (un fetcher, como el saldo de
+ * créditos de un diálogo): lo que no es el dato vuelve como `{ ok: false, reason }`, para decirlo en
+ * el diálogo, en vez de cambiar la página entera por la de error. La sesión que no sirve igual
+ * redirige a «sin acceso».
+ */
+export async function fromAdminApiInBackground<T>(
+  { request, context }: { request: Request; context: Readonly<RouterContextProvider> },
+  call: (api: AdminReadApi, token: string) => Promise<ApiResult<T>>,
+  { api = getAdminReadApi, sessions = getSessionService, log = (m: string) => console.warn(m) }: Deps = {},
+): Promise<{ ok: true; value: T } | { ok: false; reason: ModuleErrorReason }> {
+  const session = context.get(sessionContext);
+  if (!session) throw new Error('Un pedido por detrás llegó sin sesión en el contexto: falta el middleware de sesión');
+  let result: ApiResult<T>;
+  try {
+    result = await call(api(), session.tokens.accessToken);
+  } catch (e) {
+    const unusable = unusableAnswer(e);
+    if (!unusable) throw e;
+    log(unusable);
+    return { ok: false, reason: 'unavailable' };
+  }
+  if (result.kind === 'ok') return { ok: true, value: result.value };
+  if (result.kind === 'unauthorized') throw await signOutToNoAccess(request, sessions, log);
+  return { ok: false, reason: result.kind };
+}

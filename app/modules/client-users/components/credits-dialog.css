@@ -1,0 +1,12 @@
+/* El diálogo de créditos de una persona: más ancho que el de una acción, porque lleva dos tablas. */
+.credits-dialog { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.credits-dialog::backdrop { background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.credits-dialog__body { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.credits-dialog__title { font-size: 18px; font-weight: 650; overflow-wrap: anywhere; }
+.credits-dialog__balance { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.credits-dialog__hint { color: var(--muted); font-size: 13px; }
+.credits-dialog__done { color: var(--ink-2); font-size: 13px; }
+.credits-dialog__load { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.credits-dialog__fields { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(200px, 2fr); gap: 12px; }
+.credits-dialog__buttons { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 560px) { .credits-dialog__fields { grid-template-columns: 1fr; } }

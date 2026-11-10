@@ -29,6 +29,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     canInvite: member ? can(member, 'clientUsers', 'edit') : false,
     // Las acciones sobre una persona, solo para el superadministrador (CA-9): el backend lo vuelve a pedir.
     canActOnPeople: member?.isSuperadmin === true,
+    // Sus créditos: ver el saldo es de Consumo; cargarlos, de Empresas (spec «Créditos por persona»).
+    credits: { canSee: member ? can(member, 'usage', 'view') : false, canLoad: member ? can(member, 'companies', 'edit') : false },
   };
 }
 
@@ -43,7 +45,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 }
 
 export default function CompanyPeople({ loaderData, actionData }: Route.ComponentProps) {
-  const { people, canSeeCompany, canInvite, canActOnPeople } = loaderData;
+  const { people, canSeeCompany, canInvite, canActOnPeople, credits } = loaderData;
   const [params] = useSearchParams();
   return (
     <>
@@ -62,7 +64,7 @@ export default function CompanyPeople({ loaderData, actionData }: Route.Componen
       <PeoplePanel
         people={people.people} roles={people.roles} companyId={people.company.id} companyName={people.company.name}
         personal={people.company.kind === 'personal'}
-        canAct={canActOnPeople} lastAttempt={actionData ?? null}
+        canAct={canActOnPeople} lastAttempt={actionData ?? null} credits={credits}
       />
       <div className="grid g2">
         <RolesTable roles={people.roles} />

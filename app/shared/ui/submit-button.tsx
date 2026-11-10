@@ -27,10 +27,16 @@ type SubmitButtonProps = {
   className?: string;
   /** Desactivado aunque no haya un pedido en camino: por ejemplo, hasta que se escriba la confirmación. */
   disabled?: boolean;
+  /**
+   * El pedido que sigue este botón cuando su formulario va por un fetcher (un diálogo que no cambia
+   * de página): el fetcher tiene la misma forma que la navegación. Sin él, el de la página.
+   */
+  pending?: NavigationLike;
 };
 
-export function SubmitButton({ label, busyLabel, name, value, className = 'btn primary', disabled = false }: SubmitButtonProps) {
-  const { busy, mine } = submitState(useNavigation(), name, value);
+export function SubmitButton({ label, busyLabel, name, value, className = 'btn primary', disabled = false, pending }: SubmitButtonProps) {
+  const navigation = useNavigation();
+  const { busy, mine } = submitState(pending ?? navigation, name, value);
   return (
     <button type="submit" className={`${className} submit-button`} name={name} value={value} disabled={busy || disabled} aria-busy={mine || undefined}>
       {mine && <span className="submit-button__spinner" aria-hidden="true" />}

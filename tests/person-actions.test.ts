@@ -88,16 +88,19 @@ describe('la acción de la página de personas', () => {
   });
 });
 
+/** Sin permisos de créditos: estos casos miran solo las acciones del superadministrador. */
+const SIN_CREDITOS = { canSee: false, canLoad: false };
+
 describe('lo que se ve', () => {
   test('⛔ el menú de acciones aparece solo para el superadministrador (CA-9)', () => {
-    const panel = (canAct: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal: false, canAct, lastAttempt: null }));
+    const panel = (canAct: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal: false, canAct, lastAttempt: null, credits: SIN_CREDITOS }));
 
     expect(panel(true)).toContain('Restablecer verificación en dos pasos');
     expect(panel(false)).not.toContain('Acciones');
   });
 
   test('⛔ en una cuenta personal no se ofrece borrar a su única persona: se ofrece borrar la cuenta (CB-4)', () => {
-    const panel = (personal: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal, canAct: true, lastAttempt: null }));
+    const panel = (personal: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal, canAct: true, lastAttempt: null, credits: SIN_CREDITOS }));
 
     expect(panel(true)).not.toContain('Borrar persona');
     expect(panel(true)).toContain(`href="/companies/${COMPANY}/delete"`);

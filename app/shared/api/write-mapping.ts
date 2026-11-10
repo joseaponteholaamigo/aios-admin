@@ -78,6 +78,10 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'cuenta-con-cobro': () => ({ code: 'account-charging' }),
   'borrado-en-curso': () => ({ code: 'deletion-in-progress' }),
   'borrado-incompleto': (b) => ({ code: 'deletion-incomplete', sites: strings(b.sitios).map(toDeletionSite) }),
+  'asientos-en-uso': (b) => ({ code: 'seats-in-use', used: num(b.usados) }),
+  'cuenta-personal': () => ({ code: 'personal-account' }),
+  'no-es-personalizado': () => ({ code: 'not-custom' }),
+  ocupado: () => ({ code: 'busy' }),
 };
 
 /**

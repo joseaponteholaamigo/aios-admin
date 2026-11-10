@@ -1,0 +1,5 @@
+/* Los filtros de la bitácora: en una grilla que se acomoda al ancho, con los botones al final. */
+.credit-log-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; }
+/* `.card-b > * + *` separa bloques apilados; en una grilla empujaría las columnas hacia abajo. */
+.card-b.credit-log-filters > * + * { margin-top: 0; }
+.credit-log-filters__actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

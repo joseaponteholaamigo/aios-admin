@@ -63,6 +63,10 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'confirmation': return 'Lo escrito no es el id de la cuenta: escríbelo exacto para confirmar.';
     case 'account-charging': return 'La suscripción de Stripe de esta cuenta no está cancelada y puede volver a cobrar: primero hay que cancelarla en Stripe.';
     case 'deletion-in-progress': return 'Esta cuenta ya se está borrando: espera unos segundos y recarga la página.';
+    case 'seats-in-use': return `Hoy tienen asiento ${rejection.used} personas: saca a las que sobran antes de bajar los asientos.`;
+    case 'personal-account': return 'Una cuenta personal es de una persona: sus asientos no se cambian.';
+    case 'not-custom': return 'Solo se cambian aquí los asientos de una empresa con plan Personalizado.';
+    case 'busy': return 'Hay otra operación con los créditos de esa persona en curso: vuelve a oprimir el botón en unos segundos.';
     case 'deletion-incomplete':
       return `El borrado no terminó. Falló en: ${rejection.sites.map(deletionSiteLabel).join(', ') || '—'}. Oprime «Terminar el borrado»: se termina lo que faltó.`;
   }

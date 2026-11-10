@@ -93,3 +93,21 @@ export function createdNotice(params: URLSearchParams): string | null {
     : 'Cuenta creada, pero el correo de invitación no salió: el admin puede entrar igual con su correo.';
   return params.get('movida') === '1' ? `${text} Su cuenta personal anterior se borró.` : text;
 }
+
+/** El aviso al volver de cambiar los asientos: el antes y el después, que no son datos de una persona. */
+const SEATS_CHANGED = 'asientos';
+
+/** ¿Se le pueden cambiar los asientos desde el panel? Solo a una empresa Personalizado (CB-10). */
+export const seatsEditable = (file: { kind: AccountKind; plan: string | null }) => file.kind === 'company' && file.plan === 'custom';
+
+export function seatsChangedNoticeParams({ before, after }: { before: number | null; after: number }) {
+  return new URLSearchParams({ aviso: SEATS_CHANGED, antes: String(before ?? ''), despues: String(after) });
+}
+
+/** Qué dice la ficha al volver de cambiar los asientos, o `null` si no viene de ahí. */
+export function seatsChangedNotice(params: URLSearchParams): string | null {
+  if (params.get('aviso') !== SEATS_CHANGED) return null;
+  const [before, after] = [params.get('antes'), params.get('despues')];
+  if (!after) return null;
+  return before && before !== after ? `Asientos cambiados de ${before} a ${after}.` : `La empresa ya tenía ${after} asientos: no cambió nada.`;
+}

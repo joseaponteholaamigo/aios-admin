@@ -1,6 +1,6 @@
 // Las personas de una empresa: su rol, su estado, qué ven y cuánto reciben, como en «Mi equipo»,
 // más cuándo las invitaron y cuándo entraron. Con `actions`, una columna más para lo que se le puede
-// hacer a cada una (solo la recibe el superadministrador).
+// hacer a cada una: sus créditos, y lo que solo hace el superadministrador.
 import type { ReactNode } from 'react';
 import type { ClientPerson, ClientRole } from '../../../domain/client-users';
 import { formatDate } from '../../../shared/ui/format';

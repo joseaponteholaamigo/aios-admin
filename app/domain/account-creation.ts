@@ -66,6 +66,11 @@ export type WriteRejection =
   /** Borrar una cuenta: sin la confirmación exacta, cobrando, con otro borrado en curso, o a medias (con lo que falló). */
   | { code: 'confirmation' | 'account-charging' | 'deletion-in-progress' }
   | { code: 'deletion-incomplete'; sites: DeletionSite[] }
+  /** Cambiar los asientos: hay más personas que los asientos pedidos, es una cuenta personal, o no es Personalizado. */
+  | { code: 'seats-in-use'; used: number }
+  | { code: 'personal-account' | 'not-custom' }
+  /** Otra operación con los créditos de esa persona escribió primero: se vuelve a intentar. */
+  | { code: 'busy' }
   /** La API no respondió a tiempo, o respondió un 5xx: no se sabe si se hizo. */
   | { code: 'unavailable' };
 
