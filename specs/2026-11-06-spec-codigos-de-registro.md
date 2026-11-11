@@ -53,8 +53,8 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
   - El campo «Créditos al mes» en el formulario, la lista y el detalle.
   - La entrada en el menú y en el editor de permisos de «Equipo ensō».
 - **ENSŌ (`aios-tower`):**
-  - La página `/codigo`, gemela de `/gracias` (`web/compra/gracias.js`), en español e inglés.
-  - Sus tres entradas: «Tengo un código» en «Tu cuenta» (`web/shared/cuenta/`), en el modal de bienvenida (`web/modules/enso/enso-bienvenida.html`) y en el chip «entrar» del pie (`web/shared/footbar/footbar.html`).
+  - El diálogo «Tengo un código» (`web/shared/codigo/`), en español e inglés, y el servicio que reserva y canjea (`server/services/codigo-de-registro.js`).
+  - Sus entradas: «Tu cuenta» (`web/shared/cuenta/`), adonde lleva el chip «entrar» del pie, y el modal de bienvenida (`web/modules/enso/enso-bienvenida.html`).
   - El canje automático al volver con la sesión, y los mensajes de resultado y de error.
   - «Comprar Pro» en el aviso de fin del plan y en «Tu plan venció», para una cuenta de código, en lugar de «Contactar» (`web/shared/plan/`).
 
@@ -148,7 +148,7 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
 ### CA-8: Reservar un código vigente
 - **Dado** `WEBINAR-NOV` activo, dentro de su vigencia y con usos libres
 - **Cuando** ENSŌ manda `POST /v1/codigos/reservar` con el código (sin importar mayúsculas ni espacios) y un correo
-- **Entonces** responde 200 con lo que da el código (`{ plan: 'pro', duracion: { meses: 2 }, creditosAlMes: 1000 }`, o la fecha fija, o sin fin)
+- **Entonces** responde 200 con lo que da el código y cuándo vence la reserva (`{ daCodigo: { plan: 'pro', duracion: { meses: 2 }, creditosAlMes: 1000 }, vence }`; la duración puede ser la fecha fija o sin fin)
 - **Y** guarda la reserva del correo, que vence a las 24 h y cuenta contra el tope mientras está vigente.
 
 ### CA-9: Reservar no dice si el correo ya tiene cuenta
@@ -183,13 +183,15 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
 
 ### ENSŌ
 
-### CA-13: Las entradas a `/codigo`
+### CA-13: Las entradas a «Tengo un código»
 - **Dado** una persona sin sesión en ENSŌ
-- **Entonces** ve «Tengo un código» en el modal de bienvenida, en «Tu cuenta» (Ajustes → Mi plan) y en el chip «entrar» del pie, y las tres abren `/codigo`
-- **Y** con sesión ninguna de las tres lo muestra.
+- **Entonces** ve «Tengo un código» en el modal de bienvenida y en «Tu cuenta» (Ajustes → Mi plan), adonde lleva el chip «entrar» del pie, y las dos abren el diálogo «Tengo un código»
+- **Y** con sesión ninguna lo muestra.
 
-### CA-14: El recorrido en `/codigo`
-- **Dado** `/codigo` abierta
+Es un diálogo dentro de ENSŌ y no una página aparte como `/gracias`: `/gracias` la abre el navegador cuando Stripe redirige, y quien tiene un código ya está dentro de ENSŌ.
+
+### CA-14: El recorrido en «Tengo un código»
+- **Dado** el diálogo abierto
 - **Cuando** la persona escribe el código y su correo, y pulsa continuar
 - **Entonces** ENSŌ reserva antes de abrir Cognito:
   - si reservar rechaza, muestra el motivo en la misma página y no abre nada;
@@ -207,7 +209,8 @@ El equipo ENSŌ crea, desde el panel, códigos que reparte en un webinar, un cor
 ### CA-16: Cada pieza en su stack, con lo justo
 - **Dado** las plantillas sintetizadas de los dos stacks
 - **Entonces** el backend tiene la tabla `aios-codigos` (`RETAIN`, protección contra borrado, PITR), nombrada en `infra/stack-policy.json`
-- **Y** la función de reservar solo puede leer y escribir `aios-codigos`: ni `tenants`, ni buckets, ni correo
+- **Y** la función de reservar solo puede leer y escribir `aios-codigos`, y agregar a `eventos` la pausa del freno del día: ni `tenants`, ni buckets, ni correo
+- **Y** su ruta tiene su propio freno en API Gateway (5 por segundo, picos de 10), declarado en la forma que CloudFormation aplica (CB-11)
 - **Y** la de canjear puede escribir en `aios-codigos` y en `tenants`, agregar a `eventos` y leer la clave del HMAC
 - **Y** el pre-registro puede además leer `aios-codigos`
 - **Y** las funciones de admin de códigos (stack `AiosAdministrator`) usan `aios-codigos` y `eventos` por nombre, sin exports
