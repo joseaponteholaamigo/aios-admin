@@ -38,7 +38,9 @@ export function CodeActions({ code, rejection, rejectedAction }: CodeActionsProp
         <p>{code.pausedBy === 'brake' ? 'Lo pausó el freno del día: reanúdalo si las reservas son legítimas, o revócalo si se filtró.' : 'Pausado, nadie puede reservarlo; revocado, ya no vuelve.'}</p></div></div>
       <div className="card-b">
         {rejection && !confirming && <FormRejection rejection={rejection} />}
-        <Form method="post" action={pathname} className="code-actions">
+        {/* `key`: el formulario vuelve a nacer cuando el código cambia de estado. Si no, el motivo de
+            la acción que ya se hizo seguiría escrito y viajaría a la auditoría de la siguiente. */}
+        <Form key={code.status} method="post" action={pathname} className="code-actions">
           <div className="field">
             <label htmlFor="reason">Motivo (opcional)</label>
             <input ref={reasonInput} id="reason" name="reason" maxLength={REASON_MAX} placeholder="Para la auditoría del equipo" />
