@@ -67,6 +67,9 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'personal-account': return 'Una cuenta personal es de una persona: sus asientos no se cambian.';
     case 'not-custom': return 'Solo se cambian aquí los asientos de una empresa con plan Personalizado.';
     case 'busy': return 'Hay otra operación con los créditos de esa persona en curso: vuelve a oprimir el botón en unos segundos.';
+    case 'code-exists': return 'Ya hay un código con ese texto (sin importar mayúsculas): elige otro.';
+    case 'state-not-allowed': return 'El código cambió de estado mientras tanto: recarga la página para ver cómo quedó.';
+    case 'code-busy': return 'El código está cambiando en este momento: vuelve a oprimir el botón.';
     case 'deletion-incomplete':
       return `El borrado no terminó. Falló en: ${rejection.sites.map(deletionSiteLabel).join(', ') || '—'}. Oprime «Terminar el borrado»: se termina lo que faltó.`;
   }

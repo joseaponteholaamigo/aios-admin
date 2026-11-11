@@ -7,12 +7,14 @@
 import type { DeletionPreview, PendingDeletion } from '../../domain/account-deletion';
 import type { CreditLogFilters, CreditLogPage, PersonCredits } from '../../domain/credits';
 import type { AuditPage } from '../../domain/audit';
+import type { CodeDetail, RegistrationCode } from '../../domain/codes';
 import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '../../domain/client-users';
 import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan } from '../../domain/companies';
 import type { TeamMember } from '../../domain/permissions';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
+import { codePath, toCodeDetail, toCodes } from './codes-mapping';
 import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } from './client-users-mapping';
 import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory } from './companies-mapping';
 import { toDeletionPreview, toPendingDeletions } from './deletion-mapping';
@@ -58,6 +60,10 @@ export type AdminReadApi = {
   getPersonCredits(token: string, companyId: string, email: string): Promise<ApiResult<PersonCredits>>;
   /** Una página de la bitácora de créditos de todas las empresas. Por POST: el filtro puede llevar un correo. */
   listCreditLog(token: string, filters: CreditLogFilters): Promise<ApiResult<CreditLogPage>>;
+  /** Los códigos de registro, el más nuevo primero (spec «Códigos de registro», CA-4). */
+  listCodes(token: string): Promise<ApiResult<RegistrationCode[]>>;
+  /** Un código con quién lo canjeó. */
+  getCode(token: string, code: string): Promise<ApiResult<CodeDetail>>;
 };
 
 const STATUS_RESULT: Record<number, ApiResult<never>['kind']> = { 400: 'invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found', 422: 'invalid' };
@@ -126,5 +132,7 @@ export function createAdminReadApi({
     listPendingDeletions: (token) => send('/v1/admin/borrados-pendientes', token, toPendingDeletions),
     getPersonCredits: (token, id, email) => send(`${company(id)}/saldo`, token, toPersonCredits, { body: { correo: email } }),
     listCreditLog: (token, filters) => send('/v1/admin/creditos/bitacora', token, toCreditLogPage, { body: creditLogFiltersToApi(filters) }),
+    listCodes: (token) => send('/v1/admin/codigos', token, toCodes),
+    getCode: (token, code) => send(codePath(code), token, toCodeDetail),
   };
 }

@@ -42,7 +42,7 @@ describe('grantedModules', () => {
 
   test('el superadministrador tiene todos, cada uno en su nivel más alto', () => {
     const modules = grantedModules(teamMember('jose', { isSuperadmin: true }));
-    expect(modules).toHaveLength(10);
+    expect(modules).toHaveLength(11);
     expect(modules).toContainEqual({ module: 'companies', level: 'edit' });
     expect(modules).toContainEqual({ module: 'documentText', level: 'view' });
   });

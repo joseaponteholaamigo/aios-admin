@@ -17,6 +17,7 @@ const MODULE_FROM_API = new Map<string, Module>([
   ['consumo', 'usage'],
   ['gobernanza', 'governance'],
   ['upsell', 'upsell'],
+  ['codigos', 'codes'],
 ]);
 
 const LEVEL_FROM_API = new Map<string, Level>([

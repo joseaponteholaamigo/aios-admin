@@ -52,7 +52,7 @@ const strings = (raw: unknown) => (Array.isArray(raw) ? raw.filter((x): x is str
 
 /** Cada `codigo` del backend, en un rechazo del panel. Un código que no está aquí rompe el contrato. */
 const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection> = {
-  invalido: (b) => ({ code: 'invalid', message: strOrNull(b.error) ?? 'el pedido no se entiende' }),
+  invalido: (b) => ({ code: 'invalid', message: strOrNull(b.error) ?? 'el pedido no se entiende', field: FIELD_FROM_API[strOrNull(b.campo) ?? ''] ?? null }),
   'plan-rechazado': (b) => ({ code: 'plan-rejected', rejections: strings(b.rechazos) }),
   'correo-de-otra-empresa': (b) => ({ code: 'email-in-other-company', company: toCompanyRef(b.empresa) }),
   'correo-en-cuenta-personal': (b) => ({ code: 'email-in-personal-account', account: toAccountRef(b.cuenta) }),
@@ -82,6 +82,15 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'cuenta-personal': () => ({ code: 'personal-account' }),
   'no-es-personalizado': () => ({ code: 'not-custom' }),
   ocupado: () => ({ code: 'busy' }),
+  'codigo-existe': () => ({ code: 'code-exists' }),
+  'estado-no-permite': () => ({ code: 'state-not-allowed' }),
+  'codigo-ocupado': () => ({ code: 'code-busy' }),
+};
+
+/** El campo que señala un rechazo `invalido` del backend, en el nombre del formulario del panel. */
+const FIELD_FROM_API: Record<string, string> = {
+  codigo: 'code', etiqueta: 'label', desde: 'from', hasta: 'until', tope: 'cap', duracion: 'duration',
+  creditosAlMes: 'monthlyCredits', frenoDiario: 'dailyBrake', motivo: 'reason', clave: 'key',
 };
 
 /**

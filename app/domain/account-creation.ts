@@ -49,7 +49,8 @@ export type PersonalAccountRef = { id: string; name: string; paysWithStripe: boo
 
 /** Por qué el backend no creó o no invitó, en las palabras del panel. */
 export type WriteRejection =
-  | { code: 'invalid'; message: string }
+  /** `field`: el campo que el backend señala (en el nombre del panel), cuando lo señala. */
+  | { code: 'invalid'; message: string; field?: string | null }
   | { code: 'plan-rejected'; rejections: string[] }
   | { code: 'email-in-other-company'; company: { id: string; name: string } | null }
   | { code: 'email-in-personal-account'; account: PersonalAccountRef }
@@ -71,6 +72,8 @@ export type WriteRejection =
   | { code: 'personal-account' | 'not-custom' }
   /** Otra operación con los créditos de esa persona escribió primero: se vuelve a intentar. */
   | { code: 'busy' }
+  /** Los códigos de registro: uno que ya existe, una acción que su estado no permite, o uno que otra escritura está cambiando. */
+  | { code: 'code-exists' | 'state-not-allowed' | 'code-busy' }
   /** La API no respondió a tiempo, o respondió un 5xx: no se sabe si se hizo. */
   | { code: 'unavailable' };
 

@@ -8,6 +8,8 @@ import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, WriteRejecti
 import type { AccountDeletion, DeletedAccount } from '../../domain/account-deletion';
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
 import type { CreditLoad, LoadedLot, SeatsChange, SeatsChanged } from '../../domain/credits';
+import type { CodeAction, NewCode, RegistrationCode } from '../../domain/codes';
+import { codePath, toBackendCodeAction, toBackendNewCode, toWrittenCode } from './codes-mapping';
 import { toBackendLoad, toBackendSeatsChange, toLoadedLot, toSeatsChanged } from './credits-mapping';
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
@@ -37,6 +39,10 @@ export type AdminWriteApi = {
   changeSeats(token: string, companyId: string, change: SeatsChange): Promise<WriteResult<SeatsChanged>>;
   /** Cargar créditos a una persona de esa cuenta: un lote que vence a un mes. */
   loadCredits(token: string, companyId: string, load: CreditLoad): Promise<WriteResult<LoadedLot>>;
+  /** Crear un código de registro: con la misma clave, crear dos veces es crear uno (CA-7). */
+  createCode(token: string, code: NewCode): Promise<WriteResult<RegistrationCode>>;
+  /** Pausar, reanudar o revocar un código (CA-5). */
+  changeCodeState(token: string, code: string, action: CodeAction, reason: string | null): Promise<WriteResult<RegistrationCode>>;
 };
 
 /** Los estados cuyo cuerpo trae un rechazo para el formulario. */
@@ -89,5 +95,7 @@ export function createAdminWriteApi({
       post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/condiciones`, token, toBackendSeatsChange(change), toSeatsChanged, 'PATCH'),
     // El correo va en el cuerpo, como en las acciones sobre una persona: nunca en la URL.
     loadCredits: (token, companyId, load) => post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/creditos`, token, toBackendLoad(load), toLoadedLot),
+    createCode: (token, code) => post('/v1/admin/codigos', token, toBackendNewCode(code), toWrittenCode),
+    changeCodeState: (token, code, action, reason) => post(`${codePath(code)}/estado`, token, toBackendCodeAction(action, reason), toWrittenCode),
   };
 }

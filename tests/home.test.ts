@@ -33,7 +33,7 @@ describe('página de inicio', () => {
   test('el superadministrador se ve como tal, con todos los módulos', () => {
     const { data, html } = pageFor(teamMember('jose', { name: 'Jose', isSuperadmin: true }));
     expect(html).toContain('Superadministrador');
-    expect(data.modules).toHaveLength(10);
+    expect(data.modules).toHaveLength(11);
   });
 
   test('sin nombre, se muestra el correo; sin módulos, se dice', () => {

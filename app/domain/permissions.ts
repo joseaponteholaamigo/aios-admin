@@ -15,6 +15,7 @@ export const MODULES = [
   'usage',
   'governance',
   'upsell',
+  'codes',
 ] as const;
 export type Module = (typeof MODULES)[number];
 
@@ -34,6 +35,7 @@ export const MODULE_LEVELS: Record<Module, readonly Level[]> = {
   usage: ['view', 'edit'],
   governance: ['view'],
   upsell: ['view', 'edit'],
+  codes: ['view', 'edit'],
 };
 
 export type TeamMember = {

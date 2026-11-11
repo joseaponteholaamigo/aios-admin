@@ -1,0 +1,4 @@
+/* «Nuevo código»: los pasos uno debajo del otro, como «Nueva empresa». */
+.new-code { display: grid; gap: 16px; max-width: 980px; }
+.new-code__wide { grid-column: 1 / -1; }
+.new-code__actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

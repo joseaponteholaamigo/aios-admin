@@ -72,6 +72,15 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
     path: 'governance', file: 'modules/governance/routes/governance.tsx', access: { module: 'governance', level: 'view' },
     menu: { label: 'Gobernanza', group: 'business', icon: 'gobernanza' },
   },
+  {
+    // Los códigos de registro (spec «Códigos de registro», CA-4 a CA-6).
+    path: 'codes', file: 'modules/codes/routes/codes.tsx', access: { module: 'codes', level: 'view' },
+    menu: { label: 'Códigos', group: 'business', icon: 'codigos' },
+  },
+  // Antes que `:code`: la tabla se lee en orden, y `new` no es un código.
+  { path: 'codes/new', file: 'modules/codes/routes/code-new.tsx', access: { module: 'codes', level: 'edit' } },
+  // Ver pide «ver»; las acciones de su `action` (pausar, reanudar, revocar) las vuelve a revisar el backend con «editar».
+  { path: 'codes/:code', file: 'modules/codes/routes/code.tsx', access: { module: 'codes', level: 'view' } },
   { path: 'auth/login', file: 'modules/auth/routes/login.tsx', access: 'public' },
   { path: 'auth/callback', file: 'modules/auth/routes/callback.tsx', access: 'public' },
   { path: 'auth/logout', file: 'modules/auth/routes/logout.tsx', access: 'public' },

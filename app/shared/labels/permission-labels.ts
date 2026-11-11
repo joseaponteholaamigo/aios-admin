@@ -12,6 +12,7 @@ export const MODULE_LABELS: Record<Module, string> = {
   usage: 'Consumo',
   governance: 'Gobernanza',
   upsell: 'Upsell',
+  codes: 'Códigos',
 };
 
 export const LEVEL_LABELS: Record<Level, string> = {
