@@ -9,13 +9,21 @@ import { FieldError } from '../../../shared/ui/field-error';
 import { FormRejection } from '../../../shared/ui/form-rejection';
 import { SubmitButton } from '../../../shared/ui/submit-button';
 import { rejectionMessage } from '../../../shared/labels/write-rejection-labels';
-import { DEFAULT_DAILY_BRAKE, DEFAULT_MONTHLY_CREDITS, LABEL_MAX, REASON_MAX, type FormValues } from '../new-code-form-data';
+import { thousands } from '../code-labels';
+import { CODE_MAX, CODE_MIN, DEFAULT_DAILY_BRAKE, DEFAULT_MONTHLY_CREDITS, LABEL_MAX, MONTHLY_CREDITS_MAX, REASON_MAX, USES_MAX, durationMax } from '../code-limits';
+import type { FormValues } from '../new-code-form-data';
 import './new-code-form.css';
 
 type Props = { formKey: string; values: FormValues | null; errors: Record<string, string>; rejection: WriteRejection | null };
 
-/** El campo que señala un rechazo del backend, si señala uno del formulario. */
-const fieldOf = (rejection: WriteRejection | null) => (rejection?.code === 'invalid' ? rejection.field ?? null : rejection?.code === 'code-exists' ? 'code' : null);
+/** Los campos que muestran su error. Un rechazo que nombra otro (o ninguno) va arriba del formulario. */
+const PLACED_FIELDS = new Set(['code', 'label', 'from', 'until', 'duration', 'durationN', 'durationDate', 'monthlyCredits', 'cap', 'dailyBrake', 'reason', 'key']);
+
+/** El campo que señala un rechazo del backend, si es uno que el formulario muestra. */
+function fieldOf(rejection: WriteRejection | null): string | null {
+  const field = rejection?.code === 'invalid' ? rejection.field ?? null : rejection?.code === 'code-exists' ? 'code' : null;
+  return field && PLACED_FIELDS.has(field) ? field : null;
+}
 
 export function NewCodeForm({ formKey, values, errors, rejection }: Props) {
   const [kind, setKind] = useState<DurationKind>((values?.durationKind as DurationKind | undefined) ?? 'months');
@@ -32,7 +40,7 @@ export function NewCodeForm({ formKey, values, errors, rejection }: Props) {
         <div className="card-b grid g2">
           <div className="field">
             <label htmlFor="code">Código (opcional)</label>
-            <input id="code" name="code" maxLength={40} defaultValue={value('code')} placeholder="WEBINAR-NOV" autoCapitalize="characters" spellCheck={false} />
+            <input id="code" name="code" minLength={CODE_MIN} maxLength={CODE_MAX} defaultValue={value('code')} placeholder="WEBINAR-NOV" autoCapitalize="characters" spellCheck={false} />
             <FieldError message={errorOf('code')} />
           </div>
           <div className="field">
@@ -75,7 +83,7 @@ export function NewCodeForm({ formKey, values, errors, rejection }: Props) {
           {(kind === 'months' || kind === 'days') && (
             <div className="field">
               <label htmlFor="durationN">{kind === 'months' ? 'Meses' : 'Días'}</label>
-              <input id="durationN" name="durationN" type="number" min={1} max={kind === 'months' ? 36 : 1095} required defaultValue={value('durationN', kind === 'months' ? '2' : '30')} />
+              <input id="durationN" name="durationN" type="number" min={1} max={durationMax(kind)} required defaultValue={value('durationN', kind === 'months' ? '2' : '30')} />
               <FieldError message={errorOf('durationN')} />
             </div>
           )}
@@ -88,8 +96,8 @@ export function NewCodeForm({ formKey, values, errors, rejection }: Props) {
           )}
           <div className="field">
             <label htmlFor="monthlyCredits">Créditos al mes</label>
-            <input id="monthlyCredits" name="monthlyCredits" type="number" min={0} max={1000} required defaultValue={value('monthlyCredits', String(DEFAULT_MONTHLY_CREDITS))} />
-            <small>De 0 a 1.000. Cada crédito se paga: un código para una promoción abierta puede dar menos.</small>
+            <input id="monthlyCredits" name="monthlyCredits" type="number" min={0} max={MONTHLY_CREDITS_MAX} required defaultValue={value('monthlyCredits', String(DEFAULT_MONTHLY_CREDITS))} />
+            <small>De 0 a {thousands(MONTHLY_CREDITS_MAX)}. Cada crédito se paga: un código para una promoción abierta puede dar menos.</small>
             <FieldError message={errorOf('monthlyCredits')} />
           </div>
         </div>
@@ -99,13 +107,13 @@ export function NewCodeForm({ formKey, values, errors, rejection }: Props) {
         <div className="card-b grid g2">
           <div className="field">
             <label htmlFor="cap">Tope de usos</label>
-            <input id="cap" name="cap" type="number" min={1} defaultValue={value('cap')} placeholder="Sin tope" />
+            <input id="cap" name="cap" type="number" min={1} max={USES_MAX} defaultValue={value('cap')} placeholder="Sin tope" />
             <small>Vacío: sin tope (solo un código generado).</small>
             <FieldError message={errorOf('cap')} />
           </div>
           <div className="field">
             <label htmlFor="dailyBrake">Freno del día</label>
-            <input id="dailyBrake" name="dailyBrake" type="number" min={1} required defaultValue={value('dailyBrake', String(DEFAULT_DAILY_BRAKE))} />
+            <input id="dailyBrake" name="dailyBrake" type="number" min={1} max={USES_MAX} required defaultValue={value('dailyBrake', String(DEFAULT_DAILY_BRAKE))} />
             <small>Más reservas que esto en un día pausan el código y suena la alarma.</small>
             <FieldError message={errorOf('dailyBrake')} />
           </div>
@@ -118,7 +126,7 @@ export function NewCodeForm({ formKey, values, errors, rejection }: Props) {
       </section>
       <section className="card">
         <div className="card-b">
-          <FieldError message={errors.key} />
+          <FieldError message={errorOf('key')} />
           <div className="new-code__actions">
             <SubmitButton label="Crear código" busyLabel="Creando…" />
             <Link className="btn ghost" to="/codes">Cancelar</Link>

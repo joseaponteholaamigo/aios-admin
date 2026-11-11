@@ -32,7 +32,8 @@ export function durationLabel(d: CodeDuration): string {
 /** «37 de 300» o «37, sin tope». */
 export const usesLabel = (c: Pick<RegistrationCode, 'uses' | 'cap'>) => (c.cap === null ? `${c.uses}, sin tope` : `${c.uses} de ${c.cap}`);
 
-const thousands = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+/** «1.000»: el separador de miles del panel, sin depender del idioma del servidor. */
+export const thousands = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
 /** «1.000 al mes», o «sin créditos» si el código solo da el catálogo. */
 export const creditsLabel = (n: number) => (n === 0 ? 'sin créditos' : `${thousands(n)} al mes`);

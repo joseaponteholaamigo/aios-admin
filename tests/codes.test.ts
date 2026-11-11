@@ -5,7 +5,11 @@
 // nombre del backend mal traducido pinta un estado o una duración equivocados, o deja ver el correo
 // de una cuenta borrada; y una acción que no es pausar, reanudar ni revocar llegaría al backend como
 // si lo fuera. Del lado de los permisos, si «codigos» no se tradujera, nadie del equipo vería el módulo.
-import { RouterContextProvider } from 'react-router';
+// En pantalla: un reintento con otra clave crearía dos códigos, un solo clic en «Revocar» quemaría un
+// código sin vuelta, y quien solo puede ver vería botones que el backend le rechaza.
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { RouterContextProvider, createRoutesStub } from 'react-router';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { TeamMember } from '../app/domain/permissions';
 import { actionsFor } from '../app/domain/codes';
@@ -17,12 +21,20 @@ import { toWriteRejection } from '../app/shared/api/write-mapping';
 import { toTeamMember } from '../app/shared/api/team-member-mapping';
 import { readNewCode } from '../app/modules/codes/new-code-form-data';
 import { durationLabel, statusLabel, usesLabel, creditsLabel } from '../app/modules/codes/code-labels';
+import { CodeActions } from '../app/modules/codes/components/code-actions';
+import { RedemptionsTable } from '../app/modules/codes/components/redemptions-table';
+import { RevokeCodeDialog } from '../app/modules/codes/components/revoke-code-dialog';
+import type { RegistrationCode } from '../app/domain/codes';
 
 const createCode = vi.fn();
 const changeCodeState = vi.fn();
+const listCodes = vi.fn();
+const getCode = vi.fn();
 vi.mock('../app/shared/api/admin-write-api-service.server', () => ({ getAdminWriteApi: () => ({ createCode, changeCodeState }) }));
-const { action: crear } = await import('../app/modules/codes/routes/code-new');
-const { action: cambiar } = await import('../app/modules/codes/routes/code');
+vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ listCodes, getCode }) }));
+const { action: crear, default: CodeNew, shouldRevalidate } = await import('../app/modules/codes/routes/code-new');
+const { action: cambiar, loader: detalle } = await import('../app/modules/codes/routes/code');
+const { loader: lista } = await import('../app/modules/codes/routes/codes');
 
 const member: TeamMember = { actor: 'equipo:sub', email: null, name: null, isSuperadmin: false, status: 'active', permissions: { codes: 'edit' } };
 const KEY = '0123456789abcdef0123';
@@ -33,16 +45,31 @@ function formOf(fields: Record<string, string>) {
   return f;
 }
 
-function post(url: string, fields: Record<string, string>, route: typeof crear, params: Record<string, string> = {}) {
+function contextOf(who: TeamMember = member) {
   const context = new RouterContextProvider();
   context.set(sessionContext, { sub: 'sub-ana', tokens: { accessToken: 'token-ana' } } as unknown as ActiveSession);
-  context.set(teamMemberContext, member);
-  return route({ request: new Request(`https://dxxxx.cloudfront.net${url}`, { method: 'POST', body: formOf(fields) }), context, params } as never);
+  context.set(teamMemberContext, who);
+  return context;
 }
+
+function post(url: string, fields: Record<string, string>, route: typeof crear, params: Record<string, string> = {}) {
+  return route({ request: new Request(`https://dxxxx.cloudfront.net${url}`, { method: 'POST', body: formOf(fields) }), context: contextOf(), params } as never);
+}
+
+/** Lo que dibuja un componente del módulo, dentro de un router (usa `Form` y `Link`). */
+function render(element: ReturnType<typeof createElement>) {
+  const Stub = createRoutesStub([{ path: '*', Component: () => element }]);
+  return renderToStaticMarkup(createElement(Stub, { initialEntries: ['/codes/WEBINAR-NOV'] }));
+}
+
+const ACTIVO: RegistrationCode = {
+  code: 'WEBINAR-NOV', label: 'Webinar', generated: false, from: '2026-11-01T05:00:00.000Z', until: '2026-12-01T04:59:00.000Z', cap: 300, uses: 37, liveReservations: 4,
+  duration: { kind: 'months', n: 2 }, monthlyCredits: 1000, dailyBrake: 200, status: 'active', pausedBy: null, createdAt: '2026-11-01T05:00:00.000Z',
+};
 
 const FORM = { code: '', label: 'Webinar de noviembre', from: '', until: '2026-11-30T23:59', cap: '', durationKind: 'months', durationN: '2', monthlyCredits: '1000', dailyBrake: '200', reason: '', key: KEY };
 
-beforeEach(() => { createCode.mockReset(); changeCodeState.mockReset(); });
+beforeEach(() => { createCode.mockReset(); changeCodeState.mockReset(); listCodes.mockReset(); getCode.mockReset(); });
 
 describe('el formulario de un código nuevo', () => {
   test('⛔ las fechas van en hora de Bogotá, con su zona; un código vacío se genera', () => {
@@ -62,6 +89,16 @@ describe('el formulario de un código nuevo', () => {
     expect('errors' in r && Object.keys(r.errors).sort()).toEqual(['code', 'monthlyCredits', 'until']);
     const sinDias = readNewCode(formOf({ ...FORM, durationN: '40' }));
     expect('errors' in sinDias && Object.keys(sinDias.errors)).toEqual(['durationN']);
+  });
+
+  test('⛔ unos créditos borrados no viajan como «sin créditos»: se piden', () => {
+    const r = readNewCode(formOf({ ...FORM, monthlyCredits: '' }));
+    expect('errors' in r && Object.keys(r.errors)).toEqual(['monthlyCredits']);
+  });
+
+  test('una hora con segundos (lo que manda algún navegador) se acepta, en hora de Bogotá', () => {
+    const r = readNewCode(formOf({ ...FORM, until: '2026-11-30T23:59:30' }));
+    expect('code' in r && r.code.until).toBe('2026-11-30T23:59:30-05:00');
   });
 
   test('una fecha fija y sin fin son duraciones', () => {
@@ -136,5 +173,77 @@ describe('las rutas', () => {
 
   test('un revocado no ofrece acciones; uno en pausa, reanudar o revocar', () => {
     expect([actionsFor({ status: 'revoked' }), actionsFor({ status: 'paused' }), actionsFor({ status: 'expired' })]).toEqual([[], ['resume', 'revoke'], ['pause', 'revoke']]);
+  });
+});
+
+describe('en pantalla', () => {
+  const clave = (html: string) => html.match(/name="key" value="([^"]+)"/)?.[1];
+
+  test('⛔ CA-7 · el formulario que vuelve con un rechazo lleva la clave del primer intento, no una nueva', () => {
+    const html = render(createElement(CodeNew, {
+      loaderData: { key: 'clave-nueva-de-la-carga-0000' },
+      actionData: { values: { ...FORM, code: 'WEBINAR-NOV', cap: '10' }, errors: {}, rejection: { code: 'code-exists' } },
+    } as never));
+    expect(clave(html)).toBe(KEY);
+  });
+
+  test('el rechazo de un campo va junto a ese campo; el de un campo que el formulario no tiene, arriba', () => {
+    const junto = render(createElement(CodeNew, { loaderData: { key: KEY }, actionData: { values: FORM, errors: {}, rejection: { code: 'code-exists' } } } as never));
+    expect([junto.includes('class="banner"'), junto.includes('class="field-error"')]).toEqual([false, true]);
+    const arriba = render(createElement(CodeNew, { loaderData: { key: KEY }, actionData: { values: FORM, errors: {}, rejection: { code: 'invalid', message: 'algo raro', field: 'otro' } } } as never));
+    expect([arriba.includes('class="banner"'), arriba.includes('Algo raro')]).toEqual([true, true]);
+  });
+
+  test('⛔ después de mandar el formulario no se pide otra clave', () => {
+    const args = (formMethod: string | undefined) => ({ formMethod, defaultShouldRevalidate: true }) as never;
+    expect([shouldRevalidate(args('POST')), shouldRevalidate(args(undefined))]).toEqual([false, true]);
+  });
+
+  test('⛔ CA-5 · «Revocar» no revoca con un clic: abre la confirmación; pausar sí va directo', () => {
+    const html = render(createElement(CodeActions, { code: ACTIVO, rejection: null, rejectedAction: null }));
+    expect([/type="submit"[^>]*value="pause"/.test(html), /value="revoke"/.test(html), /type="button"[^>]*>Revocar</.test(html)]).toEqual([true, false, true]);
+  });
+
+  test('la confirmación manda «revoke», con el motivo que ya se había escrito', () => {
+    const html = render(createElement(RevokeCodeDialog, { code: 'WEBINAR-NOV', actionField: 'accion', reason: 'se filtró', rejection: null, onClose: () => {} }));
+    // React ordena los atributos a su modo (`value` antes que `name`): se mira cada botón entero.
+    const envia = (html.match(/<button type="submit"[^>]*>/g) ?? []).filter((t) => t.includes('name="accion"') && t.includes('value="revoke"'));
+    expect([envia.length, /name="reason"[^>]*value="se filtró"/.test(html)]).toEqual([1, true]);
+  });
+
+  test('un rechazo de revocar se lee en su diálogo, y una sola vez', () => {
+    const html = render(createElement(CodeActions, { code: ACTIVO, rejection: { code: 'state-not-allowed' }, rejectedAction: 'revoke' }));
+    const veces = html.split('cambió de estado mientras tanto').length - 1;
+    expect([veces, /<dialog[\s\S]*cambió de estado mientras tanto[\s\S]*<\/dialog>/.test(html)]).toEqual([1, true]);
+  });
+
+  test('⛔ CA-4 · el canje de una cuenta borrada no muestra correo ni enlace', () => {
+    const html = render(createElement(RedemptionsTable, { canSeeAccounts: true, redemptions: [{ email: null, accountId: null, redeemedAt: '2026-11-02T00:00:00Z', deleted: true }] }));
+    expect([html.includes('Cuenta borrada'), html.includes('href="/companies')]).toEqual([true, false]);
+  });
+
+  test('sin «ver» en Empresas, la cuenta de un canje se muestra sin enlace', () => {
+    const r = { email: 'eva@correo.com', accountId: 'codigo-1a2b3c', redeemedAt: '2026-11-02T00:00:00Z', deleted: false };
+    const sin = render(createElement(RedemptionsTable, { canSeeAccounts: false, redemptions: [r] }));
+    const con = render(createElement(RedemptionsTable, { canSeeAccounts: true, redemptions: [r] }));
+    expect([sin.includes('codigo-1a2b3c'), sin.includes('href="/companies'), con.includes('href="/companies/codigo-1a2b3c"')]).toEqual([true, false, true]);
+  });
+});
+
+describe('quien solo puede ver', () => {
+  const soloVer: TeamMember = { ...member, permissions: { codes: 'view' } };
+  const get = (url: string, route: (args: never) => unknown, params: Record<string, string> = {}): Promise<unknown> =>
+    Promise.resolve(route({ request: new Request(`https://dxxxx.cloudfront.net${url}`), context: contextOf(soloVer), params } as never));
+
+  test('⛔ CA-6 · con «ver» en Códigos, la lista no ofrece crear', async () => {
+    listCodes.mockResolvedValue({ kind: 'ok', value: [ACTIVO] });
+    const r = (await get('/codes', lista)) as { canCreate: boolean; codes: unknown[] };
+    expect([r.codes.length, r.canCreate]).toEqual([1, false]);
+  });
+
+  test('⛔ CA-6 · con «ver» en Códigos, el detalle no ofrece acciones ni enlaza cuentas sin «ver» en Empresas', async () => {
+    getCode.mockResolvedValue({ kind: 'ok', value: { ...ACTIVO, redemptions: [] } });
+    const r = (await get('/codes/WEBINAR-NOV', detalle, { code: 'WEBINAR-NOV' })) as { canEdit: boolean; canSeeAccounts: boolean; code: { code: string } };
+    expect([r.code.code, r.canEdit, r.canSeeAccounts]).toEqual(['WEBINAR-NOV', false, false]);
   });
 });

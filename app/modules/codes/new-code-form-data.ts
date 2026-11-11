@@ -3,11 +3,8 @@
 // ya existe, una fecha del plan antes del último canje) lo juzga el backend, que dice el campo.
 import { z } from 'zod';
 import { DURATION_KINDS, type CodeDuration, type NewCode } from '../../domain/codes';
-
-export const LABEL_MAX = 80;
-export const REASON_MAX = 500;
-export const DEFAULT_MONTHLY_CREDITS = 1000;
-export const DEFAULT_DAILY_BRAKE = 200;
+import { thousands } from './code-labels';
+import { CODE_MAX, CODE_MIN, LABEL_MAX, MONTHLY_CREDITS_MAX, REASON_MAX, USES_MAX, durationMax } from './code-limits';
 
 /** Lo escrito, tal cual, para volver a llenar el formulario si el backend lo rechaza. */
 export type FormValues = Record<string, string>;
@@ -18,24 +15,29 @@ export const valuesOf = (form: FormData): FormValues =>
  * Una fecha y hora del formulario (`2026-11-30T23:59`, lo que da `<input type="datetime-local">`), en
  * hora de Bogotá. Sin zona, el backend la rechaza: en Lambda se leería como UTC, cinco horas antes.
  */
-export const bogotaInstant = (local: string) => `${local}:00-05:00`;
+export const bogotaInstant = (local: string) => `${local.length === 16 ? `${local}:00` : local}-05:00`;
 
-const LOCAL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+/** `2026-11-30T23:59`, o con segundos si el navegador los agrega. */
+const LOCAL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const WRITTEN_CODE = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
 
-const whole = (message: string, min: number, max: number) => z.coerce.number(message).int(message).min(min, message).max(max, message);
+/**
+ * Un entero escrito. ⚠️ Vacío NO es cero: `z.coerce.number('')` daría 0, y unos créditos borrados
+ * viajarían como «sin créditos» en vez de pedir el número.
+ */
+const whole = (message: string, min: number, max: number) => z.string(message).trim().regex(/^\d+$/, message).transform(Number).pipe(z.number().int(message).min(min, message).max(max, message));
 const optionalWhole = (message: string, min: number, max: number) => z.union([z.literal(''), whole(message, min, max)]);
 
 const CODE = z.object({
-  code: z.union([z.literal(''), z.string().trim().regex(WRITTEN_CODE, 'Letras, números y guiones, sin espacios ni otros símbolos.').min(8, 'Un código escrito a mano lleva al menos 8 caracteres.').max(40, 'Hasta 40 caracteres.')]),
+  code: z.union([z.literal(''), z.string().trim().regex(WRITTEN_CODE, 'Letras, números y guiones, sin espacios ni otros símbolos.').min(CODE_MIN, `Un código escrito a mano lleva al menos ${CODE_MIN} caracteres.`).max(CODE_MAX, `Hasta ${CODE_MAX} caracteres.`)]),
   label: z.string().trim().min(1, 'Escribe una etiqueta: es solo para el equipo.').max(LABEL_MAX, `Hasta ${LABEL_MAX} caracteres.`),
   from: z.union([z.literal(''), z.string().regex(LOCAL, 'Elige la fecha y la hora.')]),
-  until: z.string().regex(LOCAL, 'Elige hasta cuándo sirve el código: ningún código es infinito.'),
-  cap: optionalWhole('El tope es un número entero mayor que cero.', 1, 1_000_000),
+  until: z.string().min(1, 'Elige hasta cuándo sirve el código: ningún código es infinito.').regex(LOCAL, 'Elige la fecha y la hora.'),
+  cap: optionalWhole('El tope es un número entero mayor que cero.', 1, USES_MAX),
   durationKind: z.enum(DURATION_KINDS, 'Elige cuánto dura el plan.'),
-  monthlyCredits: whole('Los créditos al mes van de 0 a 1.000.', 0, 1000),
-  dailyBrake: whole('El freno es un número entero mayor que cero.', 1, 1_000_000),
+  monthlyCredits: whole(`Los créditos al mes van de 0 a ${thousands(MONTHLY_CREDITS_MAX)}.`, 0, MONTHLY_CREDITS_MAX),
+  dailyBrake: whole('El freno es un número entero mayor que cero.', 1, USES_MAX),
   reason: z.string().trim().max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`),
   key: z.string().regex(/^[A-Za-z0-9-]{16,64}$/, 'El formulario está incompleto: vuelve a abrirlo.'),
 });
@@ -53,7 +55,7 @@ function readDuration(kind: (typeof DURATION_KINDS)[number], form: FormData, err
     errors.durationDate = 'Elige la fecha en que termina el plan.';
     return null;
   }
-  const max = kind === 'months' ? 36 : 1095;
+  const max = durationMax(kind);
   const n = whole(`Un número entero de 1 a ${max}.`, 1, max).safeParse(form.get('durationN'));
   if (n.success) return { kind, n: n.data };
   errors.durationN = n.error.issues[0]?.message ?? 'Escribe cuánto dura.';

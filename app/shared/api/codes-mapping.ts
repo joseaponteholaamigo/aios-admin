@@ -16,6 +16,15 @@ function toDuration(raw: unknown): CodeDuration {
   throw new ApiContractError('código.duracion: no es meses, días, una fecha ni sin fin');
 }
 
+/**
+ * El campo que señala un rechazo `invalido` del backend, en el nombre del formulario del panel. Solo
+ * el alta de un código dice su campo; un nombre que no está aquí deja el rechazo arriba del formulario.
+ */
+export const CODE_FIELD_FROM_API: Record<string, string> = {
+  codigo: 'code', etiqueta: 'label', desde: 'from', hasta: 'until', tope: 'cap', duracion: 'duration',
+  creditosAlMes: 'monthlyCredits', frenoDiario: 'dailyBrake', motivo: 'reason', clave: 'key',
+};
+
 const toPausedBy = (raw: unknown): RegistrationCode['pausedBy'] => (raw === 'freno-diario' ? 'brake' : raw === 'equipo' ? 'team' : null);
 
 /** Un código de la lista o del detalle. */

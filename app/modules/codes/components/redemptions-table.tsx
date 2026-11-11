@@ -1,10 +1,11 @@
 // Quién canjeó un código, cuándo y qué cuenta creó (spec «Códigos de registro», CA-4). El canje de una
-// cuenta que se borró dice «cuenta borrada», sin correo ni enlace (decisión 14).
+// cuenta que se borró dice «cuenta borrada», sin correo ni enlace (decisión 14). La cuenta va con enlace
+// solo para quien puede ver Empresas: para el resto, el enlace llevaría a «sin permiso».
 import { Link } from 'react-router';
 import type { CodeRedemption } from '../../../domain/codes';
 import { formatDateTime } from '../../../shared/ui/format';
 
-export function RedemptionsTable({ redemptions }: { redemptions: CodeRedemption[] }) {
+export function RedemptionsTable({ redemptions, canSeeAccounts }: { redemptions: CodeRedemption[]; canSeeAccounts: boolean }) {
   return (
     <section className="card">
       <div className="card-h"><div><h2>Canjes</h2><p>El más reciente primero.</p></div></div>
@@ -17,7 +18,7 @@ export function RedemptionsTable({ redemptions }: { redemptions: CodeRedemption[
                 {redemptions.map((r) => (
                   <tr key={`${r.accountId ?? 'borrada'}-${r.redeemedAt}`}>
                     <td className="small">{r.deleted ? <span className="badge">Cuenta borrada</span> : r.email}</td>
-                    <td className="small">{r.accountId ? <Link className="mono" to={`/companies/${encodeURIComponent(r.accountId)}`}>{r.accountId}</Link> : '—'}</td>
+                    <td className="small">{!r.accountId ? '—' : canSeeAccounts ? <Link className="mono" to={`/companies/${encodeURIComponent(r.accountId)}`}>{r.accountId}</Link> : <span className="mono">{r.accountId}</span>}</td>
                     <td className="small">{formatDateTime(r.redeemedAt)}</td>
                   </tr>
                 ))}
