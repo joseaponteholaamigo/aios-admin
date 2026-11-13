@@ -10,7 +10,7 @@ import type { AuditPage } from '../../domain/audit';
 import type { CodeDetail, RegistrationCode } from '../../domain/codes';
 import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '../../domain/client-users';
 import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan } from '../../domain/companies';
-import type { TeamMember } from '../../domain/permissions';
+import type { TeamPerson } from '../../domain/team';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
@@ -19,7 +19,7 @@ import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } fro
 import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory } from './companies-mapping';
 import { toDeletionPreview, toPendingDeletions } from './deletion-mapping';
 import { creditLogFiltersToApi, toCreditLogPage, toPersonCredits } from './credits-mapping';
-import { toTeamList } from './team-member-mapping';
+import { teamPersonPath, toTeamPeople, toTeamPersonBody } from './team-mapping';
 
 const TIMEOUT_MS = 5000;
 
@@ -52,7 +52,10 @@ export type AdminReadApi = {
   searchPeople(token: string, q: { text: string; company: string; kind?: AccountKind | null }): Promise<ApiResult<PeopleSearch>>;
   getDataCheckup(token: string): Promise<ApiResult<DataCheckup>>;
   listAuditEvents(token: string, q: { target?: string | null; page?: number }): Promise<ApiResult<AuditPage>>;
-  listTeam(token: string): Promise<ApiResult<TeamMember[]>>;
+  /** El equipo ENSŌ, cada persona con su invitación. Solo el superadministrador. */
+  listTeam(token: string): Promise<ApiResult<TeamPerson[]>>;
+  /** Una persona del equipo ENSŌ (spec «Equipo ENSŌ», CA-4). */
+  getTeamPerson(token: string, sub: string): Promise<ApiResult<TeamPerson>>;
   /** Lo que se borraría de una cuenta, sin borrar nada. Solo el superadministrador. */
   getDeletionPreview(token: string, id: string): Promise<ApiResult<DeletionPreview>>;
   listPendingDeletions(token: string): Promise<ApiResult<PendingDeletion[]>>;
@@ -127,7 +130,8 @@ export function createAdminReadApi({
       send('/v1/admin/personas/buscar', token, (b) => toPeopleSearch(b, log), { body: { texto: text, empresa: company, ...(kind ? { tipo: kindToApi(kind) } : {}) } }),
     getDataCheckup: (token) => send('/v1/admin/doctor', token, (b) => toDataCheckup(b, log), { timeoutMs: CHECKUP_TIMEOUT_MS }),
     listAuditEvents: (token, { target, page }) => send(`/v1/admin/auditoria${query({ objetivo: target, pagina: pageToApi(page) })}`, token, (b) => toAuditPage(b, log)),
-    listTeam: (token) => send('/v1/admin/equipo', token, (b) => toTeamList(b, log)),
+    listTeam: (token) => send('/v1/admin/equipo', token, (b) => toTeamPeople(b, log)),
+    getTeamPerson: (token, sub) => send(teamPersonPath(sub), token, (b) => toTeamPersonBody(b, log)),
     getDeletionPreview: (token, id) => send(`${company(id)}/borrado`, token, (b) => toDeletionPreview(b, log)),
     listPendingDeletions: (token) => send('/v1/admin/borrados-pendientes', token, toPendingDeletions),
     getPersonCredits: (token, id, email) => send(`${company(id)}/saldo`, token, toPersonCredits, { body: { correo: email } }),

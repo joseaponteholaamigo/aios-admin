@@ -4,7 +4,7 @@
 import { NavLink } from 'react-router';
 import { Icon } from '../icons/icon';
 import type { MenuItem } from '../routing/route-access';
-import { MENU_GROUPS, type MenuGroup } from '../routing/route-table';
+import { MENU_GROUPS, MENU_GROUP_LABELS as GROUP_LABELS } from '../routing/route-table';
 import logoDark from './brand/enso-blanco-56.png';
 import logoLight from './brand/enso-negro-56.png';
 import './side-nav.css';
@@ -12,7 +12,6 @@ import './side-nav.css';
 /** El id de la barra lateral, para que el botón del menú diga qué abre (`aria-controls`). */
 export const SIDE_NAV_ID = 'adm-side';
 
-const GROUP_LABELS: Record<MenuGroup, string> = { administration: 'Administración', business: 'Negocio' };
 
 export function SideNav({ items, open, onNavigate }: { items: MenuItem[]; open: boolean; onNavigate: () => void }) {
   return (

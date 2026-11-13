@@ -1,7 +1,7 @@
 // Qué acceso exige un pedido y si una persona lo cumple, según la tabla de rutas.
 import { matchPath } from 'react-router';
-import { can, type TeamMember } from '../../domain/permissions';
-import { ROUTE_TABLE, type MenuEntry, type RouteAccess, type RouteEntry } from './route-table';
+import { MODULES, can, type Module, type TeamMember } from '../../domain/permissions';
+import { ROUTE_TABLE, type MenuEntry, type MenuGroup, type RouteAccess, type RouteEntry } from './route-table';
 
 /** Una entrada del menú de una persona: la ruta, con su nombre, su grupo y su ícono. */
 export type MenuItem = { path: string } & MenuEntry;
@@ -31,4 +31,21 @@ export function allows(member: TeamMember, access: RouteAccess): boolean {
 /** Las entradas del menú que `member` puede abrir: nunca un módulo que no puede usar (CA-25). */
 export function menuFor(member: TeamMember, table: readonly RouteEntry[] = ROUTE_TABLE): MenuItem[] {
   return table.flatMap((r) => (r.menu && allows(member, r.access) ? [{ path: `/${r.path}`, ...r.menu }] : []));
+}
+
+/**
+ * Los módulos que tienen al menos una pantalla, en el orden de `MODULES`. Lo usa el editor de
+ * permisos de «Equipo ensō»: un módulo sin pantalla no se ofrece, porque darlo no abriría nada (spec
+ * «Equipo ENSŌ», decisión 3). Sale de la tabla de rutas: cuando una pantalla nueva sale, su módulo
+ * aparece solo.
+ */
+export function modulesWithScreen(table: readonly RouteEntry[] = ROUTE_TABLE): Module[] {
+  const withRoute = new Set(table.flatMap((r) => (typeof r.access === 'object' ? [r.access.module] : [])));
+  return MODULES.filter((m) => withRoute.has(m));
+}
+
+/** El grupo del menú donde aparece la pantalla principal de un módulo (para agrupar el editor como el menú). */
+export function menuGroupOf(module: Module, table: readonly RouteEntry[] = ROUTE_TABLE): MenuGroup {
+  const entry = table.find((r) => r.menu && typeof r.access === 'object' && r.access.module === module);
+  return entry?.menu?.group ?? 'administration';
 }

@@ -72,5 +72,10 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'code-busy': return 'El código está cambiando en este momento: vuelve a oprimir el botón.';
     case 'deletion-incomplete':
       return `El borrado no terminó. Falló en: ${rejection.sites.map(deletionSiteLabel).join(', ') || '—'}. Oprime «Terminar el borrado»: se termina lo que faltó.`;
+    case 'already-in-team': return 'Esa persona ya está en el equipo.';
+    case 'self-action': return 'Nadie actúa sobre sí mismo: pídeselo a otro superadministrador.';
+    case 'invitation-accepted': return 'Ya entró con su invitación: si no puede entrar, restablece su MFA.';
+    case 'conflict': return 'Otro cambio llegó primero: recarga la página y repítelo.';
+    case 'pool-unavailable': return 'El login del equipo no respondió y no se creó nada: vuelve a intentarlo.';
   }
 }

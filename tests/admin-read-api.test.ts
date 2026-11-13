@@ -224,12 +224,14 @@ describe('la auditoría y el equipo', () => {
     expect(seen[0]?.url).toBe('https://api.example/v1/admin/auditoria?pagina=3');
   });
 
-  test('el equipo: cada persona con la forma de /yo', async () => {
+  test('el equipo: cada persona con la forma de /yo, su sub y su invitación', async () => {
     const { api } = apiAnswering(() => Response.json({ personas: [
-      { actor: 'equipo:nati', correo: 'nati@beenso.com', nombre: 'Nati', superadmin: false, estado: 'suspendida', permisos: { empresas: 'ver' } },
+      { actor: 'equipo:nati', correo: 'nati@beenso.com', nombre: 'Nati', superadmin: false, estado: 'suspendida', permisos: { empresas: 'ver' }, invitacion: 'vencida' },
+      { actor: 'equipo:ida', correo: 'ida@beenso.com', nombre: 'Ida', superadmin: false, estado: 'retirada', permisos: {}, invitacion: null },
     ] }));
     expect(await api.listTeam('t')).toEqual({ kind: 'ok', value: [
-      { actor: 'equipo:nati', email: 'nati@beenso.com', name: 'Nati', isSuperadmin: false, status: 'inactive', permissions: { companies: 'view' } },
+      { actor: 'equipo:nati', sub: 'nati', email: 'nati@beenso.com', name: 'Nati', isSuperadmin: false, status: 'inactive', permissions: { companies: 'view' }, invitation: 'expired' },
+      { actor: 'equipo:ida', sub: 'ida', email: 'ida@beenso.com', name: 'Ida', isSuperadmin: false, status: 'retired', permissions: {}, invitation: null },
     ] });
   });
 });

@@ -74,6 +74,12 @@ export type WriteRejection =
   | { code: 'busy' }
   /** Los códigos de registro: uno que ya existe, una acción que su estado no permite, o uno que otra escritura está cambiando. */
   | { code: 'code-exists' | 'state-not-allowed' | 'code-busy' }
+  /**
+   * El equipo ENSŌ: un correo que ya está (con su `sub`), una acción sobre uno mismo, una invitación
+   * que ya se usó, otro cambio que llegó primero, o el login del equipo que no respondió.
+   */
+  | { code: 'already-in-team'; sub: string | null }
+  | { code: 'self-action' | 'invitation-accepted' | 'conflict' | 'pool-unavailable' }
   /** La API no respondió a tiempo, o respondió un 5xx: no se sabe si se hizo. */
   | { code: 'unavailable' };
 

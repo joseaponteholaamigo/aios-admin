@@ -145,7 +145,7 @@ El superadministrador da de alta desde el panel a las personas del equipo ENSŌ,
 - **Entonces** ve, por persona:
   - nombre y correo, papel (Superadministrador o Equipo) y estado (Activa o Suspendida);
   - la invitación: «Invitación pendiente», «Invitación vencida» o nada si ya entró;
-  - cuántos módulos con pantalla tiene.
+  - los módulos con pantalla que tiene, con su nivel (decisión 3).
 
   Además:
   - un clic en cualquier parte de la fila abre a la persona (`LinkedRow`);
@@ -260,8 +260,9 @@ El superadministrador da de alta desde el panel a las personas del equipo ENSŌ,
 
 ### CB-8: Una acción que el estado no permite
 - **Dado** una persona
-- **Cuando** se pide reactivar a una activa, suspender a una suspendida, cualquier acción sobre una retirada, o reenviar la invitación a quien ya entró
+- **Cuando** se pide reactivar a una activa, suspender, reactivar, restablecer el MFA o reenviar la invitación a una retirada, reenviar la invitación a una suspendida, o reenviarla a quien ya entró
 - **Entonces** responde 409 `estado-no-permite` (o `invitacion-aceptada` en el último caso), sin tocar nada.
+- **Y** suspender a una suspendida, o retirar a una retirada, no es un error: vuelve a cerrar (o a borrar) su cuenta del pool, por si la primera vez quedó a medias (CB-6), y responde 200 sin otro evento.
 
 ### CB-9: Dos superadministradores cambian a la misma persona
 - **Dado** dos superadministradores con la misma página abierta
@@ -309,7 +310,7 @@ El superadministrador da de alta desde el panel a las personas del equipo ENSŌ,
 | CA-10 | integración | `aios-backend/tests/admin-permisos-por-ruta.test.js` y los dos nuevos |
 | CA-11 | plantilla sintetizada | `aios-backend/tests/infra-equipo.test.js` |
 | CA-12 | integración | `aios-backend/tests/admin-auditoria-endpoint.test.js` |
-| CA-13 | integración | `aios-backend/tests/dev-local-admin.test.js` |
+| CA-13 | el doble del pool (`scripts/pool-del-equipo-falso.mjs`) en todas las pruebas de arriba, y recorrido manual en local | navegador contra `npm run dev` |
 | CB-13 | ya cubierto | `aios-admin/tests/permissions-middleware.test.ts` |
 | CA-14 a CA-21 | unit (traducción, reglas puras) + render estático | `aios-admin/tests/team.test.ts` (nuevo) |
 | CA-22 | unit | `aios-admin/tests/routes-declare-permission.test.ts` |

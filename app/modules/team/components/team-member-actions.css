@@ -1,0 +1,4 @@
+/* Las acciones de una persona del equipo. Las que cortan su acceso, en rojo. */
+/* `.btn.` delante: `.adm button { color: inherit }` pesa más que una sola clase y el texto saldría oscuro. */
+.team-member-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.btn.team-member-actions__danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
