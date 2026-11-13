@@ -1,5 +1,6 @@
 // Las personas del equipo ensō, con su papel, su estado, su invitación y sus módulos (spec «Equipo
 // ENSŌ», CA-14). Un clic en cualquier parte de la fila abre a la persona.
+import { Link } from 'react-router';
 import { grantedModules } from '../../../domain/permissions';
 import type { TeamPerson } from '../../../domain/team';
 import { LEVEL_LABELS, MODULE_LABELS } from '../../../shared/labels/permission-labels';
@@ -24,13 +25,16 @@ export function TeamTable({ people, empty }: { people: TeamPerson[]; empty: stri
             return (
               <LinkedRow key={person.actor} to={`/team/${encodeURIComponent(person.sub)}`}>
                 <td>
-                  <b>{displayName(person)}</b>
+                  {/* El enlace es el camino con teclado y lector de pantalla: la fila entera solo responde al clic. */}
+                  <Link to={`/team/${encodeURIComponent(person.sub)}`}><b>{displayName(person)}</b></Link>
                   <div className="tiny mono muted">{person.email ?? person.sub}</div>
                 </td>
                 <td><span className={badgeClass(role.tone)}>{role.text}</span></td>
                 <td>
                   <span className={badgeClass(status.tone)}>{status.text}</span>
                   {invitation && <> <span className={badgeClass(invitation.tone)}>{invitation.text}</span></>}
+                  {/* CB-12: sin respuesta del login, la invitación no se sabe. */}
+                  {person.invitation === null && person.status !== 'retired' && <span className="small muted"> · invitación: —</span>}
                 </td>
                 <td>
                   {person.isSuperadmin ? <span className="small muted">Todos</span> : (

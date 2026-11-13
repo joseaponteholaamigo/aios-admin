@@ -7,7 +7,7 @@ import type { TeamPermissions, TeamPerson } from '../../../domain/team';
 import { FieldError } from '../../../shared/ui/field-error';
 import { FormRejection } from '../../../shared/ui/form-rejection';
 import { SubmitButton } from '../../../shared/ui/submit-button';
-import { INTENT_FIELD, REASON_MAX, splitPermissions } from '../team-form-data';
+import { INTENT_FIELD, REASON_MAX, VERSION_FIELD, splitPermissions } from '../team-form-data';
 import { teamRejectionMessage } from '../team-labels';
 import { PermissionsEditor } from './permissions-editor';
 
@@ -27,6 +27,7 @@ export function PermissionsForm({ person, reasonError, rejection }: Props) {
       <div className="card-b">
         <Form method="post" action={pathname} className="grid">
           <input type="hidden" name={INTENT_FIELD} value="permissions" />
+          <input type="hidden" name={VERSION_FIELD} value={person.version ?? ''} />
           {rejection && <FormRejection rejection={rejection} message={teamRejectionMessage(rejection)} />}
           <PermissionsEditor value={value} hidden={hidden} isSuperadmin={isSuperadmin} onChange={setValue} onSuperadminChange={setSuperadmin} />
           <div className="field">

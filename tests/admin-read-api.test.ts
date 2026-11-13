@@ -226,12 +226,12 @@ describe('la auditoría y el equipo', () => {
 
   test('el equipo: cada persona con la forma de /yo, su sub y su invitación', async () => {
     const { api } = apiAnswering(() => Response.json({ personas: [
-      { actor: 'equipo:nati', correo: 'nati@beenso.com', nombre: 'Nati', superadmin: false, estado: 'suspendida', permisos: { empresas: 'ver' }, invitacion: 'vencida' },
+      { actor: 'equipo:nati', correo: 'nati@beenso.com', nombre: 'Nati', superadmin: false, estado: 'suspendida', permisos: { empresas: 'ver' }, invitacion: 'vencida', version: 'W/"3"' },
       { actor: 'equipo:ida', correo: 'ida@beenso.com', nombre: 'Ida', superadmin: false, estado: 'retirada', permisos: {}, invitacion: null },
     ] }));
     expect(await api.listTeam('t')).toEqual({ kind: 'ok', value: [
-      { actor: 'equipo:nati', sub: 'nati', email: 'nati@beenso.com', name: 'Nati', isSuperadmin: false, status: 'inactive', permissions: { companies: 'view' }, invitation: 'expired' },
-      { actor: 'equipo:ida', sub: 'ida', email: 'ida@beenso.com', name: 'Ida', isSuperadmin: false, status: 'retired', permissions: {}, invitation: null },
+      { actor: 'equipo:nati', sub: 'nati', email: 'nati@beenso.com', name: 'Nati', isSuperadmin: false, status: 'inactive', permissions: { companies: 'view' }, invitation: 'expired', version: 'W/"3"' },
+      { actor: 'equipo:ida', sub: 'ida', email: 'ida@beenso.com', name: 'Ida', isSuperadmin: false, status: 'retired', permissions: {}, invitation: null, version: null },
     ] });
   });
 });

@@ -63,7 +63,9 @@ export type WriteRejection =
   | { code: 'key-used' | 'key-expired' | 'filter-on' | 'move-incomplete' | 'recent-mfa' | 'not-found' | 'in-progress' }
   /** Las acciones sobre una persona: sin login (con el estado de su asiento), la única admin, o un corte que se termina repitiendo. */
   | { code: 'no-login'; seat: SeatStatus | null }
-  | { code: 'last-admin' | 'action-incomplete' | 'delete-incomplete' }
+  | { code: 'last-admin' | 'delete-incomplete' }
+  /** Un corte a medias que se termina repitiendo; `message`, lo que dijo el backend (qué quedó hecho). */
+  | { code: 'action-incomplete'; message?: string | null }
   /** Borrar una cuenta: sin la confirmación exacta, cobrando, con otro borrado en curso, o a medias (con lo que falló). */
   | { code: 'confirmation' | 'account-charging' | 'deletion-in-progress' }
   | { code: 'deletion-incomplete'; sites: DeletionSite[] }
@@ -73,7 +75,9 @@ export type WriteRejection =
   /** Otra operación con los créditos de esa persona escribió primero: se vuelve a intentar. */
   | { code: 'busy' }
   /** Los códigos de registro: uno que ya existe, una acción que su estado no permite, o uno que otra escritura está cambiando. */
-  | { code: 'code-exists' | 'state-not-allowed' | 'code-busy' }
+  | { code: 'code-exists' | 'code-busy' }
+  /** El estado no permite la acción; `message`, lo que dijo el backend (en el equipo, qué hacer). */
+  | { code: 'state-not-allowed'; message?: string | null }
   /**
    * El equipo ENSŌ: un correo que ya está (con su `sub`), una acción sobre uno mismo, una invitación
    * que ya se usó, otro cambio que llegó primero, o el login del equipo que no respondió.

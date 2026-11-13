@@ -59,6 +59,9 @@ const invalid = (b: Record<string, unknown>, fallback = 'el pedido no se entiend
   code: 'invalid', message: strOrNull(b.error) ?? fallback, field: FIELD_FROM_API[strOrNull(b.campo) ?? ''] ?? null,
 });
 
+/** El mensaje del backend, solo si trae uno: qué quedó hecho o qué hacer. */
+const withMessage = (b: Record<string, unknown>) => (strOrNull(b.error) ? { message: strOrNull(b.error) } : {});
+
 const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection> = {
   invalido: (b) => invalid(b),
   'plan-rechazado': (b) => ({ code: 'plan-rejected', rejections: strings(b.rechazos) }),
@@ -80,7 +83,7 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'no-existe': () => ({ code: 'not-found' }),
   'sin-login': (b) => ({ code: 'no-login', seat: b.asiento == null ? null : toSeatStatus(b.asiento) }),
   'ultimo-admin': () => ({ code: 'last-admin' }),
-  'accion-incompleta': () => ({ code: 'action-incomplete' }),
+  'accion-incompleta': (b) => ({ code: 'action-incomplete', ...withMessage(b) }),
   'borrar-incompleto': () => ({ code: 'delete-incomplete' }),
   confirmacion: () => ({ code: 'confirmation' }),
   'cuenta-con-cobro': () => ({ code: 'account-charging' }),
@@ -91,7 +94,7 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'no-es-personalizado': () => ({ code: 'not-custom' }),
   ocupado: () => ({ code: 'busy' }),
   'codigo-existe': () => ({ code: 'code-exists' }),
-  'estado-no-permite': () => ({ code: 'state-not-allowed' }),
+  'estado-no-permite': (b) => ({ code: 'state-not-allowed', ...withMessage(b) }),
   'codigo-ocupado': () => ({ code: 'code-busy' }),
   // El equipo ENSŌ (spec «Equipo ENSŌ»). Sin motivo y fuera del dominio van junto a su campo.
   'sin-motivo': (b) => ({ code: 'invalid', message: strOrNull(b.error) ?? 'falta el motivo', field: 'reason' }),

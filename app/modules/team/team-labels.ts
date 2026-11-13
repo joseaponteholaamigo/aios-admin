@@ -70,14 +70,24 @@ export const ACTION_TEXTS: Record<TeamAction, ActionText> = {
 export const NOTICE_PARAM = 'aviso';
 const NOTICES: Record<string, string> = {
   creada: 'Le llegó un correo con su contraseña temporal. Vence en 1 día; si no entra a tiempo, reenvía la invitación.',
+  // CB-4: su cuenta del login ya existía (un alta que quedó a medias): el correo le llegó la primera vez.
+  'creada-ya-existia': 'Su cuenta del login ya existía: la contraseña temporal le llegó la primera vez. Si venció, reenvía la invitación.',
   permisos: 'Permisos guardados.',
   ...Object.fromEntries(Object.entries(ACTION_TEXTS).map(([action, t]) => [action, t.done])),
 };
 export const noticeOf = (params: URLSearchParams) => NOTICES[params.get(NOTICE_PARAM) ?? ''] ?? null;
 
-/** Un rechazo del backend dicho para el equipo: el estado que cambió es el de una persona, no el de un código. */
+const sentence = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}${/[.:]$/.test(text) ? '' : '.'}`;
+
+/**
+ * Un rechazo del backend dicho para el equipo. Un estado que no permite la acción y una acción a medias
+ * traen del backend qué quedó hecho y qué hacer («repite Retirar del equipo»): eso se dice tal cual.
+ */
 export function teamRejectionMessage(rejection: WriteRejection): string {
+  if ((rejection.code === 'state-not-allowed' || rejection.code === 'action-incomplete') && rejection.message) return sentence(rejection.message);
   if (rejection.code === 'state-not-allowed') return 'Esa persona cambió de estado mientras tanto: recarga la página para ver cómo quedó.';
+  // Las acciones del equipo no llevan clave: repetir a ciegas podría, por ejemplo, mandar otro correo.
+  if (rejection.code === 'unavailable') return 'El panel no recibió respuesta: no se sabe si se hizo. Recarga la página para ver cómo quedó antes de repetirlo.';
   return rejectionMessage(rejection);
 }
 

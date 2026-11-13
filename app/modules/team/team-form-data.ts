@@ -14,6 +14,9 @@ export const TEAM_EMAIL_DOMAIN = 'beenso.com';
 export const permissionField = (module: Module) => `perm.${module}`;
 export const SUPERADMIN_FIELD = 'isSuperadmin';
 export const INTENT_FIELD = 'intent';
+/** La versión de la persona que se vio al abrir la página (CB-9). */
+export const VERSION_FIELD = 'version';
+const versionOf = (form: FormData) => (typeof form.get(VERSION_FIELD) === 'string' && form.get(VERSION_FIELD) ? String(form.get(VERSION_FIELD)) : null);
 
 /** Lo escrito, tal cual, para volver a llenar el formulario si el backend lo rechaza. */
 export type FormValues = Record<string, string>;
@@ -59,13 +62,13 @@ export function readNewTeamMember(form: FormData): { member: NewTeamMember } | {
 export function readPermissionsChange(form: FormData): { change: PermissionsChange } | { errors: Errors } {
   const reason = REASON.safeParse(text(form, 'reason'));
   if (!reason.success) return { errors: { reason: reason.error.issues[0]?.message ?? 'Escribe el motivo.' } };
-  return { change: { permissions: readPermissions(form), isSuperadmin: form.get(SUPERADMIN_FIELD) === '1', reason: reason.data } };
+  return { change: { permissions: readPermissions(form), isSuperadmin: form.get(SUPERADMIN_FIELD) === '1', reason: reason.data, version: versionOf(form) } };
 }
 
-/** El motivo de una acción, o `null` si falta. */
-export function readActionReason(form: FormData): string | null {
+/** El motivo de una acción y la versión que se vio, o `null` si falta el motivo. */
+export function readAction(form: FormData): { reason: string; version: string | null } | null {
   const reason = REASON.safeParse(text(form, 'reason'));
-  return reason.success ? reason.data : null;
+  return reason.success ? { reason: reason.data, version: versionOf(form) } : null;
 }
 
 const CON_PANTALLA = new Set<Module>(modulesWithScreen());

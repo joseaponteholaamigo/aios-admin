@@ -27,7 +27,8 @@ export async function action({ request, context }: Route.ActionArgs) {
   if ('errors' in read) return { ...kept, errors: read.errors, rejection: null };
   const outcome = await toAdminApi({ request, context }, (api, token) => api.createTeamMember(token, read.member));
   if (!outcome.ok) return { ...kept, errors: {}, rejection: outcome.rejection };
-  return redirect(`/team/${encodeURIComponent(outcome.value.sub)}?${NOTICE_PARAM}=creada`);
+  const notice = outcome.value.accountWasNew ? 'creada' : 'creada-ya-existia';
+  return redirect(`/team/${encodeURIComponent(outcome.value.person.sub)}?${NOTICE_PARAM}=${notice}`);
 }
 
 export default function TeamNew({ loaderData, actionData }: Route.ComponentProps) {

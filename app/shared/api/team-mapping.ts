@@ -1,17 +1,26 @@
 // La traducción del equipo ENSŌ entre el panel y el backend (`/v1/admin/equipo*`, spec «Equipo
 // ENSŌ»): cada persona con su invitación, el alta, el cambio de permisos y las acciones. La forma de
 // una persona es la de `/yo` (`team-member-mapping.ts`) más su invitación.
-import type { Invitation, NewTeamMember, PermissionsChange, TeamAction, TeamPerson } from '../../domain/team';
-import { subOf } from '../../domain/team';
+import type { CreatedTeamMember, Invitation, NewTeamMember, PermissionsChange, TeamAction, TeamPerson } from '../../domain/team';
 import { TeamMemberContractError, toApiPermissions, toTeamMember } from './team-member-mapping';
+
+/** El `sub` de un actor del equipo (`equipo:<sub>`). */
+const subOf = (actor: string) => (actor.startsWith('equipo:') ? actor.slice('equipo:'.length) : actor);
+
+/** El objetivo de la auditoría de una persona del equipo: su historia (`?objetivo=equipo#<sub>`). */
+export const teamAuditTarget = (sub: string) => `equipo#${sub}`;
 
 const INVITATION_FROM_API: Record<string, Invitation> = { pendiente: 'pending', vencida: 'expired', aceptada: 'accepted' };
 
 /** Una persona del equipo con su invitación. **Lanza** si no tiene la forma de `/yo`. */
 export function toTeamPerson(raw: unknown, log: (message: string) => void): TeamPerson {
   const member = toTeamMember(raw, log);
-  const invitation = (raw as Record<string, unknown>).invitacion;
-  return { ...member, sub: subOf(member.actor), invitation: typeof invitation === 'string' ? INVITATION_FROM_API[invitation] ?? null : null };
+  const { invitacion, version } = raw as Record<string, unknown>;
+  return {
+    ...member, sub: subOf(member.actor),
+    invitation: typeof invitacion === 'string' ? INVITATION_FROM_API[invitacion] ?? null : null,
+    version: typeof version === 'string' ? version : null,
+  };
 }
 
 /** La lista del equipo (`GET /v1/admin/equipo`). */
@@ -28,6 +37,12 @@ export function toTeamPersonBody(body: unknown, log: (message: string) => void):
   return toTeamPerson(persona, log);
 }
 
+/** El alta: la persona y si su cuenta del login es nueva. */
+export function toCreatedTeamMember(body: unknown, log: (message: string) => void): CreatedTeamMember {
+  const cuentaNueva = body && typeof body === 'object' ? (body as Record<string, unknown>).cuentaNueva : undefined;
+  return { person: toTeamPersonBody(body, log), accountWasNew: cuentaNueva !== false };
+}
+
 /** El cambio de permisos responde la persona sola, sin `{ persona }`. */
 export const toChangedTeamPerson = (body: unknown, log: (message: string) => void) => toTeamPerson(body, log);
 
@@ -36,7 +51,7 @@ export function toBackendNewTeamMember(m: NewTeamMember) {
 }
 
 export function toBackendPermissionsChange(c: PermissionsChange) {
-  return { permisos: toApiPermissions(c.permissions), superadmin: c.isSuperadmin, motivo: c.reason };
+  return { permisos: toApiPermissions(c.permissions), superadmin: c.isSuperadmin, motivo: c.reason, ...(c.version ? { version: c.version } : {}) };
 }
 
 /** Cada acción del panel, en el nombre de la ruta del backend. */

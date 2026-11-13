@@ -38,7 +38,7 @@ export function TeamMemberActions({ person, rejection, rejectedAction }: Props) 
       </div>
       {open && (
         <TeamActionDialog
-          key={open} action={open} name={displayName(person)}
+          key={open} action={open} name={displayName(person)} version={person.version}
           rejection={open === rejectedAction ? rejection : null}
           onClose={() => { setOpen(null); trigger.current?.focus(); }}
         />

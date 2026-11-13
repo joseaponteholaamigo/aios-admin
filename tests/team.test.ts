@@ -21,6 +21,7 @@ import { readNewTeamMember, readPermissionsChange, splitPermissions } from '../a
 import { MenuPreview } from '../app/modules/team/components/menu-preview';
 import { PermissionsForm } from '../app/modules/team/components/permissions-form';
 import { TeamMemberActions } from '../app/modules/team/components/team-member-actions';
+import { TeamTable } from '../app/modules/team/components/team-table';
 
 const createTeamMember = vi.fn();
 const changeTeamPermissions = vi.fn();
@@ -32,7 +33,7 @@ const { action: actuar, default: TeamMemberPage } = await import('../app/modules
 const JOSE: TeamMember = { actor: 'equipo:sub-jose', email: 'jose@beenso.com', name: 'Jose', isSuperadmin: true, status: 'active', permissions: {} };
 const NATI: TeamPerson = {
   actor: 'equipo:sub-nati', sub: 'sub-nati', email: 'nati@beenso.com', name: 'Nati', isSuperadmin: false, status: 'active',
-  permissions: { companies: 'view', skills: 'edit' }, invitation: 'accepted',
+  permissions: { companies: 'view', skills: 'edit' }, invitation: 'accepted', version: 'W/"4"',
 };
 const KEY = 'alta-0001-abcd-efgh';
 
@@ -112,7 +113,7 @@ describe('los formularios', () => {
 
 describe('las rutas', () => {
   test('⛔ CA-15 · crear lleva a la página de la persona, con el aviso', async () => {
-    createTeamMember.mockResolvedValue({ kind: 'ok', value: { ...NATI } });
+    createTeamMember.mockResolvedValue({ kind: 'ok', value: { person: NATI, accountWasNew: true } });
     const r = (await post('/team/new', { email: 'Nati@Beenso.com', reason: 'entra', key: KEY, 'perm.codes': 'view' }, crear as never)) as Response;
     expect(createTeamMember).toHaveBeenCalledWith('token-jose', expect.objectContaining({ email: 'nati@beenso.com', key: KEY, permissions: { codes: 'view' } }));
     expect(r.headers.get('Location')).toBe('/team/sub-nati?aviso=creada');
@@ -129,11 +130,11 @@ describe('las rutas', () => {
 
   test('⛔ CA-17 · guardar permisos manda también lo oculto, y una acción llega tal cual', async () => {
     changeTeamPermissions.mockResolvedValue({ kind: 'ok', value: NATI });
-    await post('/team/sub-nati', { intent: 'permissions', reason: 'más acceso', 'perm.companies': 'edit', 'perm.skills': 'edit' }, actuar as never, { sub: 'sub-nati' });
-    expect(changeTeamPermissions).toHaveBeenCalledWith('token-jose', 'sub-nati', { permissions: { companies: 'edit', skills: 'edit' }, isSuperadmin: false, reason: 'más acceso' });
+    await post('/team/sub-nati', { intent: 'permissions', reason: 'más acceso', version: 'W/"4"', 'perm.companies': 'edit', 'perm.skills': 'edit' }, actuar as never, { sub: 'sub-nati' });
+    expect(changeTeamPermissions).toHaveBeenCalledWith('token-jose', 'sub-nati', { permissions: { companies: 'edit', skills: 'edit' }, isSuperadmin: false, reason: 'más acceso', version: 'W/"4"' });
     teamAction.mockResolvedValue({ kind: 'ok', value: NATI });
-    const r = (await post('/team/sub-nati', { intent: 'suspend', reason: ' vacaciones ' }, actuar as never, { sub: 'sub-nati' })) as Response;
-    expect(teamAction).toHaveBeenCalledWith('token-jose', 'sub-nati', 'suspend', 'vacaciones');
+    const r = (await post('/team/sub-nati', { intent: 'suspend', reason: ' vacaciones ', version: 'W/"4"' }, actuar as never, { sub: 'sub-nati' })) as Response;
+    expect(teamAction).toHaveBeenCalledWith('token-jose', 'sub-nati', 'suspend', 'vacaciones', 'W/"4"');
     expect(r.headers.get('Location')).toBe('/team/sub-nati?aviso=suspend');
   });
 
@@ -185,5 +186,45 @@ describe('los rechazos del backend', () => {
     expect(toWriteRejection({ codigo: 'correo-fuera-del-dominio', campo: 'correo', error: 'solo @beenso.com' })?.rejection).toEqual({ code: 'invalid', message: 'solo @beenso.com', field: 'email' });
     expect(toWriteRejection({ codigo: 'sin-motivo', error: 'x' })?.rejection).toMatchObject({ field: 'reason' });
     expect(toWriteRejection({ codigo: 'ya-en-el-equipo', sub: 'sub-nati' })?.rejection).toEqual({ code: 'already-in-team', sub: 'sub-nati' });
+  });
+});
+
+// ── Lo que encontró la revisión del panel (2026-11-13) ──────────────────────────────────────────
+describe('los arreglos de la revisión', () => {
+  test('⛔ con la marca de superadministrador las filas se atenúan pero no se desactivan: guardar no borra sus módulos', () => {
+    // Un campo `disabled` no viaja con el formulario: guardar con la marca borraría los módulos que tenía.
+    const html = render(createElement(PermissionsForm, { person: { ...NATI, isSuperadmin: true }, reasonError: null, rejection: null }));
+    const radios = (html.match(/<input[^>]*type="radio"[^>]*>/g) ?? []);
+    expect(radios.length).toBeGreaterThan(0);
+    expect(radios.filter((r) => r.includes('disabled'))).toEqual([]);
+  });
+
+  test('⛔ CB-9 · guardar y actuar mandan la versión que se vio al abrir la página', () => {
+    const html = render(createElement(PermissionsForm, { person: NATI, reasonError: null, rejection: null }));
+    expect(inputsNamed(html, 'version')[0]).toContain('value="W/&quot;4&quot;"');
+  });
+
+  test('⛔ el rechazo de una acción que ya no se ofrece se dice arriba, con lo que contestó el backend', () => {
+    // Una suspensión a medias: la persona ya está suspendida y «Suspender» no se ofrece; su diálogo no vuelve.
+    const loaderData = { person: { ...NATI, status: 'inactive' as const }, events: [], names: {}, isSelf: false };
+    const actionData = { intent: 'suspend', reasonError: null, rejection: { code: 'action-incomplete', message: 'quedó suspendida en el panel; falta su cuenta en el login, que no respondió: repite la acción para terminar' } };
+    const html = render(createElement(TeamMemberPage, { loaderData, actionData } as never));
+    expect(html.includes('Quedó suspendida en el panel; falta su cuenta en el login')).toBe(true);
+  });
+
+  test('la invitación sin dato se dice con un guion; quien ya entró no lleva marca (CB-12)', () => {
+    const html = render(createElement(TeamTable, { people: [{ ...NATI, invitation: null }, { ...NATI, sub: 'sub-beto', actor: 'equipo:sub-beto' }], empty: '' }), '/team');
+    expect((html.match(/invitación: —/g) ?? []).length).toBe(1);
+  });
+
+  test('cada fila tiene un enlace a la persona: el camino con teclado', () => {
+    const html = render(createElement(TeamTable, { people: [NATI], empty: '' }), '/team');
+    expect(html.includes('<a href="/team/sub-nati"')).toBe(true);
+  });
+
+  test('⛔ CB-4 · si su cuenta del login ya existía, el aviso no promete un correo nuevo', async () => {
+    createTeamMember.mockResolvedValue({ kind: 'ok', value: { person: NATI, accountWasNew: false } });
+    const r = (await post('/team/new', { email: 'nati@beenso.com', reason: 'entra', key: KEY }, crear as never)) as Response;
+    expect(r.headers.get('Location')).toBe('/team/sub-nati?aviso=creada-ya-existia');
   });
 });

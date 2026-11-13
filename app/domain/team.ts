@@ -5,8 +5,15 @@ import type { Level, Module, TeamMember } from './permissions';
 /** Cómo va la invitación: nunca entró y su contraseña temporal vale, ya venció, o ya entró. */
 export type Invitation = 'pending' | 'expired' | 'accepted';
 
-/** Una persona del equipo en «Equipo ensō». `invitation` es `null` si el login no respondió o si está retirada. */
-export type TeamPerson = TeamMember & { sub: string; invitation: Invitation | null };
+/**
+ * Una persona del equipo en «Equipo ensō». `invitation` es `null` si el login no respondió o si está
+ * retirada. `version`: la que se vio al abrir la página; guardar o actuar la manda, y si otro cambió a
+ * la persona entretanto, el backend responde `conflict` en vez de pisar ese cambio (CB-9).
+ */
+export type TeamPerson = TeamMember & { sub: string; invitation: Invitation | null; version: string | null };
+
+/** Lo que responde el alta: la persona, y si su cuenta del login es nueva (si no, el correo le llegó antes). */
+export type CreatedTeamMember = { person: TeamPerson; accountWasNew: boolean };
 
 export type TeamPermissions = Partial<Record<Module, Level>>;
 
@@ -28,8 +35,5 @@ export function teamActionsFor(person: Pick<TeamPerson, 'status' | 'invitation'>
 /** El alta de una persona: lo que manda «Nueva persona». */
 export type NewTeamMember = { email: string; name: string | null; permissions: TeamPermissions; isSuperadmin: boolean; reason: string; key: string };
 
-/** Un cambio de permisos de una persona. */
-export type PermissionsChange = { permissions: TeamPermissions; isSuperadmin: boolean; reason: string };
-
-/** El `sub` de un actor del equipo (`equipo:<sub>`). */
-export const subOf = (actor: string) => (actor.startsWith('equipo:') ? actor.slice('equipo:'.length) : actor);
+/** Un cambio de permisos de una persona, con la versión que se vio. */
+export type PermissionsChange = { permissions: TeamPermissions; isSuperadmin: boolean; reason: string; version: string | null };

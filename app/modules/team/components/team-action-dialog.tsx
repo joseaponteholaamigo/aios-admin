@@ -7,12 +7,13 @@ import type { TeamAction } from '../../../domain/team';
 import { FormRejection } from '../../../shared/ui/form-rejection';
 import { SubmitButton, submitState } from '../../../shared/ui/submit-button';
 import { ACTION_TEXTS, teamRejectionMessage } from '../team-labels';
-import { INTENT_FIELD, REASON_MAX } from '../team-form-data';
+import { INTENT_FIELD, REASON_MAX, VERSION_FIELD } from '../team-form-data';
 import './team-action-dialog.css';
 
-type Props = { action: TeamAction; name: string; rejection: WriteRejection | null; onClose: () => void };
+/** `version`: la de la persona que se vio; si otro la cambió después, el backend responde `conflict`. */
+type Props = { action: TeamAction; name: string; version: string | null; rejection: WriteRejection | null; onClose: () => void };
 
-export function TeamActionDialog({ action, name, rejection, onClose }: Props) {
+export function TeamActionDialog({ action, name, version, rejection, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (ref.current && !ref.current.open) ref.current.showModal();
@@ -34,6 +35,7 @@ export function TeamActionDialog({ action, name, rejection, onClose }: Props) {
         <p id={explanationId}>{t.explanation}</p>
         {rejection && <FormRejection rejection={rejection} message={teamRejectionMessage(rejection)} />}
         <input type="hidden" name={INTENT_FIELD} value={action} />
+        <input type="hidden" name={VERSION_FIELD} value={version ?? ''} />
         <div className="field">
           <label htmlFor="action-reason">Motivo</label>
           <input id="action-reason" name="reason" required maxLength={REASON_MAX} placeholder="Queda en la historia de la persona" />

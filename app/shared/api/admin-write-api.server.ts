@@ -9,10 +9,10 @@ import type { AccountDeletion, DeletedAccount } from '../../domain/account-delet
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
 import type { CreditLoad, LoadedLot, SeatsChange, SeatsChanged } from '../../domain/credits';
 import type { CodeAction, NewCode, RegistrationCode } from '../../domain/codes';
-import type { NewTeamMember, PermissionsChange, TeamAction, TeamPerson } from '../../domain/team';
+import type { CreatedTeamMember, NewTeamMember, PermissionsChange, TeamAction, TeamPerson } from '../../domain/team';
 import { codePath, toBackendCodeAction, toBackendNewCode, toWrittenCode } from './codes-mapping';
 import {
-  teamActionPath, teamPermissionsPath, toBackendNewTeamMember, toBackendPermissionsChange, toChangedTeamPerson, toTeamPersonBody,
+  teamActionPath, teamPermissionsPath, toBackendNewTeamMember, toBackendPermissionsChange, toChangedTeamPerson, toCreatedTeamMember, toTeamPersonBody,
 } from './team-mapping';
 import { toBackendLoad, toBackendSeatsChange, toLoadedLot, toSeatsChanged } from './credits-mapping';
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
@@ -48,11 +48,12 @@ export type AdminWriteApi = {
   /** Pausar, reanudar o revocar un código (CA-5). */
   changeCodeState(token: string, code: string, action: CodeAction, reason: string | null): Promise<WriteResult<RegistrationCode>>;
   /** Dar de alta a una persona del equipo ENSŌ: con la misma clave, dos veces es una (spec «Equipo ENSŌ», CA-2). */
-  createTeamMember(token: string, member: NewTeamMember): Promise<WriteResult<TeamPerson>>;
+  createTeamMember(token: string, member: NewTeamMember): Promise<WriteResult<CreatedTeamMember>>;
   /** Cambiar los permisos (y la marca de superadministrador) de una persona del equipo. */
   changeTeamPermissions(token: string, sub: string, change: PermissionsChange): Promise<WriteResult<TeamPerson>>;
   /** Suspender, reactivar, reenviar la invitación, restablecer el MFA o retirar a una persona del equipo. */
-  teamAction(token: string, sub: string, action: TeamAction, reason: string): Promise<WriteResult<TeamPerson>>;
+  /** `version`: la de la persona que se vio; si otro la cambió después, el backend responde `conflicto`. */
+  teamAction(token: string, sub: string, action: TeamAction, reason: string, version: string | null): Promise<WriteResult<TeamPerson>>;
 };
 
 /** Los estados cuyo cuerpo trae un rechazo para el formulario. */
@@ -107,9 +108,10 @@ export function createAdminWriteApi({
     loadCredits: (token, companyId, load) => post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/creditos`, token, toBackendLoad(load), toLoadedLot),
     createCode: (token, code) => post('/v1/admin/codigos', token, toBackendNewCode(code), toWrittenCode),
     changeCodeState: (token, code, action, reason) => post(`${codePath(code)}/estado`, token, toBackendCodeAction(action, reason), toWrittenCode),
-    createTeamMember: (token, member) => post('/v1/admin/equipo', token, toBackendNewTeamMember(member), (b) => toTeamPersonBody(b, log)),
+    createTeamMember: (token, member) => post('/v1/admin/equipo', token, toBackendNewTeamMember(member), (b) => toCreatedTeamMember(b, log)),
     changeTeamPermissions: (token, sub, change) =>
       post(teamPermissionsPath(sub), token, toBackendPermissionsChange(change), (b) => toChangedTeamPerson(b, log), 'PUT'),
-    teamAction: (token, sub, action, reason) => post(teamActionPath(sub, action), token, { motivo: reason }, (b) => toTeamPersonBody(b, log)),
+    teamAction: (token, sub, action, reason, version) =>
+      post(teamActionPath(sub, action), token, { motivo: reason, ...(version ? { version } : {}) }, (b) => toTeamPersonBody(b, log)),
   };
 }
