@@ -1,0 +1,4 @@
+/* La pestaña de cuentas personales: el buscador en su propia fila, a todo el ancho de la tarjeta, como
+ * la barra de filtros de Empresas. */
+
+.personal-accounts-list__search { gap: 12px; padding: 16px 20px 0; }

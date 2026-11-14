@@ -1,4 +1,4 @@
-// Cómo se escriben fechas e iniciales en el panel. Puras: las usan varios módulos.
+// Cómo se escriben fechas, cantidades e iniciales en el panel. Puras: las usan varios módulos.
 //
 // ⚠️ Las fechas se arman a mano y no con `Intl`: el texto de `Intl` sale de la librería de idiomas
 // de cada lado (la de Node y la de cada navegador), que puede cambiar un espacio, y React vería una
@@ -31,6 +31,9 @@ export function formatDateTime(iso: string | null | undefined): string {
   const d = inBogota(iso);
   return d ? `${formatDate(iso)}, ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}` : '—';
 }
+
+/** Una cantidad con punto de miles: `5.012`. A mano y no con `Intl`, por lo mismo que las fechas. */
+export const formatCount = (n: number): string => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
 /** Las iniciales de un nombre, como las del panel viejo: la primera letra de las dos primeras palabras. */
 export const initialsOf = (name: string) =>

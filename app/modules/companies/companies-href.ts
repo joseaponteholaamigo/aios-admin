@@ -8,3 +8,14 @@ export function companiesHref({ kind, plan }: { kind: AccountKind; plan: ListPla
   const params = { ...(kind === 'personal' ? { kind } : {}), ...(plan ? { plan } : {}), ...pageParam(page) };
   return `/companies?${new URLSearchParams(params)}`;
 }
+
+/**
+ * El cursor de la pestaña de cuentas personales en la dirección (spec «Registro abierto», CA-24): el `siguiente`
+ * de la página anterior. Es la fecha de alta y el id de una cuenta, nunca un correo.
+ */
+export const AFTER_PARAM = 'after';
+
+/** Una página de las cuentas personales: sin cursor, la primera, con las más nuevas. */
+export function personalAccountsHref(after: string | null = null) {
+  return `/companies?${new URLSearchParams({ kind: 'personal', ...(after ? { [AFTER_PARAM]: after } : {}) })}`;
+}

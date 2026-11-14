@@ -9,7 +9,7 @@ import type { CreditLogFilters, CreditLogPage, PersonCredits } from '../../domai
 import type { AuditPage } from '../../domain/audit';
 import type { CodeDetail, RegistrationCode } from '../../domain/codes';
 import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '../../domain/client-users';
-import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan } from '../../domain/companies';
+import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan, PersonalAccountsPage } from '../../domain/companies';
 import type { TeamMember } from '../../domain/permissions';
 import type { VoiceCaps } from '../../domain/voice-cap';
 import { AdminApiUnavailableError } from './admin-api.server';
@@ -17,7 +17,7 @@ import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
 import { codePath, toCodeDetail, toCodes } from './codes-mapping';
 import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } from './client-users-mapping';
-import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory } from './companies-mapping';
+import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory, toPersonalAccountsPage } from './companies-mapping';
 import { toDeletionPreview, toPendingDeletions } from './deletion-mapping';
 import { creditLogFiltersToApi, toCreditLogPage, toPersonCredits } from './credits-mapping';
 import { toTeamList } from './team-member-mapping';
@@ -45,6 +45,11 @@ export type ApiResult<T> =
 
 export type AdminReadApi = {
   listCompanies(token: string, q: { kind: AccountKind; plan: ListPlan | null; page?: number }): Promise<ApiResult<CompaniesPage>>;
+  /**
+   * Una página de las cuentas personales por el índice, de la más nueva a la más vieja (spec «Registro abierto»
+   * de aios-tower, CA-23 y CA-24). `after`: el cursor de la página anterior; sin él, la primera.
+   */
+  listPersonalAccounts(token: string, q: { after: string | null }): Promise<ApiResult<PersonalAccountsPage>>;
   searchCompanies(token: string, q: { text: string; kind: AccountKind; plan: ListPlan | null }): Promise<ApiResult<CompaniesSearch>>;
   getCompany(token: string, id: string): Promise<ApiResult<CompanyFile>>;
   getCompanyHistory(token: string, id: string): Promise<ApiResult<CompanyHistoryEvent[]>>;
@@ -118,6 +123,9 @@ export function createAdminReadApi({
   return {
     listCompanies: (token, { kind, plan, page }) =>
       send(`/v1/admin/clientes${query({ tipo: kindToApi(kind), plan: planToApi(plan), pagina: pageToApi(page) })}`, token, (b) => toCompaniesPage(b, log)),
+    // Solo el tipo y el cursor: esta ruta responde 422 a cualquier otro parámetro, y el límite es el suyo (50).
+    listPersonalAccounts: (token, { after }) =>
+      send(`/v1/admin/cuentas${query({ tipo: kindToApi('personal'), desde: after })}`, token, (b) => toPersonalAccountsPage(b, log)),
     // Por POST, con el texto en el cuerpo: una cuenta personal se busca por correo, y un correo no va en una URL.
     searchCompanies: (token, { text, kind, plan }) =>
       send('/v1/admin/clientes/buscar', token, (b) => toCompaniesSearch(b, log), { body: { texto: text, tipo: kindToApi(kind), plan: planToApi(plan) } }),

@@ -41,7 +41,7 @@ describe('las empresas', () => {
       kind: 'ok',
       value: {
         companies: [{
-          id: 'acme-000001', name: 'Acme', kind: 'company', person: null, plan: 'custom', status: 'active',
+          id: 'acme-000001', name: 'Acme', kind: 'company', person: null, origin: null, plan: 'custom', status: 'active',
           expiry: { expired: false, expiredBy: null, until: '2026-12-31' }, notice: null,
           seats: { used: 2, cap: 5 }, admins: 1, paysWithStripe: true, createdAt: '2026-10-01T00:00:00.000Z',
         }],
@@ -130,6 +130,65 @@ describe('las empresas', () => {
   test('⛔ una respuesta sin la forma acordada lanza ApiContractError: nunca llega torcida a la pantalla', async () => {
     const { api } = apiAnswering(() => Response.json({ clientes: [{ nombre: 'sin id' }] }));
     await expect(api.listCompanies('t', { kind: 'company', plan: null })).rejects.toThrow(ApiContractError);
+  });
+});
+
+/** Una página de `GET /v1/admin/cuentas?tipo=personal`, como la responde el backend (pieza E). */
+const PERSONA = { correo: 'maria@gmail.com', estado: 'activo', invitadoEl: 'a', aceptadoEl: null };
+const ceros = { registro: 0, codigo: 0, compra: 0, webinar: 0, equipo: 0 };
+const CONTADORES = {
+  empresas: { total: 12, porOrigen: { ...ceros, compra: 3, equipo: 9 } },
+  personales: { total: 5012, porOrigen: { registro: 4300, codigo: 200, compra: 80, webinar: 381, equipo: 51 } },
+};
+const CURSOR = Buffer.from('2026-11-13T15:00:00.000Z#registro-a1b2c3').toString('base64url');
+const cuentaPersonal = (id: string, nacidaDe: unknown) => ({ ...EMPRESA, id, tipo: 'personal', plan: 'free', pagaPorStripe: false, persona: PERSONA, nacidaDe });
+const paginaDelIndice = (extra: Record<string, unknown> = {}) => ({ cuentas: [cuentaPersonal('registro-a1b2c3', 'registro')], siguiente: CURSOR, contadores: CONTADORES, soloAlgunas: false, ...extra });
+
+describe('las cuentas personales por el índice (spec «Registro abierto», CA-23 y CA-24)', () => {
+  test('⛔ CA-24 · pide `/v1/admin/cuentas` solo con el tipo y, después de la primera, el cursor: cualquier otro parámetro es un 422', async () => {
+    // EL DEFECTO: con `plan`, `pagina` o `limite` de más, el backend responde 422 y la pestaña entera queda en error.
+    const { api, seen } = apiAnswering(() => Response.json(paginaDelIndice()));
+    await api.listPersonalAccounts('token-ana', { after: null });
+    await api.listPersonalAccounts('token-ana', { after: CURSOR });
+    expect(seen.map((s) => [s.method, s.url, s.authorization])).toEqual([
+      ['GET', 'https://api.example/v1/admin/cuentas?tipo=personal', 'Bearer token-ana'],
+      ['GET', `https://api.example/v1/admin/cuentas?tipo=personal&desde=${CURSOR}`, 'Bearer token-ana'],
+    ]);
+  });
+
+  test('⛔ CA-23 · cada cuenta trae su origen, y los contadores sus números por origen, con los nombres del panel', async () => {
+    // EL DEFECTO: un origen o un contador leído con otro nombre mostraría «Compra en la web» donde dice «Webinar», sin error.
+    const origenes = ['registro', 'codigo', 'compra', 'webinar', 'equipo'];
+    const { api } = apiAnswering(() => Response.json(paginaDelIndice({ cuentas: origenes.map((o, i) => cuentaPersonal(`c${i}-000000`, o)) })));
+    const r = await api.listPersonalAccounts('t', { after: null });
+    if (r.kind !== 'ok') throw new Error(`respondió ${r.kind}`);
+    expect(r.value.accounts.map((a) => a.origin)).toEqual(['signup', 'code', 'purchase', 'webinar', 'team']);
+    expect(r.value.counts).toEqual({
+      companies: { total: 12, byOrigin: { signup: 0, code: 0, purchase: 3, webinar: 0, team: 9 } },
+      personal: { total: 5012, byOrigin: { signup: 4300, code: 200, purchase: 80, webinar: 381, team: 51 } },
+    });
+    expect([r.value.next, r.value.onlySome, r.value.accounts[0]?.person?.email]).toEqual([CURSOR, false, 'maria@gmail.com']);
+  });
+
+  test('un origen que el panel no conoce no se cambia por otro: queda sin dato y en el log', async () => {
+    const { api, logs } = apiAnswering(() => Response.json(paginaDelIndice({ cuentas: [cuentaPersonal('rara-000000', 'invitacion')] })));
+    const r = await api.listPersonalAccounts('t', { after: null });
+    expect(r.kind === 'ok' && r.value.accounts[0]?.origin).toBeNull();
+    expect(logs.some((l) => l.includes('invitacion'))).toBe(true);
+  });
+
+  test('⛔ un `siguiente` que no es un cursor, o un contador que no es un número, rompen el contrato: nunca llegan torcidos a la pantalla', async () => {
+    // EL DEFECTO: un cursor roto haría que «Siguiente» llevara siempre al aviso de la primera página; un contador sin número, a un «0» falso.
+    const malas = [
+      paginaDelIndice({ siguiente: 'no es un cursor' }),
+      paginaDelIndice({ siguiente: undefined }),
+      paginaDelIndice({ contadores: { ...CONTADORES, personales: { total: '5012', porOrigen: CONTADORES.personales.porOrigen } } }),
+      paginaDelIndice({ contadores: { ...CONTADORES, empresas: { total: 12, porOrigen: { registro: 0 } } } }),
+    ];
+    for (const mala of malas) {
+      const { api } = apiAnswering(() => Response.json(mala));
+      await expect(api.listPersonalAccounts('t', { after: null }), JSON.stringify(mala).slice(0, 80)).rejects.toThrow(ApiContractError);
+    }
   });
 });
 

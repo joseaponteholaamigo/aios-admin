@@ -1,0 +1,7 @@
+/* El paso que carga en la paginación por cursor: legible aunque esté desactivado, con el indicador
+ * que gira del botón que manda un formulario. */
+
+.pag .cursor-pager__loading[aria-busy="true"] { gap: 6px; opacity: 1; cursor: progress; }
+.cursor-pager__spinner { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: cursor-pager-gira .7s linear infinite; }
+@keyframes cursor-pager-gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .cursor-pager__spinner { animation-duration: 2s; } }

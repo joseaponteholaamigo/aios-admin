@@ -19,12 +19,22 @@ export type AccountKind = 'company' | 'personal';
 /** La persona de una cuenta personal: su asiento vigente. */
 export type AccountPerson = { email: string; status: SeatStatus; invitedAt: string | null; acceptedAt: string | null };
 
+/**
+ * De dónde salió una cuenta personal (spec «Registro abierto» de aios-tower, CA-23): el registro abierto, un
+ * código, una compra en la web, el webinar o un alta del equipo. Se anota al crearla y no cambia: una cuenta
+ * del registro que después canjea un código sigue siendo del registro. En este orden se muestran sus números.
+ */
+export const ACCOUNT_ORIGINS = ['signup', 'code', 'purchase', 'webinar', 'team'] as const;
+export type AccountOrigin = (typeof ACCOUNT_ORIGINS)[number];
+
 export type Company = {
   id: string;
   name: string;
   kind: AccountKind;
   /** La persona de una cuenta personal; `null` en una empresa, o en una cuenta personal sin nadie. */
   person: AccountPerson | null;
+  /** De dónde salió una cuenta personal; `null` en una empresa, o si el backend no dijo uno que el panel conozca. */
+  origin: AccountOrigin | null;
   plan: CompanyPlan | null;
   /** El estado del backend tal cual (`active`, `revoked`, `canceled`…). */
   status: string | null;
@@ -44,6 +54,18 @@ export type KindCount = { total: number; plans: Record<ListPlan, number> };
 export type AccountCounts = { companies: KindCount; personal: KindCount };
 
 export type CompaniesPage = { companies: Company[]; page: PageInfo; counts: AccountCounts; onlySome: boolean };
+
+/** Cuántas cuentas de un tipo cuenta el índice de las listas: en total y por origen (CA-24 de «Registro abierto»). */
+export type OriginCount = { total: number; byOrigin: Record<AccountOrigin, number> };
+
+/** Los números de las dos pestañas según el índice. No cambian con la página. */
+export type IndexCounts = { companies: OriginCount; personal: OriginCount };
+
+/**
+ * Una página de las cuentas personales por el índice (CA-23 y CA-24 de «Registro abierto»), de la más nueva a
+ * la más vieja. `next` es el cursor de la página siguiente, o `null` en la última.
+ */
+export type PersonalAccountsPage = { accounts: Company[]; next: string | null; counts: IndexCounts; onlySome: boolean };
 
 /** Las cuentas que contienen un texto. `hasMore`: hubo más que las que vinieron. */
 export type CompaniesSearch = { companies: Company[]; hasMore: boolean; onlySome: boolean };
