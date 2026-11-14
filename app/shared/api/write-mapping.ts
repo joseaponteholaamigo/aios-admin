@@ -86,6 +86,8 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'codigo-existe': () => ({ code: 'code-exists' }),
   'estado-no-permite': () => ({ code: 'state-not-allowed' }),
   'codigo-ocupado': () => ({ code: 'code-busy' }),
+  // Otro cambio escribió primero la misma fila (el tope de la voz, CA-33 de «Registro abierto»): no se escribió nada.
+  conflicto: () => ({ code: 'conflict' }),
 };
 
 /**

@@ -81,6 +81,12 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   { path: 'codes/new', file: 'modules/codes/routes/code-new.tsx', access: { module: 'codes', level: 'edit' } },
   // Ver pide «ver»; las acciones de su `action` (pausar, reanudar, revocar) las vuelve a revisar el backend con «editar».
   { path: 'codes/:code', file: 'modules/codes/routes/code.tsx', access: { module: 'codes', level: 'view' } },
+  {
+    // El tope de la voz (spec «Registro abierto» de aios-tower, CA-33): solo el superadministrador, como su
+    // ruta en el backend, que además pide MFA reciente para cambiarlo. No es un módulo que se asigne.
+    path: 'voice', file: 'modules/voice/routes/voice.tsx', access: 'superadmin',
+    menu: { label: 'Tope de la voz', group: 'business', icon: 'voz' },
+  },
   { path: 'auth/login', file: 'modules/auth/routes/login.tsx', access: 'public' },
   { path: 'auth/callback', file: 'modules/auth/routes/callback.tsx', access: 'public' },
   { path: 'auth/logout', file: 'modules/auth/routes/logout.tsx', access: 'public' },

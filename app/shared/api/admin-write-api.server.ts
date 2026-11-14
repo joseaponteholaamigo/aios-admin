@@ -9,11 +9,13 @@ import type { AccountDeletion, DeletedAccount } from '../../domain/account-delet
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
 import type { CreditLoad, LoadedLot, SeatsChange, SeatsChanged } from '../../domain/credits';
 import type { CodeAction, NewCode, RegistrationCode } from '../../domain/codes';
+import type { VoiceCapChange, VoiceCapChanged } from '../../domain/voice-cap';
 import { codePath, toBackendCodeAction, toBackendNewCode, toWrittenCode } from './codes-mapping';
 import { toBackendLoad, toBackendSeatsChange, toLoadedLot, toSeatsChanged } from './credits-mapping';
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
+import { VOICE_CAP_PATH, toBackendVoiceCapChange, toVoiceCapChanged } from './voice-cap-mapping';
 import { personActionPath, toBackendAccount, toBackendPerson, toCreatedAccount, toInvitedPerson, toPersonActionDone, toWriteRejection } from './write-mapping';
 
 /** Crear una cuenta mueve y borra cosas: le cabe más que a una lectura, por debajo de los 30 s de su Lambda. */
@@ -43,6 +45,8 @@ export type AdminWriteApi = {
   createCode(token: string, code: NewCode): Promise<WriteResult<RegistrationCode>>;
   /** Pausar, reanudar o revocar un código (CA-5). */
   changeCodeState(token: string, code: string, action: CodeAction, reason: string | null): Promise<WriteResult<RegistrationCode>>;
+  /** Cambiar el tope general de la voz, o poner o quitar la excepción de una cuenta. Solo el superadministrador, con MFA reciente (CA-33). */
+  changeVoiceCap(token: string, change: VoiceCapChange): Promise<WriteResult<VoiceCapChanged>>;
 };
 
 /** Los estados cuyo cuerpo trae un rechazo para el formulario. */
@@ -61,7 +65,7 @@ export function createAdminWriteApi({
   fetchImpl = fetch,
   log = (message: string) => console.warn(message),
 }: { baseUrl: string; fetchImpl?: typeof fetch; log?: Log }): AdminWriteApi {
-  async function post<T>(path: string, token: string, body: unknown, map: (b: unknown) => T, method: 'POST' | 'PATCH' = 'POST'): Promise<WriteResult<T>> {
+  async function post<T>(path: string, token: string, body: unknown, map: (b: unknown) => T, method: 'POST' | 'PATCH' | 'PUT' = 'POST'): Promise<WriteResult<T>> {
     let response: Response;
     try {
       response = await fetchImpl(`${baseUrl}${path}`, {
@@ -97,5 +101,7 @@ export function createAdminWriteApi({
     loadCredits: (token, companyId, load) => post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/creditos`, token, toBackendLoad(load), toLoadedLot),
     createCode: (token, code) => post('/v1/admin/codigos', token, toBackendNewCode(code), toWrittenCode),
     changeCodeState: (token, code, action, reason) => post(`${codePath(code)}/estado`, token, toBackendCodeAction(action, reason), toWrittenCode),
+    // La cuenta de una excepción va en el cuerpo, como en el resto de las escrituras con datos de un cliente.
+    changeVoiceCap: (token, change) => post(VOICE_CAP_PATH, token, toBackendVoiceCapChange(change), toVoiceCapChanged, 'PUT'),
   };
 }

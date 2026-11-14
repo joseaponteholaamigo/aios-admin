@@ -11,6 +11,7 @@ import type { CodeDetail, RegistrationCode } from '../../domain/codes';
 import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '../../domain/client-users';
 import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan } from '../../domain/companies';
 import type { TeamMember } from '../../domain/permissions';
+import type { VoiceCaps } from '../../domain/voice-cap';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
@@ -20,6 +21,7 @@ import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory } f
 import { toDeletionPreview, toPendingDeletions } from './deletion-mapping';
 import { creditLogFiltersToApi, toCreditLogPage, toPersonCredits } from './credits-mapping';
 import { toTeamList } from './team-member-mapping';
+import { VOICE_CAP_PATH, toVoiceCaps } from './voice-cap-mapping';
 
 const TIMEOUT_MS = 5000;
 
@@ -64,6 +66,8 @@ export type AdminReadApi = {
   listCodes(token: string): Promise<ApiResult<RegistrationCode[]>>;
   /** Un código con quién lo canjeó. */
   getCode(token: string, code: string): Promise<ApiResult<CodeDetail>>;
+  /** El tope de la voz: el general y las excepciones de las cuentas visibles. Solo el superadministrador (CA-33). */
+  getVoiceCaps(token: string): Promise<ApiResult<VoiceCaps>>;
 };
 
 const STATUS_RESULT: Record<number, ApiResult<never>['kind']> = { 400: 'invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found', 422: 'invalid' };
@@ -134,5 +138,6 @@ export function createAdminReadApi({
     listCreditLog: (token, filters) => send('/v1/admin/creditos/bitacora', token, toCreditLogPage, { body: creditLogFiltersToApi(filters) }),
     listCodes: (token) => send('/v1/admin/codigos', token, toCodes),
     getCode: (token, code) => send(codePath(code), token, toCodeDetail),
+    getVoiceCaps: (token) => send(VOICE_CAP_PATH, token, toVoiceCaps),
   };
 }

@@ -72,5 +72,6 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'code-busy': return 'El código está cambiando en este momento: vuelve a oprimir el botón.';
     case 'deletion-incomplete':
       return `El borrado no terminó. Falló en: ${rejection.sites.map(deletionSiteLabel).join(', ') || '—'}. Oprime «Terminar el borrado»: se termina lo que faltó.`;
+    case 'conflict': return 'Otro cambio llegó primero: recarga la página y repítelo.';
   }
 }

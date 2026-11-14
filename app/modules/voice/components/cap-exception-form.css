@@ -1,0 +1,3 @@
+/* El formulario de una excepción: su título, los tres campos en columnas y el botón al final. */
+.cap-exception-form { display: grid; gap: 12px; }
+.cap-exception-form__actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

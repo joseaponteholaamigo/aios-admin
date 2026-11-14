@@ -74,6 +74,8 @@ export type WriteRejection =
   | { code: 'busy' }
   /** Los códigos de registro: uno que ya existe, una acción que su estado no permite, o uno que otra escritura está cambiando. */
   | { code: 'code-exists' | 'state-not-allowed' | 'code-busy' }
+  /** Otro cambio llegó primero (el tope de la voz): no se escribió nada; se recarga y se repite. */
+  | { code: 'conflict' }
   /** La API no respondió a tiempo, o respondió un 5xx: no se sabe si se hizo. */
   | { code: 'unavailable' };
 
