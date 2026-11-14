@@ -82,11 +82,20 @@ export function toCompany(raw: unknown, log: Log): Company {
   return toCompanyFields(r, log);
 }
 
-/** Cuántas de un tipo, por plan. Un conteo que no vino es cero: el backend viejo no lo mandaba. */
+/**
+ * Cuántas de cada plan, o `null` si el backend no lo dijo: nunca ceros. Con el índice de empresas (D-13), la lista
+ * de Empresas manda `personales.planes: null`, porque contarlos obligaría a leer todas las cuentas personales.
+ */
+function toPlanCounts(raw: unknown): KindCount['plans'] {
+  if (!raw || typeof raw !== 'object') return null;
+  const p = raw as Record<string, unknown>;
+  return { free: num(p.free), pro: num(p.pro), team: num(p.team), custom: num(p.personalizado) };
+}
+
+/** Cuántas de un tipo, en total y por plan. Un total que no vino es cero: el backend viejo no mandaba el conteo. */
 function toKindCount(raw: unknown): KindCount {
   const k = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  const plans = k.planes && typeof k.planes === 'object' ? (k.planes as Record<string, unknown>) : {};
-  return { total: num(k.total), plans: { free: num(plans.free), pro: num(plans.pro), team: num(plans.team), custom: num(plans.personalizado) } };
+  return { total: num(k.total), plans: toPlanCounts(k.planes) };
 }
 
 function toAccountCounts(raw: unknown): AccountCounts {

@@ -63,10 +63,22 @@ describe('las empresas', () => {
     expect(r.kind === 'ok' && r.value.companies[0]).toMatchObject({ kind: 'personal', person: { email: 'maria@gmail.com', status: 'active', invitedAt: 'a', acceptedAt: 'b' } });
   });
 
-  test('sin conteo (el backend de antes), cada número es cero y la lista no se rompe', async () => {
+  test('sin conteo (el backend de antes), el total es cero, los planes quedan sin dato y la lista no se rompe', async () => {
     const { api } = apiAnswering(() => Response.json({ clientes: [], soloAlgunas: false }));
     const r = await api.listCompanies('t', { kind: 'company', plan: null });
-    expect(r.kind === 'ok' && r.value.counts.personal).toEqual({ total: 0, plans: { free: 0, pro: 0, team: 0, custom: 0 } });
+    expect(r.kind === 'ok' && r.value.counts.personal).toEqual({ total: 0, plans: null });
+  });
+
+  test('⛔ con el índice de empresas, `personales.planes: null` queda sin dato, nunca en ceros', async () => {
+    // EL DEFECTO: después del relleno (D-13), la lista de Empresas no cuenta por plan las cuentas personales y manda
+    // `planes: null`. Leído como ceros, una pantalla que los mostrara diría «Pro (0)» de unas cuentas que sí tienen Pro.
+    const conteo = { empresas: { total: 15, planes: { free: 1, pro: 2, team: 5, personalizado: 7 } }, personales: { total: 5012, planes: null } };
+    const { api } = apiAnswering(() => Response.json({ clientes: [EMPRESA], paginacion: { pagina: 1, paginas: 1, total: 1, porPagina: 50 }, conteo, soloAlgunas: false }));
+    const r = await api.listCompanies('t', { kind: 'company', plan: null });
+    expect(r.kind === 'ok' && r.value.counts).toEqual({
+      companies: { total: 15, plans: { free: 1, pro: 2, team: 5, custom: 7 } },
+      personal: { total: 5012, plans: null },
+    });
   });
 
   test('⛔ la búsqueda de cuentas manda el texto, el tipo y el plan en el cuerpo de un POST, nunca en la URL', async () => {

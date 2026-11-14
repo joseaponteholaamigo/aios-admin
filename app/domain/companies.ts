@@ -47,8 +47,11 @@ export type Company = {
   createdAt: string | null;
 };
 
-/** Cuántas cuentas hay de un tipo: en total y de cada plan. */
-export type KindCount = { total: number; plans: Record<ListPlan, number> };
+/**
+ * Cuántas cuentas hay de un tipo: en total y de cada plan. `plans` en `null` es «sin dato»: con el índice de
+ * empresas (D-13), la lista de Empresas ya no cuenta por plan las cuentas personales. Nunca se lee como ceros.
+ */
+export type KindCount = { total: number; plans: Record<ListPlan, number> | null };
 
 /** Los números de las pestañas y de la lista de planes. No dependen de la búsqueda ni de la página. */
 export type AccountCounts = { companies: KindCount; personal: KindCount };
