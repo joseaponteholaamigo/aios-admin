@@ -22,8 +22,9 @@ import { toBackendNewCode, toCodeDetail, toCodes } from '../app/shared/api/codes
 import { toWriteRejection } from '../app/shared/api/write-mapping';
 import { toTeamMember } from '../app/shared/api/team-member-mapping';
 import { CAP_REQUIRED, readNewCode } from '../app/modules/codes/new-code-form-data';
-import { durationLabel, statusLabel, usesLabel, creditsLabel } from '../app/modules/codes/code-labels';
+import { ACTION_LABELS, durationLabel, statusLabel, usesLabel, creditsLabel } from '../app/modules/codes/code-labels';
 import { CodeActions } from '../app/modules/codes/components/code-actions';
+import { CodeFacts } from '../app/modules/codes/components/code-facts';
 import { RedemptionsTable } from '../app/modules/codes/components/redemptions-table';
 import { RevokeCodeDialog } from '../app/modules/codes/components/revoke-code-dialog';
 import type { RegistrationCode } from '../app/domain/codes';
@@ -241,6 +242,18 @@ describe('en pantalla', () => {
   test('⛔ CA-5 · «Revocar» no revoca con un clic: abre la confirmación; pausar sí va directo', () => {
     const html = render(createElement(CodeActions, { code: ACTIVO, rejection: null, rejectedAction: null }));
     expect([/type="submit"[^>]*value="pause"/.test(html), /value="revoke"/.test(html), /type="button"[^>]*>Revocar</.test(html)]).toEqual([true, false, true]);
+  });
+
+  test('⛔ el detalle dice que el freno cuenta reservas y canjes, y que un código en pausa nadie lo puede usar', () => {
+    // EL DEFECTO: el freno cuenta también los canjes (CA-32 y CA-39 de «Registro abierto»), y el día de la versión
+    // la reserva desaparece. «200 reservas» o «nadie puede reservarlo» harían creer al equipo que el freno ya no
+    // cuenta nada y que un código en pausa todavía se puede canjear.
+    const facts = render(createElement(CodeFacts, { code: ACTIVO }));
+    expect(facts).toContain('<dt>Freno del día</dt><dd>200 por día (reservas y canjes)</dd>');
+    const pausado = (pausedBy: 'team' | 'brake') => render(createElement(CodeActions, { code: { ...ACTIVO, status: 'paused', pausedBy }, rejection: null, rejectedAction: null }));
+    const [porElEquipo, porElFreno] = [pausado('team'), pausado('brake')];
+    expect([porElEquipo.includes('Pausado, nadie puede usarlo'), porElFreno.includes('reanúdalo si el uso de hoy es legítimo')]).toEqual([true, true]);
+    expect([facts, porElEquipo, porElFreno, ACTION_LABELS.pause.done].filter((text) => /reservarlo|reservas son|\d reservas</.test(text))).toEqual([]);
   });
 
   test('la confirmación manda «revoke», con el motivo que ya se había escrito', () => {

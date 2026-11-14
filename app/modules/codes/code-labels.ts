@@ -39,7 +39,7 @@ export const thousands = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/
 export const creditsLabel = (n: number) => (n === 0 ? 'sin créditos' : `${thousands(n)} al mes`);
 
 export const ACTION_LABELS: Record<CodeAction, { label: string; busy: string; done: string }> = {
-  pause: { label: 'Pausar', busy: 'Pausando…', done: 'El código quedó en pausa: nadie puede reservarlo hasta que lo reanudes.' },
+  pause: { label: 'Pausar', busy: 'Pausando…', done: 'El código quedó en pausa: nadie puede usarlo hasta que lo reanudes.' },
   resume: { label: 'Reanudar', busy: 'Reanudando…', done: 'El código volvió a estar activo, con el freno del día en cero.' },
   revoke: { label: 'Revocar', busy: 'Revocando…', done: 'El código quedó revocado: ya no se puede usar ni reanudar. Quienes lo canjearon conservan su plan.' },
 };
