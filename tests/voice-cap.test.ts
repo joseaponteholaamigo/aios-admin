@@ -295,7 +295,10 @@ describe('en pantalla', () => {
     const html = renderPage(CRUDO, { intent: 'general', values: { usd: '7.5', reason: 'medido' }, errors: {}, rejection: { code: 'recent-mfa' } });
     const general = formWithClass(html, 'general-cap-form');
     expect([general.includes('Ingresar el código'), general.includes('returnTo=%2Fvoice'), tagWith(general, 'input', 'id="general-usd"').includes('value="7.5"')]).toEqual([true, true, true]);
-    expect(formWithClass(html, 'cap-exception-form')).not.toContain('class="banner"');
+    // Sin encontrar el otro formulario, «no tiene el rechazo» pasaría sin mirar nada.
+    const exception = formWithClass(html, 'cap-exception-form');
+    expect(exception).toMatch(/^<form\b/);
+    expect(exception).not.toContain('class="banner"');
   });
 
   // EL DEFECTO: el rechazo lejos del campo de la cuenta, o repetido en el otro formulario, no diría qué corregir.
@@ -304,7 +307,10 @@ describe('en pantalla', () => {
     const cuenta = fieldOf(html, 'exception-account');
     expect([cuenta.includes('Esa cuenta no existe o no está disponible.'), cuenta.includes('value="nadie-000000"')]).toEqual([true, true]);
     expect(html.split('Esa cuenta no existe o no está disponible.').length - 1).toBe(1);
-    expect(formWithClass(html, 'general-cap-form')).not.toContain('class="banner"');
+    // Sin encontrar el otro formulario, «no tiene el rechazo» pasaría sin mirar nada.
+    const general = formWithClass(html, 'general-cap-form');
+    expect(general).toMatch(/^<form\b/);
+    expect(general).not.toContain('class="banner"');
   });
 
   // EL DEFECTO: con el filtro de clientes puesto, el superadmin creería que no hay más excepciones que las que ve.
@@ -322,5 +328,17 @@ describe('en pantalla', () => {
     expect([cuenta.includes('type="hidden"'), cuenta.includes('value="auteco-4d5e6f"'), tagWith(dialogo, 'input', 'name="reason"').includes('required=""')]).toEqual([true, true, true]);
     expect((dialogo.match(/<button type="submit"[^>]*>/g) ?? []).map((b) => b.match(/value="([^"]+)"/)?.[1])).toEqual(['remove-exception']);
     expect(dialogo).toMatch(/<form[^>]*action="\/voice"/);
+  });
+
+  // EL DEFECTO: si el diálogo no se reabriera con el rechazo, el superadmin vería la pantalla como si nada: no
+  // sabría que la excepción sigue puesta ni que tiene que volver a ingresar el código, y perdería el motivo escrito.
+  test('⛔ un rechazo del MFA al quitar reabre el diálogo de esa cuenta, con el rechazo, el enlace al código y el motivo escrito', () => {
+    const html = renderPage(CRUDO, { intent: 'remove-exception', values: { accountId: 'auteco-4d5e6f', reason: 'terminó el contrato' }, errors: {}, rejection: { code: 'recent-mfa' } });
+    const dialogo = html.match(/<dialog\b[\s\S]*?<\/dialog>/)?.[0] ?? '';
+    expect(dialogo).toContain('¿Quitar la excepción de Auteco?');
+    expect([dialogo.includes('Ingresar el código'), dialogo.includes('returnTo=%2Fvoice'), tagWith(dialogo, 'input', 'name="reason"').includes('value="terminó el contrato"')])
+      .toEqual([true, true, true]);
+    // El rechazo se lee solo en el diálogo: ni arriba de la pantalla ni en los otros dos formularios.
+    expect(html.split('volver a ingresar tu código de verificación').length - 1).toBe(1);
   });
 });
