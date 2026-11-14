@@ -1,7 +1,9 @@
-// El módulo «Códigos» del panel (spec «Códigos de registro»: CA-1 a CA-7, CB-13, CB-14).
+// El módulo «Códigos» del panel (spec «Códigos de registro»: CA-1 a CA-7, CB-13, CB-14; y CA-31 de la
+// spec «Registro abierto» de aios-tower: todo código lleva tope).
 //
 // EL DEFECTO QUE PREVIENE. Una hora del formulario mandada sin zona hace que el código venza cinco
-// horas antes en producción; un código escrito a mano que se manda sin tope se puede adivinar; un
+// horas antes en producción; un código escrito a mano que se manda sin tope se puede adivinar, y uno
+// generado sin tope que se filtra deja crear cuentas Pro sin límite con el registro abierto; un
 // nombre del backend mal traducido pinta un estado o una duración equivocados, o deja ver el correo
 // de una cuenta borrada; y una acción que no es pausar, reanudar ni revocar llegaría al backend como
 // si lo fuera. Del lado de los permisos, si «codigos» no se tradujera, nadie del equipo vería el módulo.
@@ -19,7 +21,7 @@ import type { ActiveSession } from '../app/shared/session/session.server';
 import { toBackendNewCode, toCodeDetail, toCodes } from '../app/shared/api/codes-mapping';
 import { toWriteRejection } from '../app/shared/api/write-mapping';
 import { toTeamMember } from '../app/shared/api/team-member-mapping';
-import { readNewCode } from '../app/modules/codes/new-code-form-data';
+import { CAP_REQUIRED, readNewCode } from '../app/modules/codes/new-code-form-data';
 import { durationLabel, statusLabel, usesLabel, creditsLabel } from '../app/modules/codes/code-labels';
 import { CodeActions } from '../app/modules/codes/components/code-actions';
 import { RedemptionsTable } from '../app/modules/codes/components/redemptions-table';
@@ -67,7 +69,7 @@ const ACTIVO: RegistrationCode = {
   duration: { kind: 'months', n: 2 }, monthlyCredits: 1000, dailyBrake: 200, status: 'active', pausedBy: null, createdAt: '2026-11-01T05:00:00.000Z',
 };
 
-const FORM = { code: '', label: 'Webinar de noviembre', from: '', until: '2026-11-30T23:59', cap: '', durationKind: 'months', durationN: '2', monthlyCredits: '1000', dailyBrake: '200', reason: '', key: KEY };
+const FORM = { code: '', label: 'Webinar de noviembre', from: '', until: '2026-11-30T23:59', cap: '300', durationKind: 'months', durationN: '2', monthlyCredits: '1000', dailyBrake: '200', reason: '', key: KEY };
 
 beforeEach(() => { createCode.mockReset(); changeCodeState.mockReset(); listCodes.mockReset(); getCode.mockReset(); });
 
@@ -78,10 +80,28 @@ describe('el formulario de un código nuevo', () => {
   });
 
   test('⛔ CA-2 · uno escrito a mano va en mayúsculas, y sin tope no se acepta: se puede adivinar', () => {
-    const sinTope = readNewCode(formOf({ ...FORM, code: 'webinar-nov' }));
+    const sinTope = readNewCode(formOf({ ...FORM, code: 'webinar-nov', cap: '' }));
     expect('errors' in sinTope && Object.keys(sinTope.errors)).toEqual(['cap']);
     const conTope = readNewCode(formOf({ ...FORM, code: 'webinar-nov', cap: '300' }));
     expect('code' in conTope && [conTope.code.code, conTope.code.cap]).toEqual(['WEBINAR-NOV', 300]);
+  });
+
+  // EL DEFECTO (CA-31): con el registro abierto, un código generado sin tope que se filtra deja crear
+  // cuentas Pro sin límite con alias de un mismo buzón. El panel no lo manda y dice por qué.
+  test('⛔ CA-31 · un código generado sin tope tampoco se acepta: lo dice junto al tope', () => {
+    const r = readNewCode(formOf({ ...FORM, code: '', cap: '' }));
+    expect('errors' in r && r.errors).toEqual({ cap: CAP_REQUIRED });
+    const soloEspacios = readNewCode(formOf({ ...FORM, cap: '   ' }));
+    expect('errors' in soloEspacios && soloEspacios.errors.cap).toBe(CAP_REQUIRED);
+  });
+
+  // EL DEFECTO: un tope de 0, negativo o con decimales viajaría como si fuera un tope, o el mensaje diría
+  // que falta cuando sí se escribió algo.
+  test('un tope que no es un entero mayor que cero dice su campo, con su propio mensaje', () => {
+    for (const cap of ['0', '-3', '2.5', 'diez']) {
+      const r = readNewCode(formOf({ ...FORM, cap }));
+      expect('errors' in r && r.errors, cap).toEqual({ cap: 'El tope es un número entero mayor que cero.' });
+    }
   });
 
   test('⛔ CB-13 · lo que no tiene forma dice su campo', () => {
@@ -125,10 +145,11 @@ describe('la traducción con el backend', () => {
     expect(d.redemptions).toEqual([{ email: null, accountId: null, redeemedAt: '2026-11-02T00:00:00Z', deleted: true }]);
   });
 
-  test('el pedido de crear viaja en los nombres del backend; lo no elegido no viaja', () => {
+  // EL DEFECTO (CA-31): si el tope no viajara, el backend rechazaría cada código nuevo con 422 en `tope`.
+  test('⛔ CA-31 · el pedido de crear viaja en los nombres del backend, siempre con el tope; lo no elegido no viaja', () => {
     const r = readNewCode(formOf({ ...FORM, reason: 'para el webinar' }));
     expect('code' in r && toBackendNewCode(r.code)).toEqual({
-      etiqueta: 'Webinar de noviembre', hasta: '2026-11-30T23:59:00-05:00', duracion: { meses: 2 }, creditosAlMes: 1000, frenoDiario: 200, motivo: 'para el webinar', clave: KEY,
+      etiqueta: 'Webinar de noviembre', hasta: '2026-11-30T23:59:00-05:00', tope: 300, duracion: { meses: 2 }, creditosAlMes: 1000, frenoDiario: 200, motivo: 'para el webinar', clave: KEY,
     });
   });
 
@@ -153,6 +174,12 @@ describe('las rutas', () => {
     const r = (await post('/codes/new', FORM, crear)) as Response;
     expect(createCode).toHaveBeenCalledWith('token-ana', expect.objectContaining({ key: KEY, until: '2026-11-30T23:59:00-05:00' }));
     expect(r.headers.get('Location')).toBe('/codes/ENSO-AAAA-BBBB-CCCC?aviso=creado');
+  });
+
+  // EL DEFECTO (CA-31): un código sin tope llegaría al backend, y lo escrito se perdería con el rechazo.
+  test('⛔ CA-31 · sin tope, el panel no llama al backend: vuelve al formulario con lo escrito', async () => {
+    const r = (await post('/codes/new', { ...FORM, cap: '' }, crear)) as { values: Record<string, string>; errors: Record<string, string> };
+    expect([createCode.mock.calls.length, r.errors.cap, r.values.label]).toEqual([0, CAP_REQUIRED, 'Webinar de noviembre']);
   });
 
   test('un rechazo vuelve al formulario con lo escrito y la misma clave (CA-7)', async () => {
@@ -192,6 +219,18 @@ describe('en pantalla', () => {
     expect([junto.includes('class="banner"'), junto.includes('class="field-error"')]).toEqual([false, true]);
     const arriba = render(createElement(CodeNew, { loaderData: { key: KEY }, actionData: { values: FORM, errors: {}, rejection: { code: 'invalid', message: 'algo raro', field: 'otro' } } } as never));
     expect([arriba.includes('class="banner"'), arriba.includes('Algo raro')]).toEqual([true, true]);
+  });
+
+  // EL DEFECTO: si el formulario siguiera diciendo «Vacío: sin tope», la persona lo dejaría vacío y se
+  // lo rechazarían sin aviso previo; y si el rechazo del backend en `tope` (422 de
+  // `codigos-reglas.js#leerNumeros`) quedara lejos del campo, no sabría qué corregir.
+  test('⛔ CA-31 · el tope es obligatorio en pantalla, y el rechazo del backend en `tope` va junto a él', () => {
+    const rejection = toWriteRejection({ codigo: 'invalido', campo: 'tope', error: 'todo código lleva tope de usos' })?.rejection;
+    const html = render(createElement(CodeNew, { loaderData: { key: KEY }, actionData: { values: { ...FORM, cap: '' }, errors: {}, rejection } } as never));
+    const capField = html.match(/<div class="field"><label for="cap">[\s\S]*?<\/div>/)?.[0] ?? '';
+    expect(capField).toMatch(/<input[^>]*id="cap"[^>]*required=""/);
+    expect(capField).toContain('Todo código lleva tope de usos.');
+    expect([html.includes('class="banner"'), /sin tope/i.test(html)]).toEqual([false, false]);
   });
 
   test('⛔ después de mandar el formulario no se pide otra clave', () => {

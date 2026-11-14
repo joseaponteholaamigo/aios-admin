@@ -1,4 +1,5 @@
-// El formulario de «Nuevo código» (spec «Códigos de registro», CA-1 a CA-3 y CA-7). Lo escrito vuelve
+// El formulario de «Nuevo código» (spec «Códigos de registro», CA-1 a CA-3 y CA-7; el tope de usos,
+// obligatorio en todo código, es CA-31 de la spec «Registro abierto» de aios-tower). Lo escrito vuelve
 // si el backend lo rechaza, con el error junto a su campo, y la clave es la misma en cada reintento:
 // crear dos veces es crear uno. Las fechas se escriben en hora de Bogotá.
 import { useState } from 'react';
@@ -36,7 +37,7 @@ export function NewCodeForm({ formKey, values, errors, rejection }: Props) {
       {rejection && !field && <FormRejection rejection={rejection} />}
       <section className="card">
         <div className="card-h"><div><span className="eyebrow accent">Paso 1</span><h2>El código</h2>
-          <p>Vacío, se genera uno al azar (ENSO-XXXX-XXXX-XXXX). Escrito a mano se puede adivinar: lleva siempre tope.</p></div></div>
+          <p>Vacío, se genera uno al azar (ENSO-XXXX-XXXX-XXXX). Escrito a mano, lleva al menos {CODE_MIN} caracteres: se puede adivinar.</p></div></div>
         <div className="card-b grid g2">
           <div className="field">
             <label htmlFor="code">Código (opcional)</label>
@@ -103,18 +104,18 @@ export function NewCodeForm({ formKey, values, errors, rejection }: Props) {
         </div>
       </section>
       <section className="card">
-        <div className="card-h"><div><span className="eyebrow accent">Paso 4</span><h2>Los límites</h2><p>Cada reserva hace que llegue un correo: el tope y el freno acotan cuántos salen.</p></div></div>
+        <div className="card-h"><div><span className="eyebrow accent">Paso 4</span><h2>Los límites</h2><p>Todo código lleva tope, también uno generado: si se filtra, no crea más cuentas Pro que su tope.</p></div></div>
         <div className="card-b grid g2">
           <div className="field">
             <label htmlFor="cap">Tope de usos</label>
-            <input id="cap" name="cap" type="number" min={1} max={USES_MAX} defaultValue={value('cap')} placeholder="Sin tope" />
-            <small>Vacío: sin tope (solo un código generado).</small>
+            <input id="cap" name="cap" type="number" min={1} max={USES_MAX} required defaultValue={value('cap')} />
+            <small>Cuántas personas pueden usarlo en total.</small>
             <FieldError message={errorOf('cap')} />
           </div>
           <div className="field">
             <label htmlFor="dailyBrake">Freno del día</label>
             <input id="dailyBrake" name="dailyBrake" type="number" min={1} max={USES_MAX} required defaultValue={value('dailyBrake', String(DEFAULT_DAILY_BRAKE))} />
-            <small>Más reservas que esto en un día pausan el código y suena la alarma.</small>
+            <small>Más reservas o canjes que esto en un día pausan el código y suena la alarma.</small>
             <FieldError message={errorOf('dailyBrake')} />
           </div>
           <div className="field new-code__wide">

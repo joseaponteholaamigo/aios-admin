@@ -71,12 +71,15 @@ function durationToApi(d: CodeDuration) {
   }
 }
 
-/** El cuerpo de `POST /v1/admin/codigos`. Lo que no se eligió no viaja: el backend pone su valor por omisión. */
+/**
+ * El cuerpo de `POST /v1/admin/codigos`. Lo que no se eligió no viaja: el backend pone su valor por omisión.
+ * El tope viaja siempre: sin él, el backend rechaza el código (CA-31 de «Registro abierto»).
+ */
 export function toBackendNewCode(n: NewCode) {
   return {
     ...(n.code ? { codigo: n.code } : {}),
     etiqueta: n.label, ...(n.from ? { desde: n.from } : {}), hasta: n.until,
-    ...(n.cap !== null ? { tope: n.cap } : {}),
+    tope: n.cap,
     duracion: durationToApi(n.duration), creditosAlMes: n.monthlyCredits, frenoDiario: n.dailyBrake,
     ...(n.reason ? { motivo: n.reason } : {}), clave: n.key,
   };
