@@ -202,6 +202,13 @@ El sistema distingue una **cuenta personal** de una **empresa**, sin cambiar có
   - el plan también filtra la búsqueda por texto;
   - el botón «Borrar filtros» aparece cuando hay texto o plan, y borra los dos, pero no cambia de pestaña.
 
+### CA-20b: Enmienda: la pestaña de cuentas personales lista por el índice, sin filtro ni números por plan
+- **Enmienda:** desde el registro abierto (CA-24 de `aios-tower/specs/2026-11-12-registro-abierto.md`), la pestaña «Cuentas personales» lista por el índice de cuentas (`GET /v1/admin/cuentas?tipo=personal`), de la más nueva a la más vieja y por cursor, y cuenta por origen: registro, código, compra en la web, webinar y alta del equipo (CA-23 de esa spec). **No tiene filtro ni números por plan:** la lista por el índice no filtra por plan, y contar por plan obligaría a leer todas las cuentas personales en cada página, que es justo lo que evita CA-24.
+- **Reemplaza, solo en esa pestaña:** el filtro de plan de CA-20 y sus números; los totales de las pestañas de CA-18, que ahí salen de los contadores del índice y no de `conteo`; y de CA-21, la columna Origen, que sale de `nacidaDe`, y las páginas, que van por cursor. La pestaña Empresas sigue como dicen CA-18 a CA-20.
+- **Por lo mismo:** en `GET /v1/admin/clientes?tipo=empresa`, después del relleno del índice, `conteo.personales.planes` llega en `null` (CA-10), y el panel lo lee como «sin dato», nunca como ceros. Antes del relleno (CA-44 de esa spec), la pestaña dice «sin contar todavía» en lugar de sus números.
+- **Pendiente de una decisión de Jose (J-25):** contadores por plan que se muevan con cada cambio de plan (webhooks, panel, vencimientos), o un conteo diario por plan en el backend, con hasta un día de atraso. Hasta que decida, ninguna pantalla del panel dice cuántas cuentas personales hay de cada plan.
+- **Origen:** la construcción del índice de cuentas (pieza RP1 de la fase R del plan de créditos) y su revisión, 2026-11-14.
+
 ### CA-21: La tabla de cuentas personales
 - **Dado** la pestaña «Cuentas personales»
 - **Cuando** carga
