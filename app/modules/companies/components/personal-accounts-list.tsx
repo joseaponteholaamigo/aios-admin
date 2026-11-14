@@ -4,6 +4,9 @@
 // No tiene filtro de plan: la lista por el índice no filtra por plan, y filtrar recorriendo todas las
 // cuentas es justo lo que esta lista evita. La búsqueda por correo es la de siempre, y mientras tiene
 // texto ocupa el lugar de la lista y de las páginas.
+//
+// Mientras el índice no se rellenó (D-17), los números no se muestran: en su lugar va el aviso de «sin
+// contar todavía», y la lista muestra las cuentas que sí trae.
 import type { CompaniesSearch, PersonalAccountsPage } from '../../../domain/companies';
 import { Icon } from '../../../shared/icons/icon';
 import { searchQuery, type SearchState } from '../../../shared/search/use-background-search';
@@ -14,6 +17,7 @@ import { CompaniesSearchResults } from './companies-search-results';
 import { CursorPager } from './cursor-pager';
 import { OriginCounts } from './origin-counts';
 import { PersonalAccountsTable } from './personal-accounts-table';
+import { UncountedNotice } from './uncounted-notice';
 import './personal-accounts-list.css';
 
 type Props = {
@@ -40,11 +44,11 @@ export function PersonalAccountsList({ list, search, notice }: Props) {
         <div className="filtros personal-accounts-list__search" role="search" aria-label="Buscar una cuenta personal">
           <SearchInput value={search.text} onChange={search.setText} inputMode="email" label="Buscar por correo" placeholder="Buscar por correo" />
         </div>
-        {state.kind === 'idle' && <OriginCounts counts={counts.personal} onlySome={onlySome} />}
+        {state.kind === 'idle' && (counts ? <OriginCounts counts={counts.personal} onlySome={onlySome} /> : <UncountedNotice />)}
         <div className="card-b">
           {state.kind !== 'idle'
             ? <CompaniesSearchResults state={state} query={searchQuery(search.text)} kind="personal" plan={null} />
-            : <PersonalAccountsTable accounts={accounts} emptyMessage={emptyPersonalAccountsMessage({ onlySome, after })} />}
+            : <PersonalAccountsTable accounts={accounts} emptyMessage={emptyPersonalAccountsMessage({ onlySome, after, counted: counts !== null })} />}
         </div>
         {state.kind === 'idle' && paged && (
           <CursorPager

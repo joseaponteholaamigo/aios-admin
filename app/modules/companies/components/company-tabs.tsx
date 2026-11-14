@@ -8,6 +8,7 @@ import './company-tabs.css';
 /**
  * Cuántas cuentas hay de cada tipo. En la pestaña de Empresas salen de su lista; en la de cuentas
  * personales, de los contadores del índice (CA-24 de «Registro abierto»): las dos tienen un total.
+ * `null` es «sin contar todavía» (D-17): las pestañas van sin número, nunca con uno que no es cierto.
  */
 type TabCounts = Record<'companies' | 'personal', { total: number }>;
 
@@ -16,12 +17,12 @@ const TABS: { kind: AccountKind; label: string; to: string; count: (c: TabCounts
   { kind: 'personal', label: 'Cuentas personales', to: '/companies?kind=personal', count: (c) => c.personal.total },
 ];
 
-export function CompanyTabs({ kind, counts }: { kind: AccountKind; counts: TabCounts }) {
+export function CompanyTabs({ kind, counts }: { kind: AccountKind; counts: TabCounts | null }) {
   return (
     <nav className="company-tabs" aria-label="Tipo de cuenta">
       {TABS.map((tab) => (
         <Link key={tab.kind} to={tab.to} className={tab.kind === kind ? 'on' : undefined} aria-current={tab.kind === kind ? 'page' : undefined}>
-          {`${tab.label} (${formatCount(tab.count(counts))})`}
+          {counts ? `${tab.label} (${formatCount(tab.count(counts))})` : tab.label}
         </Link>
       ))}
     </nav>

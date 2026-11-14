@@ -2,7 +2,7 @@
 import {
   ACCOUNT_ORIGINS, type AccessRule, type AccountCounts, type AccountOrigin, type AccountPerson, type CompaniesPage, type CompaniesSearch,
   type Company, type CompanyAccess, type CompanyFile, type CompanyHistoryEvent, type ContentBase, type CustomConditions, type EffectivePlan,
-  type KindCount, type OriginCount, type PersonalAccountsPage, type Quotas,
+  type IndexCounts, type KindCount, type OriginCount, type PersonalAccountsPage, type Quotas,
 } from '../../domain/companies';
 import { isCursor } from '../../domain/pagination';
 import { ApiContractError, asArray, asRecord, num, numOrNull, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
@@ -129,14 +129,21 @@ function toNextCursor(value: unknown): string | null {
   return value;
 }
 
+/** Los contadores de las dos pestañas según el índice. */
+function toIndexCounts(raw: unknown, log: Log): IndexCounts {
+  const counts = asRecord(raw, 'contadores');
+  return { companies: toOriginCount(counts.empresas, 'contadores.empresas', log), personal: toOriginCount(counts.personales, 'contadores.personales', log) };
+}
+
 /** Una página de las cuentas personales por el índice (`GET /v1/admin/cuentas?tipo=personal`, CA-23 y CA-24 de «Registro abierto»). */
 export function toPersonalAccountsPage(body: unknown, log: Log): PersonalAccountsPage {
   const b = asRecord(body, 'la lista de cuentas personales');
-  const counts = asRecord(b.contadores, 'contadores');
   return {
     accounts: asArray(b.cuentas, 'cuentas').map((c) => toCompany(c, log)),
     next: toNextCursor(b.siguiente),
-    counts: { companies: toOriginCount(counts.empresas, 'contadores.empresas', log), personal: toOriginCount(counts.personales, 'contadores.personales', log) },
+    // Solo con la marca del relleno (`contadoresCompletos: true`, D-17) los contadores cuentan todas las cuentas. Sin
+    // ella, o sin el dato, no se leen: un número a medias se vería como cierto, y ninguna pantalla debe tenerlo.
+    counts: b.contadoresCompletos === true ? toIndexCounts(b.contadores, log) : null,
     // Sin el dato, se avisa del filtro: callar que faltan cuentas es peor que avisar de más.
     onlySome: b.soloAlgunas !== false,
   };

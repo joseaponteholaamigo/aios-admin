@@ -64,8 +64,12 @@ export type IndexCounts = { companies: OriginCount; personal: OriginCount };
 /**
  * Una página de las cuentas personales por el índice (CA-23 y CA-24 de «Registro abierto»), de la más nueva a
  * la más vieja. `next` es el cursor de la página siguiente, o `null` en la última.
+ *
+ * `counts` en `null` es «sin contar todavía» (D-17 de la fase R del plan de créditos): el relleno del índice
+ * (CA-44) no ha corrido, así que los contadores no cuentan las cuentas que ya existían y la lista puede estar
+ * incompleta. Ninguna pantalla tiene entonces un número que mostrar.
  */
-export type PersonalAccountsPage = { accounts: Company[]; next: string | null; counts: IndexCounts; onlySome: boolean };
+export type PersonalAccountsPage = { accounts: Company[]; next: string | null; counts: IndexCounts | null; onlySome: boolean };
 
 /** Las cuentas que contienen un texto. `hasMore`: hubo más que las que vinieron. */
 export type CompaniesSearch = { companies: Company[]; hasMore: boolean; onlySome: boolean };

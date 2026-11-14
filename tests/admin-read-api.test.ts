@@ -142,7 +142,10 @@ const CONTADORES = {
 };
 const CURSOR = Buffer.from('2026-11-13T15:00:00.000Z#registro-a1b2c3').toString('base64url');
 const cuentaPersonal = (id: string, nacidaDe: unknown) => ({ ...EMPRESA, id, tipo: 'personal', plan: 'free', pagaPorStripe: false, persona: PERSONA, nacidaDe });
-const paginaDelIndice = (extra: Record<string, unknown> = {}) => ({ cuentas: [cuentaPersonal('registro-a1b2c3', 'registro')], siguiente: CURSOR, contadores: CONTADORES, soloAlgunas: false, ...extra });
+const paginaDelIndice = (extra: Record<string, unknown> = {}) => ({
+  cuentas: [cuentaPersonal('registro-a1b2c3', 'registro')], siguiente: CURSOR, contadores: CONTADORES, soloAlgunas: false,
+  contadoresCompletos: true, rellenadoEl: '2026-11-14T15:00:00.000Z', ...extra,
+});
 
 describe('las cuentas personales por el índice (spec «Registro abierto», CA-23 y CA-24)', () => {
   test('⛔ CA-24 · pide `/v1/admin/cuentas` solo con el tipo y, después de la primera, el cursor: cualquier otro parámetro es un 422', async () => {
@@ -168,6 +171,23 @@ describe('las cuentas personales por el índice (spec «Registro abierto», CA-2
       personal: { total: 5012, byOrigin: { signup: 4300, code: 200, purchase: 80, webinar: 381, team: 51 } },
     });
     expect([r.value.next, r.value.onlySome, r.value.accounts[0]?.person?.email]).toEqual([CURSOR, false, 'maria@gmail.com']);
+  });
+
+  test('⛔ D-17 · sin la marca del relleno del índice, los contadores no llegan a la pantalla: ni con `false` ni sin el dato', async () => {
+    // EL DEFECTO: antes del relleno, los contadores no cuentan las cuentas que ya existían. Leídos igual, la
+    // pestaña mostraría un «0» o un número a medias como si fueran ciertos; un backend sin el dato tampoco los garantiza.
+    const sinRellenar = { ...paginaDelIndice({ contadoresCompletos: false }) } as Record<string, unknown>;
+    delete sinRellenar.rellenadoEl;
+    const sinDato = { ...paginaDelIndice() } as Record<string, unknown>;
+    delete sinDato.contadoresCompletos;
+    delete sinDato.rellenadoEl;
+    for (const body of [sinRellenar, sinDato]) {
+      const { api } = apiAnswering(() => Response.json(body));
+      const r = await api.listPersonalAccounts('t', { after: null });
+      if (r.kind !== 'ok') throw new Error(`respondió ${r.kind}`);
+      // La lista que sí hay se muestra igual: lo que se calla son solo los números.
+      expect([r.value.counts, r.value.accounts.length], JSON.stringify(body).slice(-60)).toEqual([null, 1]);
+    }
   });
 
   test('un origen que el panel no conoce no se cambia por otro: queda sin dato y en el log', async () => {

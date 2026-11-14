@@ -8,7 +8,8 @@
 //     página (spec «Paginación numerada», CA-8).
 //   · Cuentas personales: el índice de cuentas (`/v1/admin/cuentas`, spec «Registro abierto» de
 //     aios-tower, CA-23 y CA-24), de la más nueva a la más vieja, con sus números por origen y un cursor.
-//     Con el registro abierto son miles: cada página es una sola consulta, nunca un recorrido.
+//     Con el registro abierto son miles: cada página es una sola consulta, nunca un recorrido. Hasta que
+//     corre el relleno del índice, sus números no se muestran: dice «sin contar todavía» (D-17).
 //
 // La pestaña, el plan, la página y el cursor viajan en la dirección: cada página se puede compartir y
 // recargar. El texto va al servidor por POST, y en la barra del navegador solo después del `#`

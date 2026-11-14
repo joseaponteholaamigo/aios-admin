@@ -1,13 +1,14 @@
 // La pestaña de cuentas personales por el índice de cuentas (spec «Registro abierto» de aios-tower, RP1:
-// CA-23 y CA-24): de dónde salió cada cuenta, cuántas hay de cada origen, una página por cursor y lo que
-// dice cuando el índice no trae nada.
+// CA-23 y CA-24): de dónde salió cada cuenta, cuántas hay de cada origen, una página por cursor, lo que
+// dice cuando el índice no trae nada y lo que dice mientras el índice no se rellenó (D-17).
 //
 // EL DEFECTO QUE PREVIENE. Con el registro abierto, la pestaña pasa de cientos a miles de cuentas Free. Si
 // el panel siguiera pidiendo la lista vieja, cada página recorrería todas las cuentas y la pantalla se
 // volvería lenta justo cuando más se usa. Si la columna Origen siguiera deduciendo el origen del pago por
 // Stripe, una cuenta del registro que compró Pro diría «Compra en la web». Si un enlace con un cursor que el
-// backend ya no entiende diera la pantalla de error, el equipo se quedaría sin lista. Y si la lista vacía
-// antes del relleno del índice dijera «no hay cuentas personales», el equipo creería que no existen.
+// backend ya no entiende diera la pantalla de error, el equipo se quedaría sin lista. Y antes del relleno
+// del índice, si la pestaña mostrara los contadores, o si la lista vacía dijera «no hay cuentas personales»,
+// el equipo tomaría un «0» o un número a medias por cierto y creería que las cuentas viejas no existen.
 import { createElement, type ComponentType } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { RouterContextProvider, createRoutesStub } from 'react-router';
@@ -20,6 +21,7 @@ import { OriginCounts } from '../app/modules/companies/components/origin-counts'
 import { PersonalAccountsList } from '../app/modules/companies/components/personal-accounts-list';
 import { PersonalAccountsTable } from '../app/modules/companies/components/personal-accounts-table';
 import { cursorResetHref, cursorResetNotice } from '../app/modules/companies/personal-accounts-labels';
+import { toPersonalAccountsPage } from '../app/shared/api/companies-mapping';
 
 const listCompanies = vi.fn();
 const listPersonalAccounts = vi.fn();
@@ -147,14 +149,20 @@ describe('los números por origen (CA-24)', () => {
 });
 
 describe('la lista vacía', () => {
-  test('⛔ en la primera página no afirma que no haya cuentas: dice que la lista sale de un índice y cómo se llena', () => {
-    const html = list({ accounts: [], next: null, counts: NONE });
+  test('⛔ antes del relleno, la primera página vacía no afirma que no haya cuentas: dice que el índice no se rellenó y cómo se llena', () => {
+    const html = list({ accounts: [], next: null, counts: null });
     expect(html).toContain('eso no prueba que no haya');
     expect(html).toContain('npm run rellenar-indice-de-cuentas');
     expect(html).not.toMatch(/Todavía no hay|No hay cuentas/);
-    // Sin cuentas no hay números que repartir ni páginas que pasar.
+    // Sin contar no hay números que repartir, y sin cuentas no hay páginas que pasar.
     expect(html).not.toContain('origin-counts');
     expect(html).not.toContain('class="pag"');
+  });
+
+  test('ya contado, una primera página vacía sí es cierta, y lo dice sin pedir el relleno', () => {
+    const html = list({ accounts: [], next: null, counts: NONE });
+    expect(html).toContain('Todavía no hay cuentas personales para mostrar.');
+    expect([html.includes('Sin contar todavía'), html.includes('rellenar-indice-de-cuentas'), html.includes('origin-counts')]).toEqual([false, false, false]);
   });
 
   test('con el filtro de empresas visibles sí es cierta, y lo dice así: la lista sale de esas cuentas, no del índice', () => {
@@ -190,5 +198,44 @@ describe('la pantalla de la pestaña', () => {
     expect(cursorResetNotice(new URLSearchParams({ kind: 'personal', aviso: 'otra-cosa' }))).toBeNull();
     const html = render(CompaniesPage as ComponentType<object>, { loaderData: { tab: 'personal', ...PAGE, after: null, pendingDeletions: [], canCreate: false } }, '/companies?kind=personal&aviso=cursor');
     expect(html).toMatch(/<div class="banner info" role="status">[\s\S]*Ese enlace a una página de la lista ya no sirve/);
+  });
+});
+
+describe('sin contar todavía (D-17)', () => {
+  // EL DEFECTO: antes del relleno del índice (CA-44), los contadores no cuentan las cuentas que ya existían.
+  // Si la pestaña los mostrara, en ella o en las pestañas, el equipo leería un «0» o un número a medias como
+  // cierto; y si la lista ya trae cuentas nuevas, ningún aviso diría que le faltan las viejas.
+  const persona = (correo: string) => ({ correo, estado: 'activo', invitadoEl: '2026-11-13T15:00:00.000Z', aceptadoEl: null });
+  const crudo = (id: string) => ({
+    id, nombre: id, tipo: 'personal', plan: 'free', estado: 'active', vencimiento: { vencido: false, vencidoPor: null, hasta: null }, aviso: null,
+    asientos: { usados: 1, tope: 1 }, admins: 1, pagaPorStripe: false, creadaEl: '2026-11-13T15:00:00.000Z', persona: persona(`${id}@gmail.com`), nacidaDe: 'registro',
+  });
+  // Lo que digan los contadores, con números que solo pueden salir de ellos.
+  const contadores = {
+    empresas: { total: 12, porOrigen: { registro: 0, codigo: 0, compra: 3, webinar: 0, equipo: 9 } },
+    personales: { total: 5012, porOrigen: { registro: 4300, codigo: 200, compra: 80, webinar: 381, equipo: 51 } },
+  };
+  const ids = ['ana-000001', 'beto-000002', 'caro-000003'];
+  /** La pestaña entera con lo que respondió el backend, pasando por la traducción del panel. */
+  const pantalla = (contadoresCompletos: boolean) => {
+    const page = toPersonalAccountsPage({ cuentas: ids.map(crudo), siguiente: null, contadores, soloAlgunas: false, contadoresCompletos }, () => {});
+    return render(CompaniesPage as ComponentType<object>, { loaderData: { tab: 'personal', ...page, after: null, pendingDeletions: [], canCreate: false } });
+  };
+  const tabsOf = (html: string) => [...(html.match(/<nav class="company-tabs"[\s\S]*?<\/nav>/)?.[0] ?? '').matchAll(/<a[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
+
+  test('⛔ con `contadoresCompletos: false` y 3 cuentas: ningún número de contador, sí el aviso con el comando, y las 3 cuentas', () => {
+    const html = pantalla(false);
+    expect(tabsOf(html)).toEqual(['Empresas', 'Cuentas personales']);
+    expect(html).not.toContain('aria-label="Cuentas personales por origen"');
+    expect(['5.012', '4.300', '381'].filter((n) => html.includes(n))).toEqual([]);
+    expect(html).toMatch(/<div class="banner" role="note">[\s\S]*Sin contar todavía\.[\s\S]*<code>npm run rellenar-indice-de-cuentas<\/code>[\s\S]*la lista puede estar incompleta/);
+    expect(ids.filter((id) => html.includes(`${id}@gmail.com`))).toEqual(ids);
+  });
+
+  test('con `contadoresCompletos: true`, los números, como siempre, y sin el aviso', () => {
+    const html = pantalla(true);
+    expect(tabsOf(html)).toEqual(['Empresas (12)', 'Cuentas personales (5.012)']);
+    expect([...html.matchAll(/<dt>([^<]+)<\/dt><dd>([^<]+)<\/dd>/g)].map((m) => m[2])).toEqual(['4.300', '200', '80', '381', '51']);
+    expect(html).not.toContain('Sin contar todavía');
   });
 });

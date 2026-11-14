@@ -2,7 +2,10 @@
 // aios-tower, CA-23 y CA-24): de dónde salió cada cuenta, sus números por origen, la página, la lista vacía y
 // el aviso de un enlace de página que ya no sirve. Puras.
 import type { AccountOrigin } from '../../domain/companies';
-import { countOf } from './company-labels';
+import { countOf, emptyAccountsMessage } from './company-labels';
+
+/** El comando que mete en el índice las cuentas que ya existían (CA-44 de «Registro abierto»). Se corre en aios-backend. */
+export const INDEX_BACKFILL_COMMAND = 'npm run rellenar-indice-de-cuentas';
 
 /** Cómo se nombra cada origen. */
 export const ORIGIN_LABELS: Record<AccountOrigin, string> = {
@@ -25,14 +28,15 @@ export function pageSummary(shown: number): string {
  * Qué dice la lista cuando la página no trae ninguna cuenta.
  *
  * La lista sale del índice de cuentas, y las cuentas que existían antes de él entran con un relleno que se
- * corre aparte (CA-44): un índice vacío no prueba que no haya cuentas personales, así que la pantalla no lo
- * afirma. Con el filtro de empresas visibles la lista no sale del índice sino de esas cuentas, y ahí sí es cierto.
+ * corre aparte (CA-44). Mientras no corre (`counted: false`, D-17), un índice vacío no prueba que no haya
+ * cuentas personales, así que la pantalla no lo afirma; el aviso de arriba dice cómo se llena. Ya contado, sí
+ * es cierto. Con el filtro de empresas visibles la lista no sale del índice sino de esas cuentas, y ahí también.
  */
-export function emptyPersonalAccountsMessage({ onlySome, after }: { onlySome: boolean; after: string | null }): string {
+export function emptyPersonalAccountsMessage({ onlySome, after, counted }: { onlySome: boolean; after: string | null; counted: boolean }): string {
   if (after !== null) return 'Esta página no trae ninguna cuenta.';
   if (onlySome) return 'Ninguna de las cuentas visibles para el panel es una cuenta personal.';
-  return 'La lista no trae ninguna cuenta personal, y eso no prueba que no haya: sale de un índice, y las cuentas que ya '
-    + 'existían entran a él cuando se corre su relleno (npm run rellenar-indice-de-cuentas). La búsqueda por correo sí las encuentra.';
+  if (!counted) return 'La lista no trae ninguna cuenta personal, y eso no prueba que no haya: sale del índice de cuentas, que todavía no se rellenó.';
+  return emptyAccountsMessage('personal', null);
 }
 
 /** El aviso de un cursor que no sirvió, en la dirección de la primera página. Nunca lleva el cursor. */
