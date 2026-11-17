@@ -5,8 +5,11 @@ import type { AccountKind, Company } from './companies';
 import type { DeletionSite } from './account-deletion';
 import type { SeatStatus } from './client-users';
 
-/** Los planes que se eligen al crear: Pro y Team se compran en la web (decisión 2). */
-export const CREATION_PLANS = ['custom', 'free'] as const;
+/**
+ * Los planes que se eligen al crear. Pro y Team con suscripción se compran en la web (decisión 2); `pro` es el Pro
+ * sin cobro de una cuenta personal (`PRO_CONDITIONS`).
+ */
+export const CREATION_PLANS = ['custom', 'free', 'pro'] as const;
 export type CreationPlan = (typeof CREATION_PLANS)[number];
 
 /** El contenido base de un Personalizado: todo, el de Free o nada. */
@@ -30,11 +33,21 @@ export type PlanConditions = {
   quotas: Quotas;
 };
 
+/**
+ * Pro sin cobro: un Personalizado con las condiciones de Pro, las mismas del webinar y de los códigos (`CONDICIONES_PRO`
+ * del backend). Son fijas: con otras condiciones ya no es Pro, es Personalizado. Solo para una cuenta personal, sin fecha
+ * de fin.
+ */
+export const PRO_CONDITIONS: Readonly<PlanConditions> = Object.freeze({ content: 'all', seats: 1, team: false, schedules: true, endsOn: null, quotas: {} });
+
+/** Pro sin cobro es de una persona: una empresa elige Personalizado o Free. */
+export const planFitsKind = (plan: CreationPlan, kind: AccountKind) => plan !== 'pro' || kind === 'personal';
+
 export type NewAccount = {
   name: string;
   kind: AccountKind;
   plan: CreationPlan;
-  /** Solo en Personalizado. */
+  /** En Personalizado, las elegidas; en Pro sin cobro, `PRO_CONDITIONS`; en Free, ninguna. */
   conditions: PlanConditions | null;
   adminEmail: string;
   /** La clave del formulario: la misma en cada reintento, para que crear dos veces sea crear una (CA-6). */

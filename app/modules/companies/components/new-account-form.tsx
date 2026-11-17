@@ -60,15 +60,20 @@ export function NewAccountForm({ kind, formKey, canMove, values, errors, rejecti
         </div>
       </section>
       <section className="card">
-        <div className="card-h"><div><span className="eyebrow accent">Paso 2</span><h2>El plan</h2><p>Pro y Team no se crean aquí: se compran en la web.</p></div></div>
+        <div className="card-h"><div><span className="eyebrow accent">Paso 2</span><h2>El plan</h2><p>{personal ? 'Pro con suscripción se compra en la web. Aquí se crea el Pro sin cobro.' : 'Pro y Team no se crean aquí: se compran en la web.'}</p></div></div>
         <div className="card-b">
           <div className="field new-account__plan">
             <label htmlFor="plan">Plan</label>
             <select id="plan" name="plan" value={plan} onChange={(e) => setPlan(e.target.value as CreationPlan)}>
               <option value="custom">Personalizado</option>
               <option value="free">Free</option>
+              {personal && <option value="pro">Pro sin cobro</option>}
             </select>
+            <FieldError message={errors.plan} />
           </div>
+          {plan === 'pro' && (
+            <p className="muted small">Lo mismo que Pro: todo el contenido, la voz, los créditos del mes y los horarios. Sin fecha de fin y sin cambios: para otras condiciones, elige Personalizado.</p>
+          )}
           <PlanConditionsFields kind={kind} values={values} defaults={defaultConditions(kind)} errors={errors} hidden={plan !== 'custom'} />
           {rejection?.code === 'plan-rejected' && (
             <div className="banner" role="alert"><Icon name="alert" /><div><p>{rejectionMessage(rejection)}</p><ul>{rejection.rejections.map((r) => <li key={r}>{r}</li>)}</ul></div></div>

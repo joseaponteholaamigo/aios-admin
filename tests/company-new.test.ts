@@ -108,6 +108,12 @@ describe('el formulario', () => {
     expect(formWith({ code: 'email-in-other-company', company: { id: 'otra-1', name: 'Otra SAS' } })).toContain('Ese correo ya está en Otra SAS (otra-1).');
   });
 
+  // EL DEFECTO: una empresa con «Pro sin cobro» sería una empresa de un asiento con nombre de plan personal.
+  test('«Pro sin cobro» se ofrece solo en una cuenta personal', () => {
+    const formulario = (kind: 'company' | 'personal') => render(NewAccountForm, { kind, formKey: KEY, canMove: false, values: null, errors: {}, rejection: null, createdAccountId: null });
+    expect([formulario('personal').includes('<option value="pro">Pro sin cobro</option>'), formulario('company').includes('value="pro"')]).toEqual([true, false]);
+  });
+
   test('CA-23 · el formulario no tiene dónde mostrar una license key', () => {
     expect(render(NewAccountForm, { kind: 'company', formKey: KEY, canMove: false, values: null, errors: {}, rejection: null, createdAccountId: null }).toLowerCase()).not.toMatch(/license|llave|aios_/);
   });

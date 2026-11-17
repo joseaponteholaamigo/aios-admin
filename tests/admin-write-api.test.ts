@@ -6,7 +6,7 @@
 // se leyera como sesión vencida, el panel cerraría la sesión en vez de pedir el código. Y si un campo
 // llegara con otro nombre, el backend lo rechazaría siempre.
 import { describe, expect, test } from 'vitest';
-import type { NewAccount } from '../app/domain/account-creation';
+import { PRO_CONDITIONS, type NewAccount } from '../app/domain/account-creation';
 import { createAdminWriteApi } from '../app/shared/api/admin-write-api.server';
 import { AdminApiUnavailableError } from '../app/shared/api/admin-api.server';
 import { ApiContractError } from '../app/shared/api/api-reading';
@@ -45,6 +45,19 @@ describe('crear una cuenta', () => {
       },
     });
     expect((seen[1]?.body as Record<string, unknown>).moverDesdeCuentaPersonal).toBe(true);
+  });
+
+  // EL DEFECTO: el backend no tiene un Pro sin Stripe. Si «Pro sin cobro» viajara como `pro`, el backend lo rechazaría; si
+  // viajara con otras condiciones, la persona no tendría lo mismo que con Pro. Son las de `CONDICIONES_PRO` del backend
+  // (`aios-backend/src/lib/alta-en-lote.js`), las mismas del webinar y de los códigos.
+  test('⛔ Pro sin cobro viaja como un Personalizado con las condiciones de Pro', async () => {
+    const { api, seen } = apiAnswering(() => Response.json({ cuenta: { ...CUENTA, tipo: 'personal' }, correoDeInvitacion: 'enviado' }, { status: 201 }));
+    await api.createAccount('t', { ...ACCOUNT, kind: 'personal', plan: 'pro', conditions: PRO_CONDITIONS });
+    expect(seen[0]?.body).toMatchObject({
+      tipo: 'personal', plan: 'personalizado',
+      condiciones: { contenido: 'todo', asientos: 1, equipo: false, horarios: true, hasta: null },
+    });
+    expect((seen[0]?.body as { condiciones: object }).condiciones).not.toHaveProperty('cupos');
   });
 
   test('una cuenta creada trae la cuenta en la forma de la lista y si salió la invitación', async () => {

@@ -5,6 +5,7 @@
 // que se ve en pantalla: una cuenta personal con equipo, un cupo vacío como «cero» en vez de «sin
 // tope», o el «mover» encendido sin que nadie oprimiera el botón, que borra una cuenta.
 import { describe, expect, test } from 'vitest';
+import { PRO_CONDITIONS } from '../app/domain/account-creation';
 import { readNewAccount } from '../app/modules/companies/new-account-form-data';
 
 const KEY = 'clave-de-prueba-0001';
@@ -38,6 +39,15 @@ describe('el formulario de crear una cuenta', () => {
   test('Free no lleva condiciones, aunque el formulario las traiga', () => {
     const r = readNewAccount(formOf({ ...EMPRESA, plan: 'free' }));
     expect('account' in r && r.account.conditions).toBeNull();
+  });
+
+  // EL DEFECTO: un «Pro sin cobro» con otras condiciones ya no es Pro, es Personalizado. Las condiciones son fijas aunque
+  // el formulario (o un pedido armado a mano) mande otras, y una empresa no lo puede elegir.
+  test('⛔ Pro sin cobro llega con las condiciones de Pro, fijas, y solo en una cuenta personal', () => {
+    const r = readNewAccount(formOf({ ...EMPRESA, kind: 'personal', plan: 'pro', content: 'none', endsOn: '2027-01-01', 'quota-radar': '1', schedules: '' }));
+    expect('account' in r && [r.account.plan, r.account.conditions]).toEqual(['pro', PRO_CONDITIONS]);
+    const deEmpresa = readNewAccount(formOf({ ...EMPRESA, plan: 'pro' }));
+    expect('errors' in deEmpresa && Object.keys(deEmpresa.errors)).toEqual(['plan']);
   });
 
   test('⛔ mover solo se enciende con el botón de mover', () => {

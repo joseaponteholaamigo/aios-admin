@@ -30,7 +30,8 @@ function conditionsToApi(c: PlanConditions) {
 /** El cuerpo de `POST /v1/admin/clientes`. */
 export function toBackendAccount(a: NewAccount) {
   return {
-    nombre: a.name, tipo: KIND_TO_API[a.kind], plan: a.plan === 'custom' ? 'personalizado' : 'free',
+    // Pro sin cobro es un Personalizado con las condiciones de Pro (`PRO_CONDITIONS`): el backend no tiene otro plan sin Stripe.
+    nombre: a.name, tipo: KIND_TO_API[a.kind], plan: a.plan === 'free' ? 'free' : 'personalizado',
     ...(a.conditions ? { condiciones: conditionsToApi(a.conditions) } : {}),
     admin: a.adminEmail, clave: a.key,
     ...(a.moveFromPersonal ? { moverDesdeCuentaPersonal: true } : {}),

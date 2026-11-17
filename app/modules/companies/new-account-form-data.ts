@@ -3,7 +3,7 @@
 // `tests/new-account-form.test.ts`. El fondo del plan (una fecha que ya pasó, un paquete que no está
 // publicado) lo juzga el backend: aquí solo la forma de cada campo.
 import { z } from 'zod';
-import { CONTENT_LEVELS, CREATION_PLANS, QUOTA_RESOURCES, type NewAccount, type PlanConditions, type Quotas } from '../../domain/account-creation';
+import { CONTENT_LEVELS, CREATION_PLANS, PRO_CONDITIONS, QUOTA_RESOURCES, planFitsKind, type NewAccount, type PlanConditions, type Quotas } from '../../domain/account-creation';
 import type { AccountKind } from '../../domain/companies';
 import { MOVE_FIELD, MOVE_VALUE } from '../../shared/ui/move-from-personal-notice';
 
@@ -74,7 +74,10 @@ export function readNewAccount(form: FormData): { account: NewAccount } | { erro
   const base = ACCOUNT.safeParse(Object.fromEntries(['kind', 'name', 'plan', 'adminEmail', 'key'].map((k) => [k, form.get(k) ?? ''])));
   const errors: Errors = base.success ? {} : errorsOf(base.error.issues);
   const kind = base.success ? base.data.kind : 'company';
-  const conditions = base.success && base.data.plan === 'custom' ? readConditions(form, kind, errors) : null;
+  const plan = base.success ? base.data.plan : null;
+  if (plan && !planFitsKind(plan, kind)) errors.plan = 'Pro sin cobro es solo para una cuenta personal.';
+  // Pro sin cobro no lee las condiciones del formulario: son fijas, aunque alguien las mande.
+  const conditions = plan === 'custom' ? readConditions(form, kind, errors) : plan === 'pro' ? { ...PRO_CONDITIONS, quotas: {} } : null;
   if (!base.success || Object.keys(errors).length) return { errors };
   return {
     account: { ...base.data, adminEmail: base.data.adminEmail.toLowerCase(), conditions, moveFromPersonal: form.get(MOVE_FIELD) === MOVE_VALUE },
