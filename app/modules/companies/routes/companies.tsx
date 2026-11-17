@@ -142,7 +142,13 @@ export default function Companies({ loaderData }: Route.ComponentProps) {
         title="Empresas"
         lead="Los clientes, con su plan, sus asientos y cuándo vence lo que pagaron. Las cuentas personales, de una persona sola, van en su propia pestaña."
         actions={canCreate
-          ? <Link className="btn primary" to={kind === 'personal' ? '/companies/new?kind=personal' : '/companies/new'}><Icon name="plus" />{kind === 'personal' ? 'Nueva cuenta personal' : 'Nueva empresa'}</Link>
+          ? (
+            <>
+              {/* Los dos, en las dos pestañas: crear una cuenta personal no obliga a cambiar de pestaña. Resalta el de la pestaña abierta. */}
+              <Link className={kind === 'company' ? 'btn primary' : 'btn'} to="/companies/new"><Icon name="plus" />Nueva empresa</Link>
+              <Link className={kind === 'personal' ? 'btn primary' : 'btn'} to="/companies/new?kind=personal"><Icon name="plus" />Nueva cuenta personal</Link>
+            </>
+          )
           : undefined}
       />
       <DoneNotice text={deletedNotice(params)} />

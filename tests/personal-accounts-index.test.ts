@@ -193,6 +193,21 @@ describe('la pantalla de la pestaña', () => {
     expect(html).toContain(`href="/companies?kind=personal&amp;after=${CURSOR}"`);
   });
 
+  // EL DEFECTO: había un solo botón de crear y cambiaba con la pestaña; para crear una cuenta personal había que
+  // cambiar de pestaña. Ahora están los dos en las dos, y resalta el de la pestaña abierta.
+  test('quien puede crear ve «Nueva empresa» y «Nueva cuenta personal» en las dos pestañas', () => {
+    const botones = (html: string) => (html.match(/<a[^>]*href="\/companies\/new[^"]*"[^>]*>/g) ?? [])
+      .map((a) => [a.match(/href="([^"]+)"/)?.[1], /class="btn primary"/.test(a)]);
+    const personales = render(CompaniesPage as ComponentType<object>, { loaderData: { tab: 'personal', ...PAGE, after: null, pendingDeletions: [], canCreate: true } });
+    expect(botones(personales)).toEqual([['/companies/new', false], ['/companies/new?kind=personal', true]]);
+    const ninguna = { total: 0, plans: null };
+    const empresas = render(CompaniesPage as ComponentType<object>, {
+      loaderData: { tab: 'company', companies: [], page: { page: 1, pages: 1, total: 0, perPage: 25 }, counts: { companies: ninguna, personal: ninguna }, onlySome: false, pendingDeletions: [], canCreate: true },
+    }, '/companies');
+    expect(botones(empresas)).toEqual([['/companies/new', true], ['/companies/new?kind=personal', false]]);
+    expect(botones(render(CompaniesPage as ComponentType<object>, { loaderData: { tab: 'personal', ...PAGE, after: null, pendingDeletions: [], canCreate: false } }))).toEqual([]);
+  });
+
   test('⛔ al volver por un enlace de página que no sirvió, lo dice', () => {
     expect(cursorResetNotice(new URLSearchParams({ kind: 'personal', aviso: 'cursor' }))).toBe('Ese enlace a una página de la lista ya no sirve: te mostramos la primera.');
     expect(cursorResetNotice(new URLSearchParams({ kind: 'personal', aviso: 'otra-cosa' }))).toBeNull();
