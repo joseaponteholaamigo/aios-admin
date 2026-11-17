@@ -12,7 +12,7 @@ const LOAD = z.object({
   // Solo dígitos: «11.000» puede ser once mil o once, y «1.5» no es un número de créditos. No se adivina.
   credits: z.string().regex(/^\d+$/, 'Escribe solo dígitos, sin puntos ni comas.').transform(Number)
     .pipe(z.number().min(1, 'Carga al menos un crédito.').max(LOAD_MAX, `Hasta ${LOAD_MAX.toLocaleString('es-CO')} créditos por carga.`)),
-  reason: z.string().trim().min(1, 'Escribe el motivo: la factura o el acuerdo.').max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`),
+  reason: z.string().trim().max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`),
   key: z.string().regex(/^[\w-]{8,100}$/, 'Este formulario no tiene clave: ciérralo y vuelve a abrirlo.'),
 });
 

@@ -39,10 +39,11 @@ const EMAIL = /^[^\s@,;<>()]+@[^\s@,;<>()]+\.[a-z]{2,}$/i;
 const NEW_MEMBER = z.object({
   email: z.string().trim().toLowerCase().regex(EMAIL, 'Escribe un correo.'),
   name: z.string().trim().max(NAME_MAX, `Hasta ${NAME_MAX} caracteres.`),
-  reason: z.string().trim().min(1, 'Escribe el motivo: queda en la auditoría.').max(REASON_MAX, `Hasta ${REASON_MAX} caracteres.`),
+  reason: z.string().trim().max(REASON_MAX, `Hasta ${REASON_MAX} caracteres.`),
   key: z.string().regex(/^[A-Za-z0-9-]{16,64}$/, 'El formulario está incompleto: vuelve a abrirlo.'),
 });
-const REASON = z.string().trim().min(1, 'Escribe el motivo: queda en la auditoría.').max(REASON_MAX, `Hasta ${REASON_MAX} caracteres.`);
+/** El motivo es opcional: la auditoría ya guarda quién hizo el cambio y cuándo, y el backend pone uno por defecto. */
+const REASON = z.string().trim().max(REASON_MAX, `Hasta ${REASON_MAX} caracteres.`);
 
 type Errors = Record<string, string>;
 const errorsOf = (issues: z.core.$ZodIssue[]): Errors => Object.fromEntries(issues.map((i) => [String(i.path[0] ?? 'reason'), i.message]));
@@ -58,14 +59,14 @@ export function readNewTeamMember(form: FormData): { member: NewTeamMember } | {
   };
 }
 
-/** Un cambio de permisos (`{ change }`) o el error del motivo (`{ errors }`). */
+/** Un cambio de permisos (`{ change }`) o el error de un motivo demasiado largo (`{ errors }`). */
 export function readPermissionsChange(form: FormData): { change: PermissionsChange } | { errors: Errors } {
   const reason = REASON.safeParse(text(form, 'reason'));
-  if (!reason.success) return { errors: { reason: reason.error.issues[0]?.message ?? 'Escribe el motivo.' } };
+  if (!reason.success) return { errors: { reason: reason.error.issues[0]?.message ?? `Hasta ${REASON_MAX} caracteres.` } };
   return { change: { permissions: readPermissions(form), isSuperadmin: form.get(SUPERADMIN_FIELD) === '1', reason: reason.data, version: versionOf(form) } };
 }
 
-/** El motivo de una acción y la versión que se vio, o `null` si falta el motivo. */
+/** El motivo de una acción (vacío si no se escribió) y la versión que se vio, o `null` si el motivo pasa del tope. */
 export function readAction(form: FormData): { reason: string; version: string | null } | null {
   const reason = REASON.safeParse(text(form, 'reason'));
   return reason.success ? { reason: reason.data, version: versionOf(form) } : null;

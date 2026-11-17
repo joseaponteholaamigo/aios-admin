@@ -9,7 +9,7 @@ import type { TeamMember } from '../app/domain/permissions';
 import { sessionContext } from '../app/middleware/session.server';
 import { teamMemberContext } from '../app/middleware/permissions.server';
 import type { ActiveSession } from '../app/shared/session/session.server';
-import { readNewPerson } from '../app/modules/client-users/invite-person-form-data';
+import { readNewPerson, REASON_MAX } from '../app/modules/client-users/invite-person-form-data';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRoutesStub } from 'react-router';
@@ -44,7 +44,9 @@ describe('invitar', () => {
     });
     const r = readNewPerson(formOf({ email: 'beto@acme.com', role: 'ventas', reason: 'x', isAdmin: 'on', move: '1' }));
     expect('person' in r && [r.person.isAdmin, r.person.role, r.person.moveFromPersonal]).toEqual([true, 'ventas', true]);
-    const mal = readNewPerson(formOf({ email: 'beto', reason: '' }));
+    // Sin motivo se invita igual: la auditoría guarda quién y cuándo, y el backend pone uno por defecto.
+    expect(readNewPerson(formOf({ email: 'beto@acme.com', reason: '' }))).toMatchObject({ person: { reason: '' } });
+    const mal = readNewPerson(formOf({ email: 'beto', reason: 'x'.repeat(REASON_MAX + 1) }));
     expect('errors' in mal ? Object.keys(mal.errors).sort() : []).toEqual(['email', 'reason']);
   });
 

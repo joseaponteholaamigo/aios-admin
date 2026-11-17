@@ -22,7 +22,7 @@ import { toVoiceCaps } from '../app/shared/api/voice-cap-mapping';
 import { menuFor } from '../app/shared/routing/route-access';
 import { ROUTE_TABLE } from '../app/shared/routing/route-table';
 import type { ActiveSession, SessionService } from '../app/shared/session/session.server';
-import { readVoiceCapChange, type VoiceAttempt } from '../app/modules/voice/voice-form-data';
+import { readVoiceCapChange, REASON_MAX, type VoiceAttempt } from '../app/modules/voice/voice-form-data';
 import { WHEN_IT_APPLIES, dollarsLabel, voiceCapNotice, voiceCapNoticeParams } from '../app/modules/voice/voice-labels';
 import { CapExceptionsTable } from '../app/modules/voice/components/cap-exceptions-table';
 import { RemoveExceptionDialog } from '../app/modules/voice/components/remove-exception-dialog';
@@ -177,15 +177,17 @@ describe('el pedido al backend', () => {
 describe('los formularios', () => {
   // EL DEFECTO: un tope de 0 cortaría la voz a todos; uno con tres decimales o escrito con coma
   // llegaría torcido; un cambio sin motivo lo rechaza el backend y queda sin rastro de por qué.
-  test('⛔ el tope general: dólares mayores que 0 con hasta dos decimales, con coma o con punto, y con motivo', () => {
+  test('⛔ el tope general: dólares mayores que 0 con hasta dos decimales, con coma o con punto; el motivo es opcional', () => {
     expect(readVoiceCapChange(formOf({ intent: 'general', usd: ' 7,5 ', reason: ' medido el primer mes ' })))
       .toEqual({ intent: 'general', change: { target: 'general', usd: 7.5, reason: 'medido el primer mes' } });
     for (const usd of ['0', '0.00', '-1', 'ocho', '7.505', '']) {
       const r = readVoiceCapChange(formOf({ intent: 'general', usd, reason: 'x' }));
       expect('errors' in r && Object.keys(r.errors), usd).toEqual(['usd']);
     }
-    const sinMotivo = readVoiceCapChange(formOf({ intent: 'general', usd: '8', reason: '   ' }));
-    expect('errors' in sinMotivo && Object.keys(sinMotivo.errors)).toEqual(['reason']);
+    expect(readVoiceCapChange(formOf({ intent: 'general', usd: '8', reason: '   ' })))
+      .toEqual({ intent: 'general', change: { target: 'general', usd: 8, reason: '' } });
+    const largo = readVoiceCapChange(formOf({ intent: 'general', usd: '8', reason: 'x'.repeat(REASON_MAX + 1) }));
+    expect('errors' in largo && Object.keys(largo.errors)).toEqual(['reason']);
   });
 
   // EL DEFECTO: el backend acepta el id en minúsculas; uno escrito con mayúsculas o espacios le
@@ -201,8 +203,8 @@ describe('los formularios', () => {
   test('⛔ quitar la excepción no lleva tope: viaja `null`, con la cuenta y el motivo', () => {
     expect(readVoiceCapChange(formOf({ intent: 'remove-exception', accountId: 'auteco-4d5e6f', reason: 'terminó el contrato', usd: '15' })))
       .toEqual({ intent: 'remove-exception', change: QUITAR });
-    const sinMotivo = readVoiceCapChange(formOf({ intent: 'remove-exception', accountId: 'auteco-4d5e6f', reason: '' }));
-    expect('errors' in sinMotivo && Object.keys(sinMotivo.errors)).toEqual(['reason']);
+    expect(readVoiceCapChange(formOf({ intent: 'remove-exception', accountId: 'auteco-4d5e6f', reason: '' })))
+      .toEqual({ intent: 'remove-exception', change: { ...QUITAR, reason: '' } });
   });
 
   // EL DEFECTO: un pedido de otra pantalla, o armado a mano, se leería como uno de estos formularios.
@@ -231,7 +233,7 @@ describe('la acción', () => {
   // EL DEFECTO: un formulario que el panel ya sabe inválido iría igual al backend.
   test('un formulario inválido no llama al backend', async () => {
     const r = (await post({ intent: 'general', usd: '0', reason: '' })) as VoiceAttempt;
-    expect([Object.keys(r.errors).sort(), changeVoiceCap.mock.calls.length]).toEqual([['reason', 'usd'], 0]);
+    expect([Object.keys(r.errors).sort(), changeVoiceCap.mock.calls.length]).toEqual([['usd'], 0]);
   });
 });
 
@@ -319,13 +321,13 @@ describe('en pantalla', () => {
   });
 
   // EL DEFECTO: un clic suelto en «Quitar» le cambiaría el tope a una cuenta sin confirmación ni motivo.
-  test('⛔ «Quitar» abre la confirmación, que pide el motivo, dice a cuánto vuelve y lleva la cuenta en el cuerpo', () => {
+  test('⛔ «Quitar» abre la confirmación, con el motivo opcional, dice a cuánto vuelve y lleva la cuenta en el cuerpo', () => {
     const tabla = render(createElement(CapExceptionsTable, { exceptions: [AUTECO], onRemove: () => {} }));
     expect([tabla.includes('type="submit"'), /<button type="button"[^>]*>Quitar<\/button>/.test(tabla)]).toEqual([false, true]);
     const dialogo = render(createElement(RemoveExceptionDialog, { exception: AUTECO, generalUsd: 10, attempt: null, onClose: () => {} }));
     expect(dialogo).toContain('Hoy tiene un tope de US$15. Sin la excepción vuelve al general: US$10 por persona al mes.');
     const cuenta = tagWith(dialogo, 'input', 'name="accountId"');
-    expect([cuenta.includes('type="hidden"'), cuenta.includes('value="auteco-4d5e6f"'), tagWith(dialogo, 'input', 'name="reason"').includes('required=""')]).toEqual([true, true, true]);
+    expect([cuenta.includes('type="hidden"'), cuenta.includes('value="auteco-4d5e6f"'), tagWith(dialogo, 'input', 'name="reason"').includes('required=""')]).toEqual([true, true, false]);
     expect((dialogo.match(/<button type="submit"[^>]*>/g) ?? []).map((b) => b.match(/value="([^"]+)"/)?.[1])).toEqual(['remove-exception']);
     expect(dialogo).toMatch(/<form[^>]*action="\/voice"/);
   });

@@ -51,7 +51,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   }
   if (!isAction(intent)) return { intent: null, reasonError: null, rejection: { code: 'invalid' as const, message: 'esa acción no existe' } };
   const read = readAction(form);
-  if (!read) return { intent, reasonError: null, rejection: { code: 'invalid' as const, message: 'escribe el motivo: queda en la historia de la persona', field: 'reason' } };
+  if (!read) return { intent, reasonError: null, rejection: { code: 'invalid' as const, message: 'el motivo es demasiado largo', field: 'reason' } };
   const outcome = await toAdminApi({ request, context }, (api, token) => api.teamAction(token, params.sub, intent, read.reason, read.version));
   if (!outcome.ok) return { intent, reasonError: null, rejection: outcome.rejection };
   return done(intent);

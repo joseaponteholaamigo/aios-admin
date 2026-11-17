@@ -53,8 +53,8 @@ export function InvitePersonForm({ company, roles, canMove, values, errors, reje
       <section className="card">
         <div className="card-b">
           <div className="field">
-            <label htmlFor="reason">Motivo</label>
-            <input id="reason" name="reason" required maxLength={REASON_MAX} defaultValue={values?.reason ?? ''} placeholder="Ej: lo pidió la admin por correo" />
+            <label htmlFor="reason">Motivo (opcional)</label>
+            <input id="reason" name="reason" maxLength={REASON_MAX} defaultValue={values?.reason ?? ''} placeholder="Ej: lo pidió la admin por correo" />
             <small>Queda en la auditoría, en Gobernanza.</small>
             <FieldError message={errors.reason} />
           </div>

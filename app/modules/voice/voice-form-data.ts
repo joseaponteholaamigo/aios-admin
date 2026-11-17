@@ -20,13 +20,13 @@ export const ACCOUNT_ID = new RegExp(`^[a-z0-9-]{1,${ACCOUNT_ID_MAX}}$`);
 const DOLLARS = /^\d+(?:[.,]\d{1,2})?$/;
 
 const NO_USD = 'Escribe el tope en dólares.';
-const NO_REASON = 'Escribe el motivo: queda en la auditoría.';
 const NO_ACCOUNT = 'Escribe el id de la cuenta como aparece en Empresas: minúsculas, números y guiones.';
 
 /** El tope viaja como número: el backend rechaza `"8"`. */
 const usd = z.string(NO_USD).trim().min(1, NO_USD).regex(DOLLARS, 'Un número de dólares, con hasta dos decimales.')
   .transform((s) => Number(s.replace(',', '.'))).pipe(z.number().positive('El tope es mayor que 0.'));
-const reason = z.string(NO_REASON).trim().min(1, NO_REASON).max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`);
+/** El motivo es opcional: la auditoría ya guarda quién hizo el cambio y cuándo, y el backend pone uno por defecto. */
+const reason = z.string().trim().max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`);
 const accountId = z.string(NO_ACCOUNT).trim().toLowerCase().regex(ACCOUNT_ID, NO_ACCOUNT);
 
 const GENERAL = z.object({ usd, reason });

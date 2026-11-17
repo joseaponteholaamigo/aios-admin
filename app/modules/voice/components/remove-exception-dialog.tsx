@@ -47,8 +47,8 @@ export function RemoveExceptionDialog({ exception, generalUsd, attempt, onClose 
         <FieldError message={attempt?.errors.accountId} />
         <input type="hidden" name="accountId" value={exception.accountId} />
         <div className="field">
-          <label htmlFor="remove-exception-reason">Motivo</label>
-          <input id="remove-exception-reason" name="reason" required maxLength={REASON_MAX} defaultValue={attempt?.values.reason ?? ''} placeholder="Queda en la auditoría" />
+          <label htmlFor="remove-exception-reason">Motivo (opcional)</label>
+          <input id="remove-exception-reason" name="reason" maxLength={REASON_MAX} defaultValue={attempt?.values.reason ?? ''} placeholder="Queda en la auditoría" />
           <FieldError message={attempt?.errors.reason} />
         </div>
         <div className="remove-exception-dialog__buttons">

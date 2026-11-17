@@ -12,7 +12,7 @@ import type { TeamMember } from '../app/domain/permissions';
 import { sessionContext } from '../app/middleware/session.server';
 import { teamMemberContext } from '../app/middleware/permissions.server';
 import type { ActiveSession } from '../app/shared/session/session.server';
-import { readCreditLoad } from '../app/modules/client-users/credit-load-form-data';
+import { readCreditLoad, REASON_MAX } from '../app/modules/client-users/credit-load-form-data';
 import { ROUTE_TABLE } from '../app/shared/routing/route-table';
 
 const loadCredits = vi.fn();
@@ -57,7 +57,7 @@ const CARGA = { email: 'luis@auteco.com', credits: '11000', reason: 'Factura 123
 beforeEach(() => { loadCredits.mockReset(); getPersonCredits.mockReset(); getCompanyPeople.mockReset(); });
 
 describe('el formulario de carga', () => {
-  test('acepta un entero de 1 a 100.000 con motivo y clave; lo demás se rechaza junto a su campo (CB-11)', () => {
+  test('acepta un entero de 1 a 100.000 con clave y con o sin motivo; lo demás se rechaza junto a su campo (CB-11)', () => {
     expect(readCreditLoad(formOf({ ...CARGA, email: ' Luis@Auteco.com ', credits: ' 11000 ' }))).toEqual({
       load: { email: 'luis@auteco.com', credits: 11000, reason: 'Factura 1234', key: 'carga-0001-abcd' },
     });
@@ -68,6 +68,10 @@ describe('el formulario de carga', () => {
     }
     const sinClave = readCreditLoad(formOf({ ...CARGA, key: '' }));
     expect('errors' in sinClave && Object.keys(sinClave.errors)).toEqual(['key']);
+    // Sin motivo se carga igual: la auditoría guarda quién y cuándo, y el backend pone uno por defecto.
+    expect(readCreditLoad(formOf({ ...CARGA, reason: ' ' }))).toMatchObject({ load: { reason: '' } });
+    const largo = readCreditLoad(formOf({ ...CARGA, reason: 'x'.repeat(REASON_MAX + 1) }));
+    expect('errors' in largo && Object.keys(largo.errors)).toEqual(['reason']);
   });
 });
 

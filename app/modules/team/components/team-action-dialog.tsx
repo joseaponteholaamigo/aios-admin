@@ -37,8 +37,8 @@ export function TeamActionDialog({ action, name, version, rejection, onClose }: 
         <input type="hidden" name={INTENT_FIELD} value={action} />
         <input type="hidden" name={VERSION_FIELD} value={version ?? ''} />
         <div className="field">
-          <label htmlFor="action-reason">Motivo</label>
-          <input id="action-reason" name="reason" required maxLength={REASON_MAX} placeholder="Queda en la historia de la persona" />
+          <label htmlFor="action-reason">Motivo (opcional)</label>
+          <input id="action-reason" name="reason" maxLength={REASON_MAX} placeholder="Queda en la historia de la persona" />
         </div>
         <div className="team-action-dialog__buttons">
           <button type="button" className="btn" disabled={busy} onClick={() => ref.current?.close()}>Cancelar</button>

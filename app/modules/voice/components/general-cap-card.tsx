@@ -47,8 +47,8 @@ export function GeneralCapCard({ general, maxUsd, attempt }: GeneralCapCardProps
               <FieldError message={attempt?.errors.usd} />
             </div>
             <div className="field">
-              <label htmlFor="general-reason">Motivo</label>
-              <input id="general-reason" name="reason" required maxLength={REASON_MAX} defaultValue={attempt?.values.reason ?? ''} placeholder="Ej: medido el primer mes" />
+              <label htmlFor="general-reason">Motivo (opcional)</label>
+              <input id="general-reason" name="reason" maxLength={REASON_MAX} defaultValue={attempt?.values.reason ?? ''} placeholder="Ej: medido el primer mes" />
               <small>Queda en la auditoría, en Gobernanza, con el antes y el después.</small>
               <FieldError message={attempt?.errors.reason} />
             </div>

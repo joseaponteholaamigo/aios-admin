@@ -79,8 +79,8 @@ export function CreditsDialog({ email, companyId, canSee, canLoad, onClose }: Cr
                 <FieldError message={failed?.errors.credits ?? failed?.errors.email ?? failed?.errors.key} />
               </div>
               <div className="field">
-                <label htmlFor="reason">Motivo</label>
-                <input id="reason" name="reason" required maxLength={REASON_MAX} placeholder="Ej: factura 1234" />
+                <label htmlFor="reason">Motivo (opcional)</label>
+                <input id="reason" name="reason" maxLength={REASON_MAX} placeholder="Ej: factura 1234" />
                 <FieldError message={failed?.errors.reason} />
               </div>
             </div>

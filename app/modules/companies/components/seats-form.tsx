@@ -31,8 +31,8 @@ export function SeatsForm({ company, current, used, values, errors, rejection }:
             <FieldError message={errors.seats} />
           </div>
           <div className="field">
-            <label htmlFor="reason">Motivo</label>
-            <input id="reason" name="reason" required maxLength={REASON_MAX} defaultValue={values?.reason ?? ''} placeholder="Ej: amplió el contrato, factura 1234" />
+            <label htmlFor="reason">Motivo (opcional)</label>
+            <input id="reason" name="reason" maxLength={REASON_MAX} defaultValue={values?.reason ?? ''} placeholder="Ej: amplió el contrato, factura 1234" />
             <small>Queda en la auditoría, en Gobernanza, con quién hizo el cambio.</small>
             <FieldError message={errors.reason} />
           </div>

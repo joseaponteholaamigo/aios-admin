@@ -17,7 +17,7 @@ import type { ActiveSession } from '../app/shared/session/session.server';
 import { toWriteRejection } from '../app/shared/api/write-mapping';
 import { ROUTE_TABLE, type RouteEntry } from '../app/shared/routing/route-table';
 import { modulesWithScreen } from '../app/shared/routing/route-access';
-import { readNewTeamMember, readPermissionsChange, splitPermissions } from '../app/modules/team/team-form-data';
+import { readNewTeamMember, readPermissionsChange, splitPermissions, REASON_MAX } from '../app/modules/team/team-form-data';
 import { MenuPreview } from '../app/modules/team/components/menu-preview';
 import { PermissionsForm } from '../app/modules/team/components/permissions-form';
 import { TeamMemberActions } from '../app/modules/team/components/team-member-actions';
@@ -98,10 +98,15 @@ describe('los formularios', () => {
     expect('member' in r && r.member).toEqual({ email: 'nati@beenso.com', name: 'Nati', permissions: { codes: 'edit' }, isSuperadmin: true, reason: 'entra', key: KEY });
   });
 
-  test('sin motivo, ni el alta ni el cambio de permisos salen', () => {
+  // EL DEFECTO: pedir un motivo que la auditoría no necesita (ya guarda quién y cuándo) frenaba un alta o un cambio de permisos.
+  test('sin motivo, el alta y el cambio de permisos salen; con uno de más, no', () => {
     const alta = readNewTeamMember(formOf({ email: 'nati@beenso.com', reason: ' ', key: KEY }));
     const cambio = readPermissionsChange(formOf({ reason: '' }));
-    expect(['errors' in alta && Object.keys(alta.errors), 'errors' in cambio && Object.keys(cambio.errors)]).toEqual([['reason'], ['reason']]);
+    expect(['member' in alta && alta.member.reason, 'change' in cambio && cambio.change.reason]).toEqual(['', '']);
+    const largo = 'x'.repeat(REASON_MAX + 1);
+    const altaLarga = readNewTeamMember(formOf({ email: 'nati@beenso.com', reason: largo, key: KEY }));
+    const cambioLargo = readPermissionsChange(formOf({ reason: largo }));
+    expect(['errors' in altaLarga && Object.keys(altaLarga.errors), 'errors' in cambioLargo && Object.keys(cambioLargo.errors)]).toEqual([['reason'], ['reason']]);
   });
 
   test('«Guardar permisos» está desactivado mientras nada cambió (CA-17)', () => {
@@ -138,8 +143,8 @@ describe('las rutas', () => {
     expect(r.headers.get('Location')).toBe('/team/sub-nati?aviso=suspend');
   });
 
-  test('una acción sin motivo, o que no existe, no llega al backend', async () => {
-    await post('/team/sub-nati', { intent: 'suspend', reason: '' }, actuar as never, { sub: 'sub-nati' });
+  test('una acción con un motivo de más, o que no existe, no llega al backend', async () => {
+    await post('/team/sub-nati', { intent: 'suspend', reason: 'x'.repeat(REASON_MAX + 1) }, actuar as never, { sub: 'sub-nati' });
     await post('/team/sub-nati', { intent: 'borrar', reason: 'x' }, actuar as never, { sub: 'sub-nati' });
     expect(teamAction).not.toHaveBeenCalled();
   });

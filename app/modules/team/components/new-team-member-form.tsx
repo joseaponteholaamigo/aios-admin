@@ -76,8 +76,8 @@ export function NewTeamMemberForm({ formKey, values, permissions, isSuperadmin: 
       <section className="card">
         <div className="card-b grid">
           <div className="field">
-            <label htmlFor="reason">Motivo</label>
-            <input id="reason" name="reason" required maxLength={REASON_MAX} defaultValue={text('reason')} placeholder="Queda en la historia de la persona" />
+            <label htmlFor="reason">Motivo (opcional)</label>
+            <input id="reason" name="reason" maxLength={REASON_MAX} defaultValue={text('reason')} placeholder="Queda en la historia de la persona" />
             <FieldError message={errorOf('reason')} />
           </div>
           <FieldError message={errorOf('key')} />

@@ -10,7 +10,7 @@ export const REASON_MAX = 500;
 
 const SEATS = z.object({
   seats: z.coerce.number({ message: 'Escribe un número.' }).int('Los asientos son un número entero.').min(1, 'Una empresa tiene al menos un asiento.').max(SEATS_MAX, `Hasta ${SEATS_MAX} asientos.`),
-  reason: z.string().trim().min(1, 'Escribe el motivo: queda en la auditoría.').max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`),
+  reason: z.string().trim().max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`),
 });
 
 /** El cambio (`{ change }`) o sus errores por campo (`{ errors }`). */

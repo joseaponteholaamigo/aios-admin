@@ -9,7 +9,7 @@ import type { TeamMember } from '../app/domain/permissions';
 import { sessionContext } from '../app/middleware/session.server';
 import { teamMemberContext } from '../app/middleware/permissions.server';
 import type { ActiveSession } from '../app/shared/session/session.server';
-import { readSeatsChange } from '../app/modules/companies/seats-form-data';
+import { readSeatsChange, REASON_MAX } from '../app/modules/companies/seats-form-data';
 import { seatsChangedNotice, seatsChangedNoticeParams, seatsEditable } from '../app/modules/companies/company-labels';
 import { ROUTE_TABLE } from '../app/shared/routing/route-table';
 
@@ -46,14 +46,16 @@ const post = (fields: Record<string, string>) => action({
 beforeEach(() => { changeSeats.mockReset(); getCompany.mockReset(); getCompanyHistory.mockReset(); });
 
 describe('el formulario', () => {
-  test('acepta un entero de 1 a 1.000 con motivo, y rechaza lo demás junto a su campo', () => {
+  // EL DEFECTO: pedir un motivo que la auditoría no necesita (ya guarda quién y cuándo) frenaba un cambio de asientos.
+  test('acepta un entero de 1 a 1.000, con o sin motivo, y rechaza lo demás junto a su campo', () => {
     expect(readSeatsChange(formOf({ seats: ' 8 ', reason: ' amplió el contrato ' }))).toEqual({ change: { seats: 8, reason: 'amplió el contrato' } });
     for (const seats of ['0', '1001', '1.5', 'ocho', '']) {
       const r = readSeatsChange(formOf({ seats, reason: 'x' }));
       expect('errors' in r && Object.keys(r.errors), seats).toEqual(['seats']);
     }
-    const sinMotivo = readSeatsChange(formOf({ seats: '8', reason: '  ' }));
-    expect('errors' in sinMotivo && Object.keys(sinMotivo.errors)).toEqual(['reason']);
+    expect(readSeatsChange(formOf({ seats: '8', reason: '  ' }))).toEqual({ change: { seats: 8, reason: '' } });
+    const largo = readSeatsChange(formOf({ seats: '8', reason: 'x'.repeat(REASON_MAX + 1) }));
+    expect('errors' in largo && Object.keys(largo.errors)).toEqual(['reason']);
   });
 });
 
@@ -74,7 +76,7 @@ describe('la acción', () => {
 
   test('un formulario inválido no llama a la API', async () => {
     const r = (await post({ seats: '0', reason: '' })) as { errors: Record<string, string> };
-    expect(Object.keys(r.errors).sort()).toEqual(['reason', 'seats']);
+    expect(Object.keys(r.errors).sort()).toEqual(['seats']);
     expect(changeSeats).not.toHaveBeenCalled();
   });
 });

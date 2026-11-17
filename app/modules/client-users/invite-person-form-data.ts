@@ -17,7 +17,7 @@ const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 const PERSON = z.object({
   email: z.string().trim().regex(EMAIL, 'Escribe un correo válido.').max(254, 'Ese correo es demasiado largo.'),
   role: z.string().trim().max(64),
-  reason: z.string().trim().min(1, 'Escribe el motivo: queda en la auditoría.').max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`),
+  reason: z.string().trim().max(REASON_MAX, `El motivo va hasta ${REASON_MAX} caracteres.`),
 });
 
 /** El pedido del formulario (`{ person }`) o sus errores por campo (`{ errors }`). */

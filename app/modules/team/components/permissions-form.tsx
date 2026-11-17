@@ -31,8 +31,8 @@ export function PermissionsForm({ person, reasonError, rejection }: Props) {
           {rejection && <FormRejection rejection={rejection} message={teamRejectionMessage(rejection)} />}
           <PermissionsEditor value={value} hidden={hidden} isSuperadmin={isSuperadmin} onChange={setValue} onSuperadminChange={setSuperadmin} />
           <div className="field">
-            <label htmlFor="permissions-reason">Motivo</label>
-            <input id="permissions-reason" name="reason" required maxLength={REASON_MAX} placeholder="Queda en la historia de la persona" />
+            <label htmlFor="permissions-reason">Motivo (opcional)</label>
+            <input id="permissions-reason" name="reason" maxLength={REASON_MAX} placeholder="Queda en la historia de la persona" />
             <FieldError message={reasonError} />
           </div>
           <div><SubmitButton label="Guardar permisos" busyLabel="Guardando…" disabled={!changed} /></div>
