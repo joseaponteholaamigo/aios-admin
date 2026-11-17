@@ -18,7 +18,7 @@ import { ClientUsersTable } from '../app/modules/client-users/components/client-
 const MARIA = { email: 'maria@gmail.com', status: 'active', invitedAt: '2026-10-28T10:00:00Z', acceptedAt: '2026-10-29T10:00:00Z' } as const;
 
 const cuenta = (extra: Partial<Company> = {}): Company => ({
-  id: 'webinar-c1-0000a1', name: 'Webinar 20261028 C1', kind: 'personal', person: MARIA, plan: 'custom', status: 'active',
+  id: 'webinar-c1-0000a1', name: 'Webinar 20261028 C1', kind: 'personal', person: MARIA, origin: 'team', plan: 'custom', status: 'active',
   expiry: { expired: false, expiredBy: null, until: null }, notice: null, seats: { used: 1, cap: 1 }, admins: 1,
   paysWithStripe: false, createdAt: '2026-10-28T10:00:00Z', ...extra,
 });
@@ -39,7 +39,7 @@ const fileOf = (file: CompanyFile, canSeePeople = true) => render(Company_ as Co
 
 describe('la tabla de cuentas personales', () => {
   test('CA-21 · cada fila dice el correo de su persona, su plan, de dónde salió y cuándo entró, no el nombre inventado', () => {
-    const html = render(PersonalAccountsTable, { accounts: [cuenta(), cuenta({ id: 'pedro-000002', paysWithStripe: true, person: { ...MARIA, email: 'pedro@nube.co', acceptedAt: null } })], emptyMessage: '' });
+    const html = render(PersonalAccountsTable, { accounts: [cuenta(), cuenta({ id: 'pedro-000002', origin: 'purchase', paysWithStripe: true, person: { ...MARIA, email: 'pedro@nube.co', acceptedAt: null } })], emptyMessage: '' });
     expect([...html.matchAll(/<th>([^<]+)<\/th>/g)].map((m) => m[1])).toEqual(['Persona', 'Plan', 'Estado', 'Vence', 'Origen', 'Entró']);
     expect(html).toContain('maria@gmail.com');
     expect(html).not.toContain('Webinar 20261028');

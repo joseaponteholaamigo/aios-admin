@@ -45,9 +45,6 @@ export function expiryLabel(company: Company): Label | null {
   return null;
 }
 
-/** De dónde salió una cuenta personal: una compra en la web (paga por Stripe) o un alta del equipo. */
-export const originLabel = (company: Company) => (company.paysWithStripe ? 'Compra en la web' : 'Alta del equipo');
-
 /** Cómo se nombra cada tipo de cuenta, en singular y en plural. */
 const KIND_NAMES: Record<AccountKind, { one: string; many: string; none: string }> = {
   company: { one: 'empresa', many: 'empresas', none: 'Ninguna empresa' },

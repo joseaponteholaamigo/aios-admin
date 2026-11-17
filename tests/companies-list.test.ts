@@ -1,6 +1,7 @@
 // La lista de Empresas desde el panel: la pestaña, el plan y la página de la dirección, y lo que
 // dice cuando no hay nada (spec «Cuentas personales», CA-18, CA-20, CA-21 y CB-6; spec «Paginación
-// numerada», CA-8 y CB-2).
+// numerada», CA-8 y CB-2). La pestaña de cuentas personales, que lee el índice, está en
+// `personal-accounts-index.test.ts`.
 //
 // EL DEFECTO QUE PREVIENE. Si el loader no le pasara la pestaña al backend, Empresas volvería a
 // mezclar a las 381 cuentas del webinar con los clientes reales. Si un plan inventado en la
@@ -14,12 +15,14 @@ import { teamMemberContext } from '../app/middleware/permissions.server';
 import type { TeamMember } from '../app/domain/permissions';
 
 const listCompanies = vi.fn();
-vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ listCompanies }) }));
+const listPersonalAccounts = vi.fn();
+vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ listCompanies, listPersonalAccounts }) }));
 const { loader, shouldRevalidate } = await import('../app/modules/companies/routes/companies');
-const { emptyAccountsMessage, searchSummary, originLabel } = await import('../app/modules/companies/company-labels');
+const { emptyAccountsMessage, searchSummary } = await import('../app/modules/companies/company-labels');
 const { companiesHref } = await import('../app/modules/companies/companies-href');
 
 const PAGE = { companies: [], page: { page: 1, pages: 1, total: 0, perPage: 50 }, onlySome: false, counts: { companies: { total: 0, plans: {} }, personal: { total: 0, plans: {} } } };
+const INDEX_PAGE = { accounts: [], next: null, onlySome: false, counts: { companies: { total: 0, byOrigin: {} }, personal: { total: 0, byOrigin: {} } } };
 
 function open(url: string, member: TeamMember | null = null) {
   const context = new RouterContextProvider();
@@ -33,6 +36,8 @@ const conEmpresas = (level: 'view' | 'edit'): TeamMember => ({ actor: 'equipo:su
 beforeEach(() => {
   listCompanies.mockReset();
   listCompanies.mockResolvedValue({ kind: 'ok', value: PAGE });
+  listPersonalAccounts.mockReset();
+  listPersonalAccounts.mockResolvedValue({ kind: 'ok', value: INDEX_PAGE });
 });
 
 describe('la lista de cuentas', () => {
@@ -41,9 +46,9 @@ describe('la lista de cuentas', () => {
     expect(listCompanies).toHaveBeenCalledWith('token-ana', { kind: 'company', plan: null, page: 1 });
   });
 
-  test('la pestaña, el plan y la página de la dirección llegan al backend (paginación numerada, CA-8)', async () => {
-    await open('https://dxxxx.cloudfront.net/companies?kind=personal&plan=custom&page=3');
-    expect(listCompanies).toHaveBeenCalledWith('token-ana', { kind: 'personal', plan: 'custom', page: 3 });
+  test('el plan y la página de la dirección llegan al backend (paginación numerada, CA-8)', async () => {
+    await open('https://dxxxx.cloudfront.net/companies?plan=custom&page=3');
+    expect(listCompanies).toHaveBeenCalledWith('token-ana', { kind: 'company', plan: 'custom', page: 3 });
   });
 
   test('⛔ una página que no es un número, o el cursor de un enlace viejo, piden la primera (paginación numerada, CA-8 y CB-2)', async () => {
@@ -60,8 +65,10 @@ describe('la lista de cuentas', () => {
   });
 
   test('⛔ CB-8 · el loader nunca le pasa un texto al backend, ni el `?q=` de un enlace viejo: el texto solo va por POST', async () => {
+    await open('https://dxxxx.cloudfront.net/companies?q=maria@gmail.com&buscar=maria');
     await open('https://dxxxx.cloudfront.net/companies?kind=personal&q=maria@gmail.com&buscar=maria');
-    expect(listCompanies).toHaveBeenCalledWith('token-ana', { kind: 'personal', plan: null, page: 1 });
+    expect(listCompanies.mock.calls).toEqual([['token-ana', { kind: 'company', plan: null, page: 1 }]]);
+    expect(listPersonalAccounts.mock.calls).toEqual([['token-ana', { after: null }]]);
   });
 
   test('⛔ CA-8 · cambiar de pestaña o de plan vuelve a la primera página, y los números conservan la pestaña y el plan', () => {
@@ -93,10 +100,5 @@ describe('lo que dicen la lista y la búsqueda', () => {
     expect(searchSummary('company', 'aut', 'team', { count: 2, hasMore: false })).toBe('2 empresas con «aut» en el nombre o el id, en el plan Team.');
     expect(searchSummary('company', 'zz', null, { count: 0, hasMore: false })).toBe('Ninguna empresa tiene «zz» en el nombre o el id.');
     expect(searchSummary('personal', 'gmail', null, { count: 100, hasMore: true })).toMatch(/Se muestran las primeras 100: escribe más para acotar\.$/);
-  });
-
-  test('el origen de una cuenta personal sale de si paga por Stripe', () => {
-    expect(originLabel({ paysWithStripe: true } as never)).toBe('Compra en la web');
-    expect(originLabel({ paysWithStripe: false } as never)).toBe('Alta del equipo');
   });
 });

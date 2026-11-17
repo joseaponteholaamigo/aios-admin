@@ -1,0 +1,3 @@
+/* El formulario del tope general: sus campos en dos columnas y el botón al final. */
+.general-cap-form { display: grid; gap: 12px; max-width: 760px; }
+.general-cap-form__actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

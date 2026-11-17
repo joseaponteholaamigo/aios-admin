@@ -1,0 +1,4 @@
+/* El aviso de «sin contar todavía»: ocupa el lugar de los números por origen, bajo el buscador, con el mismo
+ * margen que ellos. */
+
+.uncounted-notice { padding: 14px 20px 0; }

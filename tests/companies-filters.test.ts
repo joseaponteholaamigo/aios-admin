@@ -14,8 +14,8 @@ import { CompanyTabs } from '../app/modules/companies/components/company-tabs';
 
 const PERSONALES: KindCount = { total: 381, plans: { free: 0, pro: 4, team: 0, custom: 377 } };
 const noop = () => {};
-const filters = ({ kind = 'personal' as AccountKind, plan = null as ListPlan | null, text = '' } = {}) =>
-  renderToStaticMarkup(createElement(CompaniesFilters, { kind, counts: PERSONALES, plan, text, onTextChange: noop, onPlanChange: noop, onClearAll: noop }));
+const filters = ({ kind = 'personal' as AccountKind, plan = null as ListPlan | null, text = '', counts = PERSONALES } = {}) =>
+  renderToStaticMarkup(createElement(CompaniesFilters, { kind, counts, plan, text, onTextChange: noop, onPlanChange: noop, onClearAll: noop }));
 
 const optionsOf = (html: string) => [...(html.match(/<select[\s\S]*?<\/select>/)?.[0] ?? '').matchAll(/<option[^>]*>([^<]+)<\/option>/g)].map((m) => m[1]);
 
@@ -35,6 +35,13 @@ describe('la barra de filtros de Empresas', () => {
 
   test('CA-20 · ofrece solo los planes que tienen cuentas en esta pestaña, con cuántas', () => {
     expect(optionsOf(filters())).toEqual(['Todos los planes', 'Pro (4)', 'Personalizado (377)']);
+  });
+
+  test('⛔ sin el dato de cuántas hay de cada plan, ofrece todos los planes sin número: nunca un «(0)» que no es cierto', () => {
+    // EL DEFECTO: un `plans` sin dato leído como ceros dejaría la lista solo con «Todos los planes», sin poder
+    // filtrar, o diría «Pro (0)» en una pestaña que sí tiene cuentas Pro.
+    const html = filters({ kind: 'company', counts: { total: 15, plans: null } });
+    expect(optionsOf(html)).toEqual(['Todos los planes', 'Free', 'Pro', 'Team', 'Personalizado']);
   });
 
   test('el plan elegido se marca y se ofrece aunque no tenga cuentas', () => {

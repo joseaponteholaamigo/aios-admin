@@ -1,6 +1,7 @@
 // Lo que llega del formulario de «Nuevo código», validado en su forma (spec «Códigos de registro»,
-// CA-1 a CA-3). Puro: lo prueba `tests/codes.test.ts`. El fondo (una fecha que ya pasó, un código que
-// ya existe, una fecha del plan antes del último canje) lo juzga el backend, que dice el campo.
+// CA-1 a CA-3, con la enmienda 7b: todo código lleva tope, que es CA-31 de la spec «Registro abierto»
+// de aios-tower). Puro: lo prueba `tests/codes.test.ts`. El fondo (una fecha que ya pasó, un código
+// que ya existe, una fecha del plan antes del último canje) lo juzga el backend, que dice el campo.
 import { z } from 'zod';
 import { DURATION_KINDS, type CodeDuration, type NewCode } from '../../domain/codes';
 import { thousands } from './code-labels';
@@ -27,14 +28,20 @@ const WRITTEN_CODE = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
  * viajarían como «sin créditos» en vez de pedir el número.
  */
 const whole = (message: string, min: number, max: number) => z.string(message).trim().regex(/^\d+$/, message).transform(Number).pipe(z.number().int(message).min(min, message).max(max, message));
-const optionalWhole = (message: string, min: number, max: number) => z.union([z.literal(''), whole(message, min, max)]);
+
+/**
+ * Todo código lleva tope de usos, también uno generado al azar (enmienda 7b): con el registro
+ * abierto, uno sin tope que se filtra deja crear cuentas Pro sin límite con alias de un mismo buzón.
+ */
+export const CAP_REQUIRED = 'Todo código lleva tope de usos, también uno generado: sin él, uno que se filtra no tiene límite.';
+const cap = z.string(CAP_REQUIRED).trim().min(1, CAP_REQUIRED).pipe(whole('El tope es un número entero mayor que cero.', 1, USES_MAX));
 
 const CODE = z.object({
   code: z.union([z.literal(''), z.string().trim().regex(WRITTEN_CODE, 'Letras, números y guiones, sin espacios ni otros símbolos.').min(CODE_MIN, `Un código escrito a mano lleva al menos ${CODE_MIN} caracteres.`).max(CODE_MAX, `Hasta ${CODE_MAX} caracteres.`)]),
   label: z.string().trim().min(1, 'Escribe una etiqueta: es solo para el equipo.').max(LABEL_MAX, `Hasta ${LABEL_MAX} caracteres.`),
   from: z.union([z.literal(''), z.string().regex(LOCAL, 'Elige la fecha y la hora.')]),
   until: z.string().min(1, 'Elige hasta cuándo sirve el código: ningún código es infinito.').regex(LOCAL, 'Elige la fecha y la hora.'),
-  cap: optionalWhole('El tope es un número entero mayor que cero.', 1, USES_MAX),
+  cap,
   durationKind: z.enum(DURATION_KINDS, 'Elige cuánto dura el plan.'),
   monthlyCredits: whole(`Los créditos al mes van de 0 a ${thousands(MONTHLY_CREDITS_MAX)}.`, 0, MONTHLY_CREDITS_MAX),
   dailyBrake: whole('El freno es un número entero mayor que cero.', 1, USES_MAX),
@@ -67,14 +74,12 @@ export function readNewCode(form: FormData): { code: NewCode } | { errors: Error
   const parsed = CODE.safeParse(Object.fromEntries(FIELDS.map((k) => [k, form.get(k) ?? ''])));
   const errors: Errors = parsed.success ? {} : errorsOf(parsed.error.issues);
   const duration = parsed.success ? readDuration(parsed.data.durationKind, form, errors) : null;
-  // Un código escrito a mano se puede adivinar: lleva siempre tope (decisión 6).
-  if (parsed.success && parsed.data.code && parsed.data.cap === '') errors.cap = 'Un código escrito a mano lleva siempre tope de usos: se puede adivinar.';
   if (!parsed.success || !duration || Object.keys(errors).length) return { errors };
   const d = parsed.data;
   return {
     code: {
       code: d.code ? d.code.toUpperCase() : null, label: d.label, from: d.from ? bogotaInstant(d.from) : null, until: bogotaInstant(d.until),
-      cap: d.cap === '' ? null : d.cap, duration, monthlyCredits: d.monthlyCredits, dailyBrake: d.dailyBrake, reason: d.reason || null, key: d.key,
+      cap: d.cap, duration, monthlyCredits: d.monthlyCredits, dailyBrake: d.dailyBrake, reason: d.reason || null, key: d.key,
     },
   };
 }

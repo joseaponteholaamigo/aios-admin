@@ -1,0 +1,8 @@
+/* El diálogo que confirma quitar una excepción del tope de la voz. No es rojo: la cuenta vuelve al
+   general y la excepción se puede volver a poner. */
+.remove-exception-dialog { width: min(520px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.remove-exception-dialog::backdrop { background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.remove-exception-dialog__form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.remove-exception-dialog__title { font-size: 18px; font-weight: 650; }
+.remove-exception-dialog__form p { font-size: 14px; color: var(--ink-2); }
+.remove-exception-dialog__buttons { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }

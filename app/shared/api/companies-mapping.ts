@@ -1,9 +1,11 @@
-// La traducción de las empresas del backend (`/v1/admin/clientes…`) al idioma del panel.
-import type {
-  AccessRule, AccountCounts, AccountPerson, CompaniesPage, CompaniesSearch, Company, CompanyAccess, CompanyFile, CompanyHistoryEvent, ContentBase,
-  CustomConditions, EffectivePlan, KindCount, Quotas,
+// La traducción de las empresas del backend (`/v1/admin/clientes…` y `/v1/admin/cuentas`) al idioma del panel.
+import {
+  ACCOUNT_ORIGINS, type AccessRule, type AccountCounts, type AccountOrigin, type AccountPerson, type CompaniesPage, type CompaniesSearch,
+  type Company, type CompanyAccess, type CompanyFile, type CompanyHistoryEvent, type ContentBase, type CustomConditions, type EffectivePlan,
+  type IndexCounts, type KindCount, type OriginCount, type PersonalAccountsPage, type Quotas,
 } from '../../domain/companies';
-import { asArray, asRecord, num, numOrNull, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
+import { isCursor } from '../../domain/pagination';
+import { ApiContractError, asArray, asRecord, num, numOrNull, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
 import { toAccountKind, toSeatStatus } from './client-users-mapping';
 import { toPageInfo } from './page-mapping';
 
@@ -26,10 +28,25 @@ function toQuotas(raw: unknown, log: Log): Quotas {
   return quotas;
 }
 
-const COMPANY_FIELDS = ['id', 'nombre', 'tipo', 'persona', 'plan', 'estado', 'vencimiento', 'aviso', 'asientos', 'admins', 'pagaPorStripe', 'creadaEl'] as const;
+const COMPANY_FIELDS = ['id', 'nombre', 'tipo', 'persona', 'nacidaDe', 'plan', 'estado', 'vencimiento', 'aviso', 'asientos', 'admins', 'pagaPorStripe', 'creadaEl'] as const;
 const FILE_FIELDS = [...COMPANY_FIELDS, 'planEfectivo', 'condiciones', 'acceso', 'accesoPendiente'] as const;
 
 const EXPIRED_BY: Record<string, Company['expiry']['expiredBy']> = { suscripcion: 'subscription', fecha: 'date' };
+
+/** De dónde salió una cuenta personal (`nacidaDe`, CA-23 de «Registro abierto»), en los nombres del panel. */
+const ORIGIN_FROM_API: Record<string, AccountOrigin> = { registro: 'signup', codigo: 'code', compra: 'purchase', webinar: 'webinar', equipo: 'team' };
+const API_ORIGIN = Object.fromEntries(Object.entries(ORIGIN_FROM_API).map(([api, origin]) => [origin, api])) as Record<AccountOrigin, string>;
+
+/**
+ * El origen de una cuenta personal. El backend lo decide, también para una cuenta vieja sin el campo: aquí no
+ * se adivina. Uno que el panel no conoce queda en `null` y en el log, nunca en otro origen.
+ */
+function toOrigin(raw: unknown, log: Log): AccountOrigin | null {
+  if (raw === undefined || raw === null) return null;
+  const origin = ORIGIN_FROM_API[String(raw)];
+  if (!origin) log(`una cuenta personal trae un origen que el panel no conoce: ${String(raw)}`);
+  return origin ?? null;
+}
 
 /** La persona de una cuenta personal, o `null` (una empresa, o una cuenta sin nadie). */
 function toAccountPerson(raw: unknown): AccountPerson | null {
@@ -38,7 +55,7 @@ function toAccountPerson(raw: unknown): AccountPerson | null {
   return { email: str(p.correo, 'persona.correo'), status: toSeatStatus(p.estado), invitedAt: strOrNull(p.invitadoEl), acceptedAt: strOrNull(p.aceptadoEl) };
 }
 
-function toCompanyFields(r: Record<string, unknown>): Company {
+function toCompanyFields(r: Record<string, unknown>, log: Log): Company {
   const expiry = r.vencimiento && typeof r.vencimiento === 'object' ? (r.vencimiento as Record<string, unknown>) : {};
   const seats = r.asientos && typeof r.asientos === 'object' ? (r.asientos as Record<string, unknown>) : {};
   const kind = toAccountKind(r.tipo);
@@ -47,6 +64,7 @@ function toCompanyFields(r: Record<string, unknown>): Company {
     name: str(r.nombre, 'empresa.nombre'),
     kind,
     person: kind === 'personal' ? toAccountPerson(r.persona) : null,
+    origin: kind === 'personal' ? toOrigin(r.nacidaDe, log) : null,
     plan: r.plan === 'personalizado' ? 'custom' : strOrNull(r.plan),
     status: strOrNull(r.estado),
     expiry: { expired: expiry.vencido === true, expiredBy: EXPIRED_BY[String(expiry.vencidoPor)] ?? null, until: strOrNull(expiry.hasta) },
@@ -61,14 +79,23 @@ function toCompanyFields(r: Record<string, unknown>): Company {
 export function toCompany(raw: unknown, log: Log): Company {
   const r = asRecord(raw, 'empresa');
   warnUnknownFields(r, COMPANY_FIELDS, 'una empresa', log);
-  return toCompanyFields(r);
+  return toCompanyFields(r, log);
 }
 
-/** Cuántas de un tipo, por plan. Un conteo que no vino es cero: el backend viejo no lo mandaba. */
+/**
+ * Cuántas de cada plan, o `null` si el backend no lo dijo: nunca ceros. Con el índice de empresas (D-13), la lista
+ * de Empresas manda `personales.planes: null`, porque contarlos obligaría a leer todas las cuentas personales.
+ */
+function toPlanCounts(raw: unknown): KindCount['plans'] {
+  if (!raw || typeof raw !== 'object') return null;
+  const p = raw as Record<string, unknown>;
+  return { free: num(p.free), pro: num(p.pro), team: num(p.team), custom: num(p.personalizado) };
+}
+
+/** Cuántas de un tipo, en total y por plan. Un total que no vino es cero: el backend viejo no mandaba el conteo. */
 function toKindCount(raw: unknown): KindCount {
   const k = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  const plans = k.planes && typeof k.planes === 'object' ? (k.planes as Record<string, unknown>) : {};
-  return { total: num(k.total), plans: { free: num(plans.free), pro: num(plans.pro), team: num(plans.team), custom: num(plans.personalizado) } };
+  return { total: num(k.total), plans: toPlanCounts(k.planes) };
 }
 
 function toAccountCounts(raw: unknown): AccountCounts {
@@ -83,6 +110,50 @@ export function toCompaniesPage(body: unknown, log: Log): CompaniesPage {
     companies,
     page: toPageInfo(b.paginacion, companies.length),
     counts: toAccountCounts(b.conteo),
+    onlySome: b.soloAlgunas !== false,
+  };
+}
+
+/** Un número del índice. Uno que no es un entero rompe el contrato: nunca se muestra como 0. */
+function counted(value: unknown, what: string): number {
+  if (!Number.isSafeInteger(value)) throw new ApiContractError(`${what}: no es un número entero`);
+  return value as number;
+}
+
+/** Cuántas cuentas de un tipo cuenta el índice, en total y por origen. Un origen que el panel no conoce queda en el log. */
+function toOriginCount(raw: unknown, what: string, log: Log): OriginCount {
+  const c = asRecord(raw, what);
+  const byOrigin = asRecord(c.porOrigen, `${what}.porOrigen`);
+  warnUnknownFields(byOrigin, Object.keys(ORIGIN_FROM_API), `${what}.porOrigen`, log);
+  return {
+    total: counted(c.total, `${what}.total`),
+    byOrigin: Object.fromEntries(ACCOUNT_ORIGINS.map((o) => [o, counted(byOrigin[API_ORIGIN[o]], `${what}.porOrigen.${API_ORIGIN[o]}`)])) as Record<AccountOrigin, number>,
+  };
+}
+
+/** El cursor de la página siguiente: `null` en la última. Uno que no tiene la forma de un cursor rompe el contrato. */
+function toNextCursor(value: unknown): string | null {
+  if (value === null) return null;
+  if (!isCursor(value)) throw new ApiContractError('siguiente: no es un cursor ni null');
+  return value;
+}
+
+/** Los contadores de las dos pestañas según el índice. */
+function toIndexCounts(raw: unknown, log: Log): IndexCounts {
+  const counts = asRecord(raw, 'contadores');
+  return { companies: toOriginCount(counts.empresas, 'contadores.empresas', log), personal: toOriginCount(counts.personales, 'contadores.personales', log) };
+}
+
+/** Una página de las cuentas personales por el índice (`GET /v1/admin/cuentas?tipo=personal`, CA-23 y CA-24 de «Registro abierto»). */
+export function toPersonalAccountsPage(body: unknown, log: Log): PersonalAccountsPage {
+  const b = asRecord(body, 'la lista de cuentas personales');
+  return {
+    accounts: asArray(b.cuentas, 'cuentas').map((c) => toCompany(c, log)),
+    next: toNextCursor(b.siguiente),
+    // Solo con la marca del relleno (`contadoresCompletos: true`, D-17) los contadores cuentan todas las cuentas. Sin
+    // ella, o sin el dato, no se leen: un número a medias se vería como cierto, y ninguna pantalla debe tenerlo.
+    counts: b.contadoresCompletos === true ? toIndexCounts(b.contadores, log) : null,
+    // Sin el dato, se avisa del filtro: callar que faltan cuentas es peor que avisar de más.
     onlySome: b.soloAlgunas !== false,
   };
 }
@@ -139,7 +210,7 @@ export function toCompanyFile(body: unknown, log: Log): CompanyFile {
   const r = asRecord(body, 'la ficha');
   warnUnknownFields(r, FILE_FIELDS, 'la ficha de una empresa', log);
   return {
-    ...toCompanyFields(r),
+    ...toCompanyFields(r, log),
     effectivePlan: toEffectivePlan(r.planEfectivo, log),
     conditions: toConditions(r.condiciones, log),
     access: toAccess(r.acceso),

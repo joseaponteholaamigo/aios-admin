@@ -1,0 +1,9 @@
+/* Los números por origen de las cuentas personales: una fila de pastillas bajo el buscador, con la
+ * etiqueta como las de las fichas y el número en negrita. */
+
+.origin-counts { padding: 14px 20px 0; display: flex; flex-direction: column; gap: 8px; }
+.origin-counts__list { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.origin-counts__item { display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); }
+.origin-counts__item dt { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.origin-counts__item dd { margin: 0; font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink); }
+.origin-counts__note { font-size: 12px; color: var(--muted); }

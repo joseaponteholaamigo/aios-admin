@@ -35,7 +35,7 @@ export function CodeActions({ code, rejection, rejectedAction }: CodeActionsProp
   return (
     <section className="card">
       <div className="card-h"><div><h2>Acciones</h2>
-        <p>{code.pausedBy === 'brake' ? 'Lo pausó el freno del día: reanúdalo si las reservas son legítimas, o revócalo si se filtró.' : 'Pausado, nadie puede reservarlo; revocado, ya no vuelve.'}</p></div></div>
+        <p>{code.pausedBy === 'brake' ? 'Lo pausó el freno del día: reanúdalo si el uso de hoy es legítimo, o revócalo si se filtró.' : 'Pausado, nadie puede usarlo; revocado, ya no vuelve.'}</p></div></div>
       <div className="card-b">
         {rejection && !confirming && <FormRejection rejection={rejection} />}
         {/* `key`: el formulario vuelve a nacer cuando el código cambia de estado. Si no, el motivo de

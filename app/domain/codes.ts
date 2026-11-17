@@ -22,7 +22,10 @@ export type RegistrationCode = {
   /** Desde y hasta cuándo se puede usar, ISO 8601. */
   from: string;
   until: string;
-  /** El tope de usos, o `null` sin tope (solo un código generado). */
+  /**
+   * El tope de usos, o `null` sin tope: solo un código generado antes de que todo código llevara tope
+   * (enmienda 7b de la spec). Esos se revocan o se pausan antes de abrir el registro.
+   */
   cap: number | null;
   uses: number;
   /** Las reservas que todavía no vencen: ocupan lugar contra el tope. */
@@ -47,7 +50,8 @@ export type NewCode = {
   label: string;
   from: string | null;
   until: string;
-  cap: number | null;
+  /** Todo código nuevo lleva tope, también uno generado (enmienda 7b; CA-31 de la spec «Registro abierto» de aios-tower). */
+  cap: number;
   duration: CodeDuration;
   monthlyCredits: number;
   dailyBrake: number;

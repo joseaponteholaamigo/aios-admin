@@ -9,6 +9,7 @@ import type { AccountDeletion, DeletedAccount } from '../../domain/account-delet
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
 import type { CreditLoad, LoadedLot, SeatsChange, SeatsChanged } from '../../domain/credits';
 import type { CodeAction, NewCode, RegistrationCode } from '../../domain/codes';
+import type { VoiceCapChange, VoiceCapChanged } from '../../domain/voice-cap';
 import type { CreatedTeamMember, NewTeamMember, PermissionsChange, TeamAction, TeamPerson } from '../../domain/team';
 import { codePath, toBackendCodeAction, toBackendNewCode, toWrittenCode } from './codes-mapping';
 import {
@@ -18,6 +19,7 @@ import { toBackendLoad, toBackendSeatsChange, toLoadedLot, toSeatsChanged } from
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
+import { VOICE_CAP_PATH, toBackendVoiceCapChange, toVoiceCapChanged } from './voice-cap-mapping';
 import { personActionPath, toBackendAccount, toBackendPerson, toCreatedAccount, toInvitedPerson, toPersonActionDone, toWriteRejection } from './write-mapping';
 
 /** Crear una cuenta mueve y borra cosas: le cabe más que a una lectura, por debajo de los 30 s de su Lambda. */
@@ -47,6 +49,8 @@ export type AdminWriteApi = {
   createCode(token: string, code: NewCode): Promise<WriteResult<RegistrationCode>>;
   /** Pausar, reanudar o revocar un código (CA-5). */
   changeCodeState(token: string, code: string, action: CodeAction, reason: string | null): Promise<WriteResult<RegistrationCode>>;
+  /** Cambiar el tope general de la voz, o poner o quitar la excepción de una cuenta. Solo el superadministrador, con MFA reciente (CA-33). */
+  changeVoiceCap(token: string, change: VoiceCapChange): Promise<WriteResult<VoiceCapChanged>>;
   /** Dar de alta a una persona del equipo ENSŌ: con la misma clave, dos veces es una (spec «Equipo ENSŌ», CA-2). */
   createTeamMember(token: string, member: NewTeamMember): Promise<WriteResult<CreatedTeamMember>>;
   /** Cambiar los permisos (y la marca de superadministrador) de una persona del equipo. */
@@ -108,6 +112,8 @@ export function createAdminWriteApi({
     loadCredits: (token, companyId, load) => post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/creditos`, token, toBackendLoad(load), toLoadedLot),
     createCode: (token, code) => post('/v1/admin/codigos', token, toBackendNewCode(code), toWrittenCode),
     changeCodeState: (token, code, action, reason) => post(`${codePath(code)}/estado`, token, toBackendCodeAction(action, reason), toWrittenCode),
+    // La cuenta de una excepción va en el cuerpo, como en el resto de las escrituras con datos de un cliente.
+    changeVoiceCap: (token, change) => post(VOICE_CAP_PATH, token, toBackendVoiceCapChange(change), toVoiceCapChanged, 'PUT'),
     createTeamMember: (token, member) => post('/v1/admin/equipo', token, toBackendNewTeamMember(member), (b) => toCreatedTeamMember(b, log)),
     changeTeamPermissions: (token, sub, change) =>
       post(teamPermissionsPath(sub), token, toBackendPermissionsChange(change), (b) => toChangedTeamPerson(b, log), 'PUT'),
