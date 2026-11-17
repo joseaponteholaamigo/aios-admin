@@ -4,5 +4,3 @@
 .new-account__plan { max-width: 260px; }
 .new-account__actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .new-account .banner ul { margin: 6px 0 0 18px; font-size: 13px; color: var(--ink-2); }
-/* `.card-b > * + *` separa bloques apilados; en una grilla empujaría la segunda columna hacia abajo. */
-.new-account .card-b.grid > * + * { margin-top: 0; }
