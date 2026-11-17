@@ -61,25 +61,22 @@ export function toApiPermissions(permissions: TeamMember['permissions']): Record
   );
 }
 
-/** La lista del equipo (`/v1/admin/equipo`): cada persona con la misma forma de `/yo`. */
-export function toTeamList(body: unknown, log: (message: string) => void): TeamMember[] {
-  const personas = body && typeof body === 'object' ? (body as Record<string, unknown>).personas : undefined;
-  if (!Array.isArray(personas)) throw new TeamMemberContractError('`/equipo` sin `personas`');
-  return personas.map((p) => toTeamMember(p, log));
-}
+/** Los estados del backend, en el panel. */
+const STATUS_FROM_API: Record<string, TeamMember['status']> = { [ACTIVE_STATUS]: 'active', suspendida: 'inactive', retirada: 'retired' };
 
 /** La persona del equipo, en el idioma del panel. **Lanza** si la respuesta no tiene la forma de `/yo`. */
 export function toTeamMember(body: unknown, log: (message: string) => void): TeamMember {
   if (!body || typeof body !== 'object') throw new TeamMemberContractError('`/yo` no devolvió un objeto');
   const b = body as Record<string, unknown>;
   if (typeof b.actor !== 'string' || !b.actor) throw new TeamMemberContractError('`/yo` sin `actor`');
-  if (b.estado !== ACTIVE_STATUS && b.estado !== 'suspendida') log(`/yo trae un estado que el panel no conoce: ${JSON.stringify(b.estado)}`);
+  if (!(String(b.estado) in STATUS_FROM_API)) log(`/yo trae un estado que el panel no conoce: ${JSON.stringify(b.estado)}`);
   return {
     actor: b.actor,
     email: stringOrNull(b.correo),
     name: stringOrNull(b.nombre),
     isSuperadmin: b.superadmin === true,
-    status: b.estado === ACTIVE_STATUS ? 'active' : 'inactive',
+    // Un estado desconocido niega, como suspendida: lo mal declarado nunca abre.
+    status: STATUS_FROM_API[String(b.estado)] ?? 'inactive',
     permissions: mapPermissions(b.permisos, log),
   };
 }

@@ -1,0 +1,10 @@
+/* El editor de permisos de una persona del equipo: una fila por módulo, agrupadas como el menú. */
+.permissions-editor { display: flex; flex-direction: column; gap: 14px; }
+.permissions-editor__super { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+.permissions-editor__group { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; margin: 0; }
+.permissions-editor__group legend { padding: 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.permissions-editor__group--muted { opacity: .55; }
+.permissions-editor__row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); }
+.permissions-editor__row:first-of-type { border-top: 0; }
+.permissions-editor__module { min-width: 180px; font-weight: 600; font-size: 14px; }
+.permissions-editor__level { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; }

@@ -10,7 +10,11 @@ import type { PersonActionDone, PersonActionRequest } from '../../domain/person-
 import type { CreditLoad, LoadedLot, SeatsChange, SeatsChanged } from '../../domain/credits';
 import type { CodeAction, NewCode, RegistrationCode } from '../../domain/codes';
 import type { VoiceCapChange, VoiceCapChanged } from '../../domain/voice-cap';
+import type { CreatedTeamMember, NewTeamMember, PermissionsChange, TeamAction, TeamPerson } from '../../domain/team';
 import { codePath, toBackendCodeAction, toBackendNewCode, toWrittenCode } from './codes-mapping';
+import {
+  teamActionPath, teamPermissionsPath, toBackendNewTeamMember, toBackendPermissionsChange, toChangedTeamPerson, toCreatedTeamMember, toTeamPersonBody,
+} from './team-mapping';
 import { toBackendLoad, toBackendSeatsChange, toLoadedLot, toSeatsChanged } from './credits-mapping';
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
@@ -47,6 +51,13 @@ export type AdminWriteApi = {
   changeCodeState(token: string, code: string, action: CodeAction, reason: string | null): Promise<WriteResult<RegistrationCode>>;
   /** Cambiar el tope general de la voz, o poner o quitar la excepción de una cuenta. Solo el superadministrador, con MFA reciente (CA-33). */
   changeVoiceCap(token: string, change: VoiceCapChange): Promise<WriteResult<VoiceCapChanged>>;
+  /** Dar de alta a una persona del equipo ENSŌ: con la misma clave, dos veces es una (spec «Equipo ENSŌ», CA-2). */
+  createTeamMember(token: string, member: NewTeamMember): Promise<WriteResult<CreatedTeamMember>>;
+  /** Cambiar los permisos (y la marca de superadministrador) de una persona del equipo. */
+  changeTeamPermissions(token: string, sub: string, change: PermissionsChange): Promise<WriteResult<TeamPerson>>;
+  /** Suspender, reactivar, reenviar la invitación, restablecer el MFA o retirar a una persona del equipo. */
+  /** `version`: la de la persona que se vio; si otro la cambió después, el backend responde `conflicto`. */
+  teamAction(token: string, sub: string, action: TeamAction, reason: string, version: string | null): Promise<WriteResult<TeamPerson>>;
 };
 
 /** Los estados cuyo cuerpo trae un rechazo para el formulario. */
@@ -103,5 +114,10 @@ export function createAdminWriteApi({
     changeCodeState: (token, code, action, reason) => post(`${codePath(code)}/estado`, token, toBackendCodeAction(action, reason), toWrittenCode),
     // La cuenta de una excepción va en el cuerpo, como en el resto de las escrituras con datos de un cliente.
     changeVoiceCap: (token, change) => post(VOICE_CAP_PATH, token, toBackendVoiceCapChange(change), toVoiceCapChanged, 'PUT'),
+    createTeamMember: (token, member) => post('/v1/admin/equipo', token, toBackendNewTeamMember(member), (b) => toCreatedTeamMember(b, log)),
+    changeTeamPermissions: (token, sub, change) =>
+      post(teamPermissionsPath(sub), token, toBackendPermissionsChange(change), (b) => toChangedTeamPerson(b, log), 'PUT'),
+    teamAction: (token, sub, action, reason, version) =>
+      post(teamActionPath(sub, action), token, { motivo: reason, ...(version ? { version } : {}) }, (b) => toTeamPersonBody(b, log)),
   };
 }

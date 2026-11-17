@@ -43,8 +43,11 @@ export type TeamMember = {
   email: string | null;
   name: string | null;
   isSuperadmin: boolean;
-  /** Cualquier estado que no sea `active` niega todo. */
-  status: 'active' | 'inactive';
+  /**
+   * Cualquier estado que no sea `active` niega todo. `inactive` es suspendida; `retired`, fuera del
+   * equipo (su fila queda para la auditoría: spec «Equipo ENSŌ», decisión 2).
+   */
+  status: 'active' | 'inactive' | 'retired';
   permissions: Partial<Record<Module, Level>>;
 };
 

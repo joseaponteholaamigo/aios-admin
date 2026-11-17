@@ -14,6 +14,9 @@ import type { IconName } from '../icons/icon-paths';
 export const MENU_GROUPS = ['administration', 'business'] as const;
 export type MenuGroup = (typeof MENU_GROUPS)[number];
 
+/** El nombre visible de cada grupo del menú (la barra lateral, y el editor de permisos de «Equipo ensō»). */
+export const MENU_GROUP_LABELS: Record<MenuGroup, string> = { administration: 'Administración', business: 'Negocio' };
+
 /** Cómo aparece una ruta en el menú: su nombre, su grupo y su ícono. */
 export type MenuEntry = { label: string; group: MenuGroup; icon: IconName };
 
@@ -63,6 +66,9 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   { path: 'client-users/:companyId/credits', file: 'modules/client-users/routes/person-credits.tsx', access: { module: 'usage', level: 'view' } },
   { path: 'client-users/:companyId/credits/load', file: 'modules/client-users/routes/person-credits-load.tsx', access: { module: 'companies', level: 'edit' } },
   { path: 'team', file: 'modules/team/routes/team.tsx', access: 'superadmin', menu: { label: 'Equipo ensō', group: 'administration', icon: 'people' } },
+  // Dar de alta, ver y administrar a una persona del equipo (spec «Equipo ENSŌ»): solo el superadministrador.
+  { path: 'team/new', file: 'modules/team/routes/team-new.tsx', access: 'superadmin' },
+  { path: 'team/:sub', file: 'modules/team/routes/team-member.tsx', access: 'superadmin' },
   {
     // La bitácora de créditos (spec «Créditos por persona» de aios-tower, CA-27 a CA-32).
     path: 'usage', file: 'modules/usage/routes/usage.tsx', access: { module: 'usage', level: 'view' },

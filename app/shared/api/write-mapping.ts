@@ -7,6 +7,7 @@ import type { PersonAction, PersonActionDone } from '../../domain/person-actions
 import { ApiContractError, asRecord, num, numOrNull, str, strOrNull, type Log } from './api-reading';
 import { toSeatStatus } from './client-users-mapping';
 import { CODE_FIELD_FROM_API } from './codes-mapping';
+import { TEAM_FIELD_FROM_API } from './team-mapping';
 import { toDeletionSite } from './deletion-mapping';
 import { toCompany } from './companies-mapping';
 
@@ -52,8 +53,17 @@ const toCompanyRef = (raw: unknown) => (raw ? { id: str(asRecord(raw, 'empresa')
 const strings = (raw: unknown) => (Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []);
 
 /** Cada `codigo` del backend, en un rechazo del panel. Un código que no está aquí rompe el contrato. */
+/** El campo que señala un rechazo `invalido`, en el nombre del formulario del panel: los de los códigos y los del equipo. */
+const FIELD_FROM_API: Record<string, string> = { ...CODE_FIELD_FROM_API, ...TEAM_FIELD_FROM_API };
+const invalid = (b: Record<string, unknown>, fallback = 'el pedido no se entiende'): WriteRejection => ({
+  code: 'invalid', message: strOrNull(b.error) ?? fallback, field: FIELD_FROM_API[strOrNull(b.campo) ?? ''] ?? null,
+});
+
+/** El mensaje del backend, solo si trae uno: qué quedó hecho o qué hacer. */
+const withMessage = (b: Record<string, unknown>) => (strOrNull(b.error) ? { message: strOrNull(b.error) } : {});
+
 const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection> = {
-  invalido: (b) => ({ code: 'invalid', message: strOrNull(b.error) ?? 'el pedido no se entiende', field: CODE_FIELD_FROM_API[strOrNull(b.campo) ?? ''] ?? null }),
+  invalido: (b) => invalid(b),
   'plan-rechazado': (b) => ({ code: 'plan-rejected', rejections: strings(b.rechazos) }),
   'correo-de-otra-empresa': (b) => ({ code: 'email-in-other-company', company: toCompanyRef(b.empresa) }),
   'correo-en-cuenta-personal': (b) => ({ code: 'email-in-personal-account', account: toAccountRef(b.cuenta) }),
@@ -73,7 +83,7 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'no-existe': () => ({ code: 'not-found' }),
   'sin-login': (b) => ({ code: 'no-login', seat: b.asiento == null ? null : toSeatStatus(b.asiento) }),
   'ultimo-admin': () => ({ code: 'last-admin' }),
-  'accion-incompleta': () => ({ code: 'action-incomplete' }),
+  'accion-incompleta': (b) => ({ code: 'action-incomplete', ...withMessage(b) }),
   'borrar-incompleto': () => ({ code: 'delete-incomplete' }),
   confirmacion: () => ({ code: 'confirmation' }),
   'cuenta-con-cobro': () => ({ code: 'account-charging' }),
@@ -84,10 +94,16 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'no-es-personalizado': () => ({ code: 'not-custom' }),
   ocupado: () => ({ code: 'busy' }),
   'codigo-existe': () => ({ code: 'code-exists' }),
-  'estado-no-permite': () => ({ code: 'state-not-allowed' }),
+  'estado-no-permite': (b) => ({ code: 'state-not-allowed', ...withMessage(b) }),
   'codigo-ocupado': () => ({ code: 'code-busy' }),
-  // Otro cambio escribió primero la misma fila (el tope de la voz, CA-33 de «Registro abierto»): no se escribió nada.
+  // El equipo ENSŌ (spec «Equipo ENSŌ»). Sin motivo y fuera del dominio van junto a su campo.
+  'sin-motivo': (b) => ({ code: 'invalid', message: strOrNull(b.error) ?? 'falta el motivo', field: 'reason' }),
+  'correo-fuera-del-dominio': (b) => invalid(b, 'al equipo solo entran correos @beenso.com'),
+  'ya-en-el-equipo': (b) => ({ code: 'already-in-team', sub: strOrNull(b.sub) }),
+  'a-si-mismo': () => ({ code: 'self-action' }),
+  'invitacion-aceptada': () => ({ code: 'invitation-accepted' }),
   conflicto: () => ({ code: 'conflict' }),
+  'pool-no-responde': () => ({ code: 'pool-unavailable' }),
 };
 
 /**
