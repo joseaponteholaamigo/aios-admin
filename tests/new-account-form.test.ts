@@ -41,9 +41,9 @@ describe('el formulario de crear una cuenta', () => {
     expect('account' in r && r.account.conditions).toBeNull();
   });
 
-  // EL DEFECTO: un «Pro sin cobro» con otras condiciones ya no es Pro, es Personalizado. Las condiciones son fijas aunque
+  // EL DEFECTO: un Pro del panel con otras condiciones ya no es Pro, es Personalizado. Las condiciones son fijas aunque
   // el formulario (o un pedido armado a mano) mande otras, y una empresa no lo puede elegir.
-  test('⛔ Pro sin cobro llega con las condiciones de Pro, fijas, y solo en una cuenta personal', () => {
+  test('⛔ el Pro del panel llega con las condiciones de Pro, fijas, y solo en una cuenta personal', () => {
     const r = readNewAccount(formOf({ ...EMPRESA, kind: 'personal', plan: 'pro', content: 'none', endsOn: '2027-01-01', 'quota-radar': '1', schedules: '' }));
     expect('account' in r && [r.account.plan, r.account.conditions]).toEqual(['pro', PRO_CONDITIONS]);
     const deEmpresa = readNewAccount(formOf({ ...EMPRESA, plan: 'pro' }));

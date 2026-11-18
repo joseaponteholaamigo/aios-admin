@@ -75,8 +75,8 @@ export function readNewAccount(form: FormData): { account: NewAccount } | { erro
   const errors: Errors = base.success ? {} : errorsOf(base.error.issues);
   const kind = base.success ? base.data.kind : 'company';
   const plan = base.success ? base.data.plan : null;
-  if (plan && !planFitsKind(plan, kind)) errors.plan = 'Pro sin cobro es solo para una cuenta personal.';
-  // Pro sin cobro no lee las condiciones del formulario: son fijas, aunque alguien las mande.
+  if (plan && !planFitsKind(plan, kind)) errors.plan = 'Pro es solo para una cuenta personal.';
+  // Pro no lee las condiciones del formulario: son fijas, aunque alguien las mande.
   const conditions = plan === 'custom' ? readConditions(form, kind, errors) : plan === 'pro' ? { ...PRO_CONDITIONS, quotas: {} } : null;
   if (!base.success || Object.keys(errors).length) return { errors };
   return {
