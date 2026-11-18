@@ -24,6 +24,12 @@ export const valuesOf = (form: FormData): FormValues =>
 
 export const quotaField = (resource: (typeof QUOTA_RESOURCES)[number]) => `quota-${resource}`;
 
+/**
+ * La fecha de fin del Pro. Va en su propio campo: el `endsOn` de las condiciones de Personalizado sigue en el formulario
+ * aunque esté oculto, y con el mismo nombre se leería uno por otro.
+ */
+export const PRO_ENDS_ON_FIELD = 'proEndsOn';
+
 const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -69,6 +75,13 @@ function readConditions(form: FormData, kind: AccountKind, errors: Errors): Plan
   return { content, seats, team: personal ? false : form.get('team') === 'on', schedules: form.get('schedules') === 'on', endsOn: endsOn || null, quotas };
 }
 
+/** Las condiciones de Pro, fijas, con la fecha de fin que se eligió (vacía: sin fecha de fin). */
+function readProConditions(form: FormData, errors: Errors): PlanConditions {
+  const endsOn = String(form.get(PRO_ENDS_ON_FIELD) ?? '').trim();
+  if (endsOn && !DAY.test(endsOn)) errors[PRO_ENDS_ON_FIELD] = 'La fecha va como AAAA-MM-DD.';
+  return { ...PRO_CONDITIONS, quotas: {}, endsOn: endsOn || null };
+}
+
 /** El pedido del formulario (`{ account }`) o sus errores por campo (`{ errors }`). */
 export function readNewAccount(form: FormData): { account: NewAccount } | { errors: Errors } {
   const base = ACCOUNT.safeParse(Object.fromEntries(['kind', 'name', 'plan', 'adminEmail', 'key'].map((k) => [k, form.get(k) ?? ''])));
@@ -76,8 +89,8 @@ export function readNewAccount(form: FormData): { account: NewAccount } | { erro
   const kind = base.success ? base.data.kind : 'company';
   const plan = base.success ? base.data.plan : null;
   if (plan && !planFitsKind(plan, kind)) errors.plan = 'Pro es solo para una cuenta personal.';
-  // Pro no lee las condiciones del formulario: son fijas, aunque alguien las mande.
-  const conditions = plan === 'custom' ? readConditions(form, kind, errors) : plan === 'pro' ? { ...PRO_CONDITIONS, quotas: {} } : null;
+  // Pro no lee las condiciones del formulario: son fijas, aunque alguien las mande. Solo se elige su fecha de fin.
+  const conditions = plan === 'custom' ? readConditions(form, kind, errors) : plan === 'pro' ? readProConditions(form, errors) : null;
   if (!base.success || Object.keys(errors).length) return { errors };
   return {
     account: { ...base.data, adminEmail: base.data.adminEmail.toLowerCase(), conditions, moveFromPersonal: form.get(MOVE_FIELD) === MOVE_VALUE },

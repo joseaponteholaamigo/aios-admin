@@ -11,7 +11,7 @@ import { FieldError } from '../../../shared/ui/field-error';
 import { FormRejection } from '../../../shared/ui/form-rejection';
 import { MoveFromPersonalNotice, SUBMIT_FIELD, SUBMIT_VALUE } from '../../../shared/ui/move-from-personal-notice';
 import { SubmitButton } from '../../../shared/ui/submit-button';
-import { defaultConditions, NAME_MAX, type FormValues } from '../new-account-form-data';
+import { defaultConditions, NAME_MAX, PRO_ENDS_ON_FIELD, type FormValues } from '../new-account-form-data';
 import { PlanConditionsFields } from './plan-conditions-fields';
 import './new-account-form.css';
 
@@ -72,7 +72,15 @@ export function NewAccountForm({ kind, formKey, canMove, values, errors, rejecti
             <FieldError message={errors.plan} />
           </div>
           {plan === 'pro' && (
-            <p className="muted small">Todo el contenido, la voz, los créditos del mes y los horarios, sin suscripción ni fecha de fin. No se cambia: para otras condiciones, elige Personalizado.</p>
+            <>
+              <p className="muted small">Todo el contenido, la voz, los créditos del mes y los horarios, sin suscripción. Solo se elige la fecha de fin: para otras condiciones, elige Personalizado.</p>
+              <div className="field new-account__plan">
+                <label htmlFor="pro-ends-on">Fecha de fin (opcional)</label>
+                <input id="pro-ends-on" name={PRO_ENDS_ON_FIELD} type="date" defaultValue={values?.[PRO_ENDS_ON_FIELD] ?? ''} />
+                <small>Vacía: sin fecha de fin. Al llegar, la cuenta pasa a Free.</small>
+                <FieldError message={errors[PRO_ENDS_ON_FIELD]} />
+              </div>
+            </>
           )}
           <PlanConditionsFields kind={kind} values={values} defaults={defaultConditions(kind)} errors={errors} hidden={plan !== 'custom'} />
           {rejection?.code === 'plan-rejected' && (

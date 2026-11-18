@@ -114,6 +114,12 @@ describe('el formulario', () => {
     expect([formulario('personal').includes('<option value="pro">Pro</option>'), formulario('company').includes('value="pro"')]).toEqual([true, false]);
   });
 
+  test('con Pro elegido, el formulario pide solo la fecha de fin, opcional', () => {
+    const html = render(NewAccountForm, { kind: 'personal', formKey: KEY, canMove: false, values: { plan: 'pro' }, errors: {}, rejection: null, createdAccountId: null });
+    const fecha = html.match(/<input[^>]*id="pro-ends-on"[^>]*>/)?.[0] ?? '';
+    expect([fecha.includes('type="date"'), fecha.includes('required'), html.includes('Fecha de fin (opcional)')]).toEqual([true, false, true]);
+  });
+
   test('CA-23 · el formulario no tiene dónde mostrar una license key', () => {
     expect(render(NewAccountForm, { kind: 'company', formKey: KEY, canMove: false, values: null, errors: {}, rejection: null, createdAccountId: null }).toLowerCase()).not.toMatch(/license|llave|aios_/);
   });

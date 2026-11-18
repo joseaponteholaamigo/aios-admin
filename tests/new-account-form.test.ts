@@ -6,7 +6,7 @@
 // tope», o el «mover» encendido sin que nadie oprimiera el botón, que borra una cuenta.
 import { describe, expect, test } from 'vitest';
 import { PRO_CONDITIONS } from '../app/domain/account-creation';
-import { readNewAccount } from '../app/modules/companies/new-account-form-data';
+import { PRO_ENDS_ON_FIELD, readNewAccount } from '../app/modules/companies/new-account-form-data';
 
 const KEY = 'clave-de-prueba-0001';
 
@@ -48,6 +48,18 @@ describe('el formulario de crear una cuenta', () => {
     expect('account' in r && [r.account.plan, r.account.conditions]).toEqual(['pro', PRO_CONDITIONS]);
     const deEmpresa = readNewAccount(formOf({ ...EMPRESA, plan: 'pro' }));
     expect('errors' in deEmpresa && Object.keys(deEmpresa.errors)).toEqual(['plan']);
+  });
+
+  // EL DEFECTO: sin fecha propia, el Pro no podría vencer; y si leyera la fecha de las condiciones de Personalizado, que
+  // siguen ocultas en el formulario, tomaría una que nadie eligió para el Pro.
+  test('⛔ la fecha de fin del Pro es opcional, sale de su propio campo y una mal escrita vuelve con su error', () => {
+    const pro = { ...EMPRESA, kind: 'personal', plan: 'pro', endsOn: '2027-06-30' };
+    const conFecha = readNewAccount(formOf({ ...pro, [PRO_ENDS_ON_FIELD]: '2027-01-31' }));
+    expect('account' in conFecha && conFecha.account.conditions).toEqual({ ...PRO_CONDITIONS, endsOn: '2027-01-31' });
+    const sinFecha = readNewAccount(formOf({ ...pro, [PRO_ENDS_ON_FIELD]: '' }));
+    expect('account' in sinFecha && sinFecha.account.conditions?.endsOn).toBeNull();
+    const mala = readNewAccount(formOf({ ...pro, [PRO_ENDS_ON_FIELD]: '31/01/2027' }));
+    expect('errors' in mala && Object.keys(mala.errors)).toEqual([PRO_ENDS_ON_FIELD]);
   });
 
   test('⛔ mover solo se enciende con el botón de mover', () => {

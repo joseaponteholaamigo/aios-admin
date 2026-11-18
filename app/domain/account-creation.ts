@@ -35,8 +35,8 @@ export type PlanConditions = {
 
 /**
  * El Pro del panel, sin suscripción: un Personalizado con las condiciones de Pro, las mismas del webinar y de los códigos (`CONDICIONES_PRO`
- * del backend). Son fijas: con otras condiciones ya no es Pro, es Personalizado. Solo para una cuenta personal, sin fecha
- * de fin.
+ * del backend). Son fijas: con otras condiciones ya no es Pro, es Personalizado. Solo se elige la fecha de fin, que es
+ * opcional (`endsOn` aquí es la de por defecto: sin fecha). Solo para una cuenta personal.
  */
 export const PRO_CONDITIONS: Readonly<PlanConditions> = Object.freeze({ content: 'all', seats: 1, team: false, schedules: true, endsOn: null, quotas: {} });
 
