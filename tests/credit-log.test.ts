@@ -14,6 +14,7 @@ import { teamMemberContext } from '../app/middleware/permissions.server';
 import type { ActiveSession } from '../app/shared/session/session.server';
 import { NO_FILTERS, readCreditLogFilters } from '../app/modules/usage/credit-log-form-data';
 import { CreditLogTable } from '../app/modules/usage/components/credit-log-table';
+import { CreditLogFilters } from '../app/modules/usage/components/credit-log-filters';
 import { Pager } from '../app/shared/ui/pager';
 import { ROUTE_TABLE } from '../app/shared/routing/route-table';
 
@@ -105,6 +106,18 @@ describe('las filas', () => {
     for (const texto of ['Contactos · buscar', '30 personas', 'cobrado', '150', '90', 'bolsa de 2026-11 · 150', 'Auteco', 'luis@auteco.com']) {
       expect(html, texto).toContain(texto);
     }
+  });
+
+  // El defecto: el pedido al agente de una pieza se leía «Estudio · pedido · diseno», con un nombre que no está en el menú
+  // de ENSŌ y el tipo crudo del backend, sin tilde; y el filtro decía «Estudios» y «Video», que también es Contenido.
+  test('un pedido de una pieza se lee como la sección de ENSŌ, Contenido, con su tipo en palabras; el filtro dice lo mismo', () => {
+    const html = render(createElement(CreditLogTable, { rows: [fila({ module: 'studios', concept: 'estudio', detail: { tipo: 'diseno' }, result: {} })] }));
+    expect(html).toContain('Contenido · pedido');
+    expect(html).toContain('Diseño');
+    expect(html).not.toMatch(/Estudio|diseno/);
+    const filtros = render(createElement(CreditLogFilters, { values: {}, errors: {}, filtered: false }));
+    const opciones = [...filtros.matchAll(/<option value="(\w+)"[^>]*>([^<]+)<\/option>/g)].map((m) => [m[1], m[2]]);
+    expect(opciones).toEqual(expect.arrayContaining([['studios', 'Contenido'], ['video', 'Video con IA'], ['contacts', 'Contactos']]));
   });
 
   test('una carga dice quién la hizo y por qué, y un vencimiento cuánto se perdió (CA-29)', () => {

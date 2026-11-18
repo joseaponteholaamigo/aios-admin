@@ -6,9 +6,12 @@ import type { Label } from '../ui/badge';
 /** Un número de créditos como se lee en Colombia: 11.000. */
 export const formatCredits = (n: number | null | undefined) => (typeof n === 'number' ? n.toLocaleString('es-CO') : '—');
 
-/** Qué hizo cada operación, por su concepto. Un concepto nuevo del backend se muestra tal cual. */
+/**
+ * Qué hizo cada operación, por su concepto. Un concepto nuevo del backend se muestra tal cual. `estudio` (un pedido de
+ * trabajo al agente de una pieza) se lee como la sección de ENSŌ donde pasa, Contenido: el concepto interno no cambia.
+ */
 const CONCEPTS: Record<string, string> = {
-  estudio: 'Estudio · pedido',
+  estudio: 'Contenido · pedido',
   'contactos.buscar': 'Contactos · buscar',
   'contactos.enriquecer': 'Contactos · datos de contacto',
   'video.ia': 'Video con IA',
@@ -16,7 +19,11 @@ const CONCEPTS: Record<string, string> = {
 };
 export const conceptLabel = (concept: string | null) => (concept ? CONCEPTS[concept] ?? concept : '—');
 
-export const MODULE_LABELS: Record<CreditModule, string> = { contacts: 'Contactos', video: 'Video', studios: 'Estudios' };
+/** «Video con IA» y no «Video»: junto a «Contenido», que también edita videos, «Video» se leía como esos pedidos. */
+export const MODULE_LABELS: Record<CreditModule, string> = { contacts: 'Contactos', video: 'Video con IA', studios: 'Contenido' };
+
+/** El tipo de pieza de un pedido en Contenido, como lo nombra ENSŌ (el backend guarda `diseno`, sin tilde). */
+const PIECE_TYPES: Record<string, string> = { video: 'Video', documento: 'Documento', diseno: 'Diseño' };
 
 export const KIND_LABELS: Record<CreditLogKind, string> = { spend: 'Gasto', load: 'Carga', purchase: 'Compra', expiry: 'Vencimiento' };
 
@@ -51,7 +58,7 @@ export function amountLabel(row: Pick<CreditLogRow, 'concept' | 'detail' | 'resu
     case 'video.apoyo':
       return [d.modelo, typeof d.segundos === 'number' ? `${d.segundos} s` : null].filter(Boolean).join(' · ') || '—';
     case 'estudio':
-      return typeof d.tipo === 'string' ? d.tipo : '—';
+      return typeof d.tipo === 'string' ? PIECE_TYPES[d.tipo] ?? d.tipo : '—';
     default:
       return '—';
   }
