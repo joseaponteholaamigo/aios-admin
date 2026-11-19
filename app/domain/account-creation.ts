@@ -73,7 +73,7 @@ export type WriteRejection =
   | { code: 'already-has-seat' | 'seat-revoked' | 'seats-unknown' }
   /** La cuenta ya mandó hoy todas las invitaciones de su tope diario; `retryAt`, desde cuándo se puede volver a invitar. */
   | { code: 'daily-invite-cap'; retryAt: string | null }
-  | { code: 'key-used' | 'key-expired' | 'filter-on' | 'move-incomplete' | 'recent-mfa' | 'not-found' | 'in-progress' }
+  | { code: 'key-used' | 'key-expired' | 'filter-on' | 'move-incomplete' | 'not-found' | 'in-progress' }
   /** Las acciones sobre una persona: sin login (con el estado de su asiento), la única admin, o un corte que se termina repitiendo. */
   | { code: 'no-login'; seat: SeatStatus | null }
   | { code: 'last-admin' | 'delete-incomplete' }

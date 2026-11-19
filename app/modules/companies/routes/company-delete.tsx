@@ -1,5 +1,5 @@
 // Borrar una cuenta entera (spec «Borrar cuentas y destrabar personas», CA-23 a CA-27). La ruta es
-// solo del superadministrador (`route-table.ts`), y el backend lo vuelve a pedir, con MFA reciente.
+// solo del superadministrador (`route-table.ts`), y el backend lo vuelve a pedir.
 // Al terminar vuelve a Empresas con el aviso; un rechazo, o un borrado a medias, se queda aquí.
 import { redirect } from 'react-router';
 import type { Route } from './+types/company-delete';

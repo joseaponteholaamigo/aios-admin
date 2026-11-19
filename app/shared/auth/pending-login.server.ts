@@ -13,7 +13,7 @@ import type { SessionStore, TokenCipher } from '../session/types';
 export const LOGIN_COOKIE = '__Host-panel-login';
 export const LOGIN_TTL_MS = 10 * 60 * 1000;
 
-export type PendingLogin = { verifier: string; nonce: string; returnTo: string; freshMfa: boolean };
+export type PendingLogin = { verifier: string; nonce: string; returnTo: string };
 
 const ATTRIBUTES = 'Path=/; HttpOnly; Secure; SameSite=Lax';
 export const loginCookie = (state: string) => `${LOGIN_COOKIE}=${state}; ${ATTRIBUTES}; Max-Age=${LOGIN_TTL_MS / 1000}`;
@@ -32,9 +32,9 @@ function cookieState(request: Request): string | null {
 export function createPendingLogins({ store, cipher, now = Date.now }: { store: SessionStore; cipher: TokenCipher; now?: () => number }) {
   return {
     /** Guarda un login nuevo. Devuelve lo que va a Cognito y la cookie que lo ata al navegador. */
-    async start({ returnTo, freshMfa }: { returnTo: string; freshMfa: boolean }) {
+    async start({ returnTo }: { returnTo: string }) {
       const state = random();
-      const pending: PendingLogin = { verifier: random(), nonce: random(), returnTo, freshMfa };
+      const pending: PendingLogin = { verifier: random(), nonce: random(), returnTo };
       const t = now();
       await store.put({
         idHash: keyOf(state),

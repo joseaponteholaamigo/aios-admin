@@ -51,7 +51,7 @@ beforeEach(() => {
   cognito = createCognitoClient({ config: config.cognito, clientSecret: async () => CLIENT_SECRET, fetchImpl: callIdentity, now: () => t });
   flow = createLoginFlow({
     config, cognito, pending: createPendingLogins({ store, cipher, now: () => t }),
-    sessions: createSessionService({ store, cipher, now: () => t }), now: () => t, log: () => {}, info: () => {},
+    sessions: createSessionService({ store, cipher, now: () => t }), now: () => t, log: () => {},
   });
 });
 
@@ -120,7 +120,7 @@ describe('identidad falsa', () => {
     expect(claims.auth_time).toBe(t / 1000);
   });
 
-  test('renovar conserva el momento del login (el MFA reciente vence igual que en Cognito); revocar corta', async () => {
+  test('renovar conserva el momento del login, como Cognito; revocar corta', async () => {
     const tokens = await signInTokens();
     const loginAt = t / 1000;
     t += 2 * 60 * 60 * 1000;

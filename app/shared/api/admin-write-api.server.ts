@@ -49,7 +49,7 @@ export type AdminWriteApi = {
   createCode(token: string, code: NewCode): Promise<WriteResult<RegistrationCode>>;
   /** Pausar, reanudar o revocar un código (CA-5). */
   changeCodeState(token: string, code: string, action: CodeAction, reason: string | null): Promise<WriteResult<RegistrationCode>>;
-  /** Cambiar el tope general de la voz, o poner o quitar la excepción de una cuenta. Solo el superadministrador, con MFA reciente (CA-33). */
+  /** Cambiar el tope general de la voz, o poner o quitar la excepción de una cuenta. Solo el superadministrador (CA-33). */
   changeVoiceCap(token: string, change: VoiceCapChange): Promise<WriteResult<VoiceCapChanged>>;
   /** Dar de alta a una persona del equipo ENSŌ: con la misma clave, dos veces es una (spec «Equipo ENSŌ», CA-2). */
   createTeamMember(token: string, member: NewTeamMember): Promise<WriteResult<CreatedTeamMember>>;

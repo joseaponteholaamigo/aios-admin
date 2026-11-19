@@ -11,9 +11,8 @@ import { createSessionService, SESSION_COOKIE, type SessionService } from '../ap
 import { createMemorySessionStore } from '../app/shared/session/memory-store.server';
 import { createLocalCipher } from '../app/shared/session/local-cipher.server';
 import { createPendingLogins, LOGIN_COOKIE, LOGIN_TTL_MS } from '../app/shared/auth/pending-login.server';
-import { createCognitoClient, FRESH_MFA, IdentityProviderError } from '../app/shared/auth/cognito-client.server';
-import { createLoginFlow, loginAssuranceLine, safeReturnTo, type LoginFlow } from '../app/shared/auth/login-flow.server';
-import { freshMfaRedirect, needsFreshMfa } from '../app/shared/auth/fresh-mfa.server';
+import { createCognitoClient, IdentityProviderError } from '../app/shared/auth/cognito-client.server';
+import { createLoginFlow, safeReturnTo, type LoginFlow } from '../app/shared/auth/login-flow.server';
 import { CLIENT_ID, CLIENT_SECRET, LOGIN_URL, ORIGIN, fakeCognito, testConfig } from './helpers/fake-cognito';
 
 const LAMBDA = 'https://abcd.b7t.lambda-web.us-east-2.on.aws';
@@ -22,7 +21,6 @@ let cognito: ReturnType<typeof fakeCognito>;
 let sessions: SessionService;
 let flow: LoginFlow;
 let logs: string[];
-let infos: string[];
 
 beforeEach(() => {
   t = Date.UTC(2026, 9, 22, 9);
@@ -32,7 +30,6 @@ beforeEach(() => {
   const config = testConfig();
   sessions = createSessionService({ store, cipher, now: () => t });
   logs = [];
-  infos = [];
   flow = createLoginFlow({
     config,
     cognito: createCognitoClient({ config: config.cognito, clientSecret: async () => CLIENT_SECRET, fetchImpl: cognito.fetchImpl, now: () => t }),
@@ -40,7 +37,6 @@ beforeEach(() => {
     sessions,
     now: () => t,
     log: (m) => logs.push(m),
-    info: (m) => infos.push(m),
   });
 });
 
@@ -69,14 +65,13 @@ describe('empezar', () => {
     expect(p.get('code_challenge_method')).toBe('S256');
     expect(p.get('state')?.length).toBeGreaterThan(30);
     expect(p.get('nonce')?.length).toBeGreaterThan(30);
-    expect(p.get('acr_values')).toBeNull();
   });
 
-  test('⛔ todo ingreso pide un código de menos de 15 minutos, aunque no venga con mfa=1', async () => {
-    // EL DEFECTO: Cognito renueva `auth_time` en un inicio silencioso. Sin `max_age`, un ingreso
-    // normal con la sesión de Cognito de hace una hora le daría al backend un MFA «reciente».
+  // EL DEFECTO: con `max_age` o `acr_values`, Cognito volvería a pedir el código aunque su sesión siga
+  // abierta, y el panel no lo necesita: basta la sesión (Jose, 2026-11-19).
+  test('el ingreso no obliga a volver a escribir el código mientras la sesión de Cognito siga abierta', async () => {
     const p = new URL((await start()).location).searchParams;
-    expect(p.get('max_age')).toBe('900');
+    expect([p.get('max_age'), p.get('acr_values')]).toEqual([null, null]);
   });
 
   test('cada ingreso tiene su propio state y nonce, y la cookie lo ata al navegador', async () => {
@@ -84,12 +79,6 @@ describe('empezar', () => {
     const state = (l: string) => new URL(l).searchParams.get('state');
     expect(state(a.location)).not.toBe(state(b.location));
     expect(a.cookie).toBe(`${LOGIN_COOKIE}=${state(a.location)}`);
-  });
-
-  test('⛔ con mfa=1 pide contraseña + TOTP de menos de 15 minutos', async () => {
-    const p = new URL((await start('/auth/login?mfa=1')).location).searchParams;
-    expect(p.get('acr_values')).toBe(FRESH_MFA.acr);
-    expect(p.get('max_age')).toBe('900');
   });
 
   test('⛔ la vuelta solo acepta rutas del panel', () => {
@@ -264,58 +253,3 @@ describe('salir', () => {
   });
 });
 
-describe('MFA reciente', () => {
-  test('⛔ cuando el backend lo pide, vuelve al login con mfa=1 y a la misma página', () => {
-    expect(needsFreshMfa(401, { codigo: 'mfa-reciente' })).toBe(true);
-    expect(needsFreshMfa(401, { codigo: 'otro' })).toBe(false);
-    const location = freshMfaRedirect(new Request(`${LAMBDA}/equipo/sub-nati/permisos.data`)).headers.get('location')!;
-    const p = new URL(location, ORIGIN).searchParams;
-    expect(p.get('mfa')).toBe('1');
-    expect(p.get('returnTo')).toBe('/equipo/sub-nati/permisos');
-  });
-});
-
-describe('la garantía del login, en el log', () => {
-  // El access token nunca llega al navegador: esta línea es la única forma de ver si Cognito pone
-  // `acr` (MFA) y `auth_time` en el token que el backend revisa antes de un cambio de permisos.
-  const AUTH_TIME = Date.UTC(2026, 9, 22, 8, 55) / 1000;
-
-  async function finishLoginFrom(path: string) {
-    const { location, cookie } = await start(path);
-    const { code, state } = cognito.authorize(location, 'sub-nati');
-    expect((await callback(`code=${code}&state=${state}`, cookie)).ok).toBe(true);
-  }
-
-  test('⛔ un login completo deja una línea con el acr, el auth_time y si se pidió MFA reciente', async () => {
-    cognito.setAccessClaims({ acr: FRESH_MFA.acr, auth_time: AUTH_TIME });
-    await finishLoginFrom('/auth/login?mfa=1');
-    expect(infos).toEqual([
-      `login completo · MFA reciente pedido: sí · acr=${FRESH_MFA.acr} · auth_time=2026-10-22T08:55:00.000Z`,
-    ]);
-  });
-
-  test('⛔ si el token no trae acr ni auth_time, la línea lo dice en vez de callarlo', async () => {
-    await finishLoginFrom('/auth/login');
-    expect(infos).toEqual(['login completo · MFA reciente pedido: no · acr=(no viene) · auth_time=(no viene)']);
-  });
-
-  test('⛔ la línea no lleva el token ni quién entró', async () => {
-    cognito.setAccessClaims({ acr: FRESH_MFA.acr, auth_time: AUTH_TIME });
-    await finishLoginFrom('/auth/login');
-    expect(infos).toHaveLength(1);
-    expect(infos[0]).not.toContain('sub-nati');
-    expect(infos[0]).not.toMatch(/eyJ/);
-  });
-
-  test('un token sin forma de JWT no frena el login: la línea dice que no vienen', () => {
-    expect(loginAssuranceLine('no-es-un-jwt', false)).toBe('login completo · MFA reciente pedido: no · acr=(no viene) · auth_time=(no viene)');
-  });
-
-  test('un intento fallido no deja la línea', async () => {
-    const { location, cookie } = await start();
-    const { code, state } = cognito.authorize(location);
-    cognito.setNonce('otro-nonce');
-    expect((await callback(`code=${code}&state=${state}`, cookie)).ok).toBe(false);
-    expect(infos).toEqual([]);
-  });
-});

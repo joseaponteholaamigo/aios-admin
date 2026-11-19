@@ -1,6 +1,6 @@
 // El tope general de la voz (spec «Registro abierto» de aios-tower, CA-33): cuánto rige hoy, quién lo
 // fijó, y el formulario para cambiarlo. Cambiarlo pide un motivo, que queda en la auditoría con el antes
-// y el después; el backend pide además MFA reciente, y su rechazo trae cómo volver a ingresar el código.
+// y el después.
 import { Form, useLocation } from 'react-router';
 import type { GeneralVoiceCap } from '../../../domain/voice-cap';
 import { FactList } from '../../../shared/ui/fact-list';

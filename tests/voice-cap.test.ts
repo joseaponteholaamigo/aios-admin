@@ -149,11 +149,10 @@ describe('el pedido al backend', () => {
     expect([general, cuenta]).toEqual([{ kind: 'ok', value: { before: 10, after: 8 } }, { kind: 'ok', value: { before: 15, after: null } }]);
   });
 
-  // EL DEFECTO: leído como sesión vencida o como «la API no responde», el MFA vencido cerraría la sesión o
-  // mostraría una página de error en vez de pedir el código; un conflicto o una cuenta que no existe no dirían qué pasó.
-  test('⛔ cada rechazo vuelve al formulario: el MFA vencido pide el código, no cierra la sesión', async () => {
+  // EL DEFECTO: leído como sesión vencida o como «la API no responde», un rechazo cerraría la sesión o
+  // mostraría una página de error; un conflicto o una cuenta que no existe no dirían qué pasó.
+  test('⛔ cada rechazo vuelve al formulario, sin cerrar la sesión', async () => {
     const casos: [number, object, object][] = [
-      [401, { codigo: 'mfa-reciente' }, { code: 'recent-mfa' }],
       [409, { codigo: 'conflicto', error: 'otro cambio del tope de la voz llegó primero' }, { code: 'conflict' }],
       [404, { codigo: 'no-existe', error: 'esa cuenta no existe' }, { code: 'not-found' }],
       [422, { codigo: 'invalido', error: 'el tope de la voz es un número de dólares' }, { code: 'invalid', message: 'el tope de la voz es un número de dólares', field: null }],
@@ -223,11 +222,11 @@ describe('la acción', () => {
     expect(voiceCapNotice(new URLSearchParams('aviso=tope-general&antes=10&despues=8'))).toBe(`Tope general cambiado de US$10 a US$8. ${WHEN_IT_APPLIES}`);
   });
 
-  // EL DEFECTO: con el MFA vencido se perdería lo escrito, o el rechazo iría a otro formulario.
+  // EL DEFECTO: con un rechazo se perdería lo escrito, o el rechazo iría a otro formulario.
   test('⛔ un rechazo vuelve al formulario que lo mandó, con lo escrito', async () => {
-    changeVoiceCap.mockResolvedValue({ kind: 'rejected', rejection: { code: 'recent-mfa' }, createdAccountId: null });
+    changeVoiceCap.mockResolvedValue({ kind: 'rejected', rejection: { code: 'conflict' }, createdAccountId: null });
     const r = (await post({ intent: 'exception', accountId: 'auteco-4d5e6f', usd: '15', reason: 'contrato' })) as VoiceAttempt;
-    expect([r.intent, r.values.accountId, r.values.usd, r.rejection]).toEqual(['exception', 'auteco-4d5e6f', '15', { code: 'recent-mfa' }]);
+    expect([r.intent, r.values.accountId, r.values.usd, r.rejection]).toEqual(['exception', 'auteco-4d5e6f', '15', { code: 'conflict' }]);
   });
 
   // EL DEFECTO: un formulario que el panel ya sabe inválido iría igual al backend.
@@ -291,12 +290,11 @@ describe('en pantalla', () => {
     expect(buttons.map((b) => [b.match(/name="([^"]+)"/)?.[1], b.match(/value="([^"]+)"/)?.[1]])).toEqual([['intent', 'general'], ['intent', 'exception']]);
   });
 
-  // EL DEFECTO: el rechazo en el otro formulario, o sin el enlace para volver a ingresar el código, dejaría al
-  // superadmin sin saber qué hacer, y perdería lo escrito.
-  test('⛔ un rechazo del MFA se lee en el formulario del tope general, con cómo volver a ingresar el código y con lo escrito', () => {
-    const html = renderPage(CRUDO, { intent: 'general', values: { usd: '7.5', reason: 'medido' }, errors: {}, rejection: { code: 'recent-mfa' } });
+  // EL DEFECTO: el rechazo en el otro formulario dejaría al superadmin sin saber qué falló, y perdería lo escrito.
+  test('⛔ un rechazo del tope general se lee en su formulario, con lo escrito', () => {
+    const html = renderPage(CRUDO, { intent: 'general', values: { usd: '7.5', reason: 'medido' }, errors: {}, rejection: { code: 'conflict' } });
     const general = formWithClass(html, 'general-cap-form');
-    expect([general.includes('Ingresar el código'), general.includes('returnTo=%2Fvoice'), tagWith(general, 'input', 'id="general-usd"').includes('value="7.5"')]).toEqual([true, true, true]);
+    expect([general.includes('Otro cambio llegó primero'), tagWith(general, 'input', 'id="general-usd"').includes('value="7.5"')]).toEqual([true, true]);
     // Sin encontrar el otro formulario, «no tiene el rechazo» pasaría sin mirar nada.
     const exception = formWithClass(html, 'cap-exception-form');
     expect(exception).toMatch(/^<form\b/);
@@ -333,14 +331,13 @@ describe('en pantalla', () => {
   });
 
   // EL DEFECTO: si el diálogo no se reabriera con el rechazo, el superadmin vería la pantalla como si nada: no
-  // sabría que la excepción sigue puesta ni que tiene que volver a ingresar el código, y perdería el motivo escrito.
-  test('⛔ un rechazo del MFA al quitar reabre el diálogo de esa cuenta, con el rechazo, el enlace al código y el motivo escrito', () => {
-    const html = renderPage(CRUDO, { intent: 'remove-exception', values: { accountId: 'auteco-4d5e6f', reason: 'terminó el contrato' }, errors: {}, rejection: { code: 'recent-mfa' } });
+  // sabría que la excepción sigue puesta, y perdería el motivo escrito.
+  test('⛔ un rechazo al quitar reabre el diálogo de esa cuenta, con el rechazo y el motivo escrito', () => {
+    const html = renderPage(CRUDO, { intent: 'remove-exception', values: { accountId: 'auteco-4d5e6f', reason: 'terminó el contrato' }, errors: {}, rejection: { code: 'conflict' } });
     const dialogo = html.match(/<dialog\b[\s\S]*?<\/dialog>/)?.[0] ?? '';
     expect(dialogo).toContain('¿Quitar la excepción de Auteco?');
-    expect([dialogo.includes('Ingresar el código'), dialogo.includes('returnTo=%2Fvoice'), tagWith(dialogo, 'input', 'name="reason"').includes('value="terminó el contrato"')])
-      .toEqual([true, true, true]);
+    expect([dialogo.includes('Otro cambio llegó primero'), tagWith(dialogo, 'input', 'name="reason"').includes('value="terminó el contrato"')]).toEqual([true, true]);
     // El rechazo se lee solo en el diálogo: ni arriba de la pantalla ni en los otros dos formularios.
-    expect(html.split('volver a ingresar tu código de verificación').length - 1).toBe(1);
+    expect(html.split('Otro cambio llegó primero').length - 1).toBe(1);
   });
 });

@@ -1,8 +1,8 @@
 // El tope de la voz de ENSŌ (spec «Registro abierto» de aios-tower, CA-33; tarea RP2): el valor general,
 // que rige para toda cuenta, y las excepciones por cuenta. Solo el superadministrador (`route-table.ts`);
-// el backend lo vuelve a pedir y, para cambiarlo, pide además MFA reciente. Cada cambio lleva un motivo
-// y queda en la auditoría con el antes y el después. Al guardar vuelve aquí con el aviso; un rechazo se
-// queda en el formulario que lo mandó, con lo escrito.
+// el backend lo vuelve a pedir. Cada cambio lleva un motivo y queda en la auditoría con el antes y el
+// después. Al guardar vuelve aquí con el aviso; un rechazo se queda en el formulario que lo mandó, con lo
+// escrito.
 import { redirect, useSearchParams } from 'react-router';
 import type { Route } from './+types/voice';
 import { toAdminApi } from '../../../shared/api/admin-action.server';

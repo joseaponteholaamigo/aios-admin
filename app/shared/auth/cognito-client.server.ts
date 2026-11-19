@@ -6,17 +6,6 @@ import type { SessionTokens } from '../session/types';
 
 export const ADMIN_SCOPE = 'admin/acceso';
 export const LOGIN_SCOPES = ['openid', 'email', 'profile', ADMIN_SCOPE];
-/**
- * El MFA reciente: contraseña + TOTP, con menos de 15 minutos (decisión E, opción B).
- *
- * ⚠️ `max_age` va en TODOS los logins, no solo con `mfa=1`. Cognito pone en `auth_time` la hora
- * de cualquier inicio, también el silencioso, y el backend se fía de `auth_time`. Sin `max_age`,
- * un inicio silencioso con la sesión de Cognito de hace una hora daría un `auth_time` de ahora.
- * Con `max_age`, Cognito vuelve a pedir el código si el último pasó hace más de 15 minutos.
- * `acr_values` va solo con `mfa=1`: Cognito todavía no manda `acr`, y así el log lo muestra el
- * día que llegue.
- */
-export const FRESH_MFA = { acr: 'urn:cognito:loa:4', maxAgeSeconds: 900 };
 const TIMEOUT_MS = 5000;
 
 /** Cognito no respondió o respondió con error. El mensaje no lleva datos del pedido. */
@@ -28,7 +17,7 @@ export class IdentityProviderError extends Error {
 }
 
 export type CognitoClient = {
-  authorizeUrl(p: { redirectUri: string; state: string; nonce: string; codeChallenge: string; freshMfa: boolean }): string;
+  authorizeUrl(p: { redirectUri: string; state: string; nonce: string; codeChallenge: string }): string;
   logoutUrl(logoutUri: string): string;
   exchangeCode(p: { code: string; verifier: string; redirectUri: string }): Promise<{ tokens: SessionTokens; idClaims: Record<string, unknown> }>;
   refresh(refreshToken: string): Promise<SessionTokens>;
@@ -79,7 +68,7 @@ export function createCognitoClient({
   }
 
   return {
-    authorizeUrl({ redirectUri, state, nonce, codeChallenge, freshMfa }) {
+    authorizeUrl({ redirectUri, state, nonce, codeChallenge }) {
       const params = new URLSearchParams({
         response_type: 'code',
         client_id: config.clientId,
@@ -89,8 +78,6 @@ export function createCognitoClient({
         nonce,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
-        max_age: String(FRESH_MFA.maxAgeSeconds),
-        ...(freshMfa ? { acr_values: FRESH_MFA.acr } : {}),
       });
       return `${config.loginUrl}/oauth2/authorize?${params}`;
     },
