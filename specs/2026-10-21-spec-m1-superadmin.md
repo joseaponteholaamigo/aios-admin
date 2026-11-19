@@ -6,6 +6,8 @@
 - **Dónde se implementa:** todo el superadmin va en la rama `superadmin_v2` de los dos repos (decisión de Jose, 2026-10-22). El panel y su infraestructura, en este repo; el backend, en `aios-backend` (worktree `aios-backend-superadmin`, en la raíz del workspace).
 - **Proyectos:** `aios-backend` (los CA marcados **[backend]**), `aios-admin` (**[panel]**) y la infraestructura de `aios-admin` (**[infra]**).
 
+> **Cambio del 2026-11-19 (Jose):** el superadmin ya no pide haber escrito el código hace menos de 15 minutos («MFA reciente»). Basta la sesión; el código se pide solo al entrar, porque el pool del equipo exige MFA. El backend ya no responde `mfa-reciente` y el panel no manda `max_age` ni `acr_values`. Los criterios de esta spec ya están al día; lo que dice de la opción B es historia.
+
 ## Objetivo
 
 Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nuevo en AWS, y que la API de admin del backend diga quién es cada una y qué módulos puede usar. Es la base segura sobre la que M2 monta los módulos de clientes. M1 no reemplaza todavía ninguna pantalla del panel viejo.
@@ -18,10 +20,10 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - Parámetros de SSM con los ids del pool, el id del cliente y la URL de la API de admin.
 - Segundo HttpApi para `/v1/admin/*`, con autorizador JWT del pool del equipo que exige el scope `admin/acceso`.
 - La **puerta del equipo** (`exigirPermiso`): verifica el access token en el código, carga los permisos y devuelve el actor `equipo:<sub>`.
-- La comprobación de MFA reciente (`exigirMfaReciente`): exige el nivel `urn:cognito:loa:4` y un `auth_time` de menos de 900 s.
+- La comprobación de MFA reciente (`exigirMfaReciente`). **Se retiró el 2026-11-19:** basta la sesión.
 - La tabla de permisos del equipo, con clave `sub`.
 - `GET /v1/admin/yo`.
-- `PUT /v1/admin/equipo/{sub}/permisos`: solo para el superadministrador, con MFA reciente y motivo.
+- `PUT /v1/admin/equipo/{sub}/permisos`: solo para el superadministrador.
 - El comando que da de alta a una persona del equipo, para crear al primer superadministrador.
 - A0 mínimo:
   - la tabla `eventos`;
@@ -154,14 +156,14 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
   - sin nivel, o con un módulo o un nivel que no existen (también para el superadministrador), se niega con 403.
 - **Y** la tabla completa de combinaciones está escrita en la prueba.
 
-#### CA-10: Cambiar permisos exige superadministrador, MFA reciente y motivo [backend]
-- **Dado** un superadministrador con un token de `acr = urn:cognito:loa:4` y `auth_time` de hace 5 minutos
-- **Cuando** pide `PUT /v1/admin/equipo/{sub}/permisos` con permisos válidos y `motivo`
+#### CA-10: Cambiar permisos es del superadministrador [backend]
+- **Dado** un superadministrador con sesión válida
+- **Cuando** pide `PUT /v1/admin/equipo/{sub}/permisos` con permisos válidos
 - **Entonces** responde 200 con los permisos nuevos.
 - **Y** la fila de permisos y un evento (`actor: equipo:<sub>`, canal `api`, motivo) se escriben en la misma transacción (`escribirConEvento`).
-- **Y** con `auth_time` de hace 16 minutos, o sin `acr` de nivel 4, responde 401 con `codigo: 'mfa-reciente'` y no escribe nada.
-- **Y** quien no es superadministrador recibe 403, aunque su MFA sea reciente.
-- **Y** sin `motivo` responde 422.
+- **Y** no pide MFA reciente: con un `auth_time` de hace horas también responde 200 (2026-11-19).
+- **Y** quien no es superadministrador recibe 403.
+- **Y** el motivo es opcional: sin él, el evento lleva el motivo por defecto (desde el 2026-11-17).
 
 #### CA-11: Reglas del equipo [backend]
 - **Dado** el endpoint de CA-10
@@ -269,11 +271,8 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
   - redirige a `/logout` de Cognito con `client_id` y `logout_uri`.
 - **Y** si después se pide cualquier página, hay que volver a pasar por Cognito con MFA.
 
-#### CA-23: Volver a pedir el MFA [panel]
-- **Dado** una *action* que llama al backend y recibe 401 con `codigo: 'mfa-reciente'`
-- **Cuando** el servidor del panel responde
-- **Entonces** es un 302 a `authorize` con `acr_values=urn:cognito:loa:4` y `max_age=900`, y con `state` que guarda la página de origen.
-- **Y** al volver, la persona queda en esa página (la acción no se repite sola).
+#### CA-23: Volver a pedir el MFA [panel] — retirado el 2026-11-19
+- Ya no aplica: el backend no responde `mfa-reciente`, y el panel no manda `acr_values` ni `max_age` ni tiene el camino `?mfa=1`. Si la sesión vence, el panel manda al login.
 
 ### Panel: permisos y protección
 
@@ -387,12 +386,8 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Entonces** ve la página de inicio con sus permisos.
 - **Y** una persona del pool sin fila de permisos ve «sin acceso».
 
-#### CA-38: Cognito vuelve a pedir el MFA [infra, manual]
-- **Dado** una sesión con un `auth_time` de hace más de 15 minutos
-- **Cuando** el panel redirige con `acr_values=urn:cognito:loa:4&max_age=900`
-- **Entonces** Cognito vuelve a pedir el código TOTP.
-- **Y** el token nuevo trae `acr = urn:cognito:loa:4` y un `auth_time` actualizado. Como el token no llega al navegador, esto se ve en el log del panel: cada login completo deja una línea `login completo` con el `acr` y el `auth_time` del access token, sin el token ni quién entró.
-- **Y** si Cognito no lo soporta en el plan del pool, queda escrito en esta spec y se aplica la alternativa de «Riesgos».
+#### CA-38: Cognito vuelve a pedir el MFA [infra, manual] — retirado el 2026-11-19
+- Ya no aplica: el panel no le pide a Cognito volver a preguntar el código, y la línea `login completo` del log se quitó. El código se pide al entrar, cuando no hay sesión de Cognito abierta.
 
 ## Casos borde y de error
 
@@ -523,7 +518,7 @@ Presupuesto de las pruebas: ≤ 100 ms cada una y 1 s de techo, según el `CLAUD
 - `.nvmrc`, `package.json`, `tsconfig.json`, `react-router.config.ts`.
 - `app/root.tsx`, `app/routes.ts`.
 - `app/middleware/`: sesión, `/yo`, permisos, CSRF y cabeceras.
-- `app/shared/auth/`: login, retorno, cierre y MFA reciente.
+- `app/shared/auth/`: login, retorno y cierre.
 - `app/shared/api/`: el cliente de `/v1/admin/*` y la traducción.
 - `app/shared/ui/`.
 - `app/modules/home/`: la página de inicio.
@@ -548,12 +543,13 @@ Presupuesto de las pruebas: ≤ 100 ms cada una y 1 s de techo, según el `CLAUD
   - Lo que no: el token nunca trae `acr`, ni en ese login ni en ninguno; la línea `login completo` del log dice `acr=(no viene)`. El pool está en el plan `ESSENTIALS` (confirmado con `describe-user-pool`), así que lo más probable es que la función todavía no le llegue: según la documentación de Cognito, se habilita de a poco y, mientras no esté, ignora `acr_values` sin dar error.
   - Un hallazgo más: un inicio silencioso (Cognito con su sesión abierta, sin pedir nada) renueva `auth_time`. Por eso `auth_time` solo no prueba que se escribió el código hace poco.
   - Consecuencia: tal como está, el backend (`exigirMfaReciente`) rechazaría todo cambio de permisos. Cómo protegerlos se decide antes de la pantalla de Equipo (M2).
+  - Se decidió la opción B (2026-10-27) y después se retiró el MFA reciente entero (2026-11-19): basta la sesión.
 
 ## Riesgos y preguntas abiertas
 
 - **Rama de `aios-backend`:** la define Jose (checklist §14, paso 3). Sin ella no se empieza la parte del backend.
 - **El repo `aios-admin`:** lo crea Jose (paso 1). Esta spec se mueve ahí cuando exista.
-- **`acr_values` en Cognito:** si la prueba de CA-38 muestra que no se respeta con el plan Essentials, la alternativa es `prompt=login` (obliga a iniciar sesión de nuevo, con MFA) y el backend sigue validando `auth_time` ≤ 900 s. Hay que decidirlo con el resultado.
+- **`acr_values` en Cognito:** cerrada. El MFA reciente se retiró el 2026-11-19 y el panel ya no manda `acr_values` ni `max_age`.
 - **`DescribeUserPoolClient`:** si resulta incómodo leer el secreto del cliente así, se copia una vez a Secrets Manager. Cambia CA-35.
 - **El nombre del comando de alta** (`npm run equipo`) y los de las rutas de admin son una propuesta. Se fijan al implementar, sin cambiar el comportamiento de los CA.
 - **Versión de CDK en `aios-admin`:** las Web Functions necesitan `aws-cdk-lib` ≥ 2.273.0, con constructos de bajo nivel. El backend sigue en la suya.

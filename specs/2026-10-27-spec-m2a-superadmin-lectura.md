@@ -10,7 +10,7 @@
   - **Catálogo privado (decisión 8 = a):** también espera a esa revisión, así que pasa a M2b. M2a muestra los nombres técnicos de las piezas, sin etiqueta.
   - **Sin «Ver como»:** el panel no lo tiene (plan §3.5). ENSŌ es una app de escritorio; el superadmin cambia lo que necesite del cliente, y cada cambio queda en la auditoría.
   - **La plantilla visual:** el panel nuevo reusa la del panel viejo de beenso (`/administrador`, en Vercel): sus tokens, su marco, sus íconos, sus tipografías y la forma de sus pantallas. La referencia es `beenso` en el commit `d74d3fb`: `src/lib/administrador/admin.css`, `src/lib/administrador/iconos.ts`, `src/pages/administrador/_Layout.astro` y las páginas de cada módulo. beenso no se toca: solo se lee.
-  - **Para M2b, no para esta spec:** el equipo escribe roles y acceso de cualquier cliente (decisión 4 = a), y el MFA reciente se exige solo con `auth_time` (opción B, plan §3.3).
+  - **Para M2b, no para esta spec:** el equipo escribe roles y acceso de cualquier cliente (decisión 4 = a), y el MFA reciente se exige solo con `auth_time` (opción B, plan §3.3; retirado el 2026-11-19: basta la sesión).
 
 ## Objetivo
 

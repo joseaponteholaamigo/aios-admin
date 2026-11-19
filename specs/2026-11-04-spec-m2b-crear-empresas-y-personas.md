@@ -5,6 +5,8 @@
 - **Estado:** aprobada (Jose, 2026-11-04)
 - **Repos:** `aios-backend` (worktree `aios-backend-superadmin`) y `aios-admin`, los dos en la rama `superadmin_v2`.
 
+> **Cambio del 2026-11-19 (Jose):** el superadmin ya no pide haber escrito el código hace menos de 15 minutos («MFA reciente»). Basta la sesión; el código se pide solo al entrar, porque el pool del equipo exige MFA. El backend ya no responde `mfa-reciente` y el panel no manda `max_age` ni `acr_values`. Los criterios de esta spec ya están al día; lo que dice de la opción B es historia.
+
 ## Objetivo
 
 El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el panel, sin la consola. Hoy todo eso es `npm run tenant -- create`, `npm run tenant -- personalizar`, `npm run alta-en-lote` y, para mover a alguien que venía del webinar, `npm run eliminar-usuarios` más una invitación a mano.
@@ -19,7 +21,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 | 3 | **La empresa gana a la cuenta personal.** Si el correo que se invita tiene una cuenta personal que no paga por Stripe, el panel avisa y, si se confirma, borra esa cuenta e invita a la persona, en un solo paso. Si la cuenta personal paga por Stripe, se bloquea. Si el correo es de otra empresa, se bloquea siempre. | Jose, 2026-11-04 |
 | 4 | **Motivo obligatorio** al invitar y al mover, con su entrada en la auditoría. **Al crear no se pide** (Jose, 2026-11-04): la auditoría guarda igual quién creó la cuenta y cuándo, con el motivo «alta desde el panel». **Enmienda (2026-11-17):** el motivo es opcional en toda escritura del panel; sin él, la auditoría anota «desde el panel» con quién y cuándo. | Decisión 4 del plan (2026-10-27); Jose, 2026-11-04; enmienda de Jose, 2026-11-17 |
 | F | **Cada persona que invita el equipo recibe su correo de invitación**, como desde «Mi equipo», y el texto dice «el equipo de ENSŌ». | Decisión F del plan |
-| 10 | **Crear e invitar piden el nivel «editar»** del módulo. **Mover desde una cuenta personal borra una cuenta**, así que es del superadministrador y pide un MFA reciente (opción B: `auth_time` de menos de 15 min). | Decisión 10 y opción B del plan |
+| 10 | **Crear e invitar piden el nivel «editar»** del módulo. **Mover desde una cuenta personal borra una cuenta**, así que es del superadministrador (el MFA reciente que pedía se retiró el 2026-11-19). | Decisión 10 y opción B del plan |
 
 ## Alcance
 
@@ -44,7 +46,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 
 ## Antes de empezar
 
-- **La prueba previa de la opción B** (plan §3.3): comprobar que un inicio silencioso con la sesión de Cognito abierta no renueva `auth_time` sin pedir el código. Si lo renueva, el MFA reciente no protege nada, y la regla de mover (decisión 10) se decide de nuevo.
+- **La prueba previa de la opción B** ya no aplica: el MFA reciente se retiró el 2026-11-19.
 
 ## Criterios de aceptación
 
@@ -128,11 +130,11 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 - **cuando** se aplica,
 - **entonces** borra esa cuenta con `borrarCliente`, el borrado del producto, que deja «borrado-pedido» en su bitácora con el actor, y sigue con la creación o la invitación como si el correo estuviera libre. Responde lo mismo que sin mover, más `movidaDesde: <id de la cuenta personal>`.
 
-### CA-11: Mover es del superadministrador, con MFA reciente
+### CA-11: Mover es del superadministrador
 
 - **Dado** un pedido con `moverDesdeCuentaPersonal: true`,
-- **cuando** lo pide alguien que no es superadministrador, o cuyo MFA tiene más de 15 min,
-- **entonces** responde 403, o 401 `mfa-reciente`, y no toca nada (decisión 10).
+- **cuando** lo pide alguien que no es superadministrador,
+- **entonces** responde 403 y no toca nada (decisión 10).
 
 ### CA-12: Una cuenta personal que paga por Stripe no se mueve
 
@@ -155,7 +157,7 @@ El equipo de ENSŌ crea empresas y cuentas personales e invita personas desde el
 - **entonces**:
   - crear pide `empresas: editar`;
   - invitar pide `usuarios: editar`;
-  - mover pide además ser superadministrador con MFA reciente (CA-11);
+  - mover pide además ser superadministrador (CA-11);
   - con «ver» o sin el módulo responde 403, y una cuenta que el filtro de clientes esconde responde 404, como si no existiera.
 
 ### CA-15: Una cuenta nueva recibe el contenido estándar
