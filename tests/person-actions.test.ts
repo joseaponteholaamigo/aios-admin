@@ -127,8 +127,6 @@ describe('lo que se ve', () => {
     expect(dialogo({ code: 'no-login', seat: 'active' })).toContain('ya se borró');
     expect(dialogo({ code: 'no-login', seat: 'invited' })).toContain('todavía no se registró');
     expect(dialogo({ code: 'not-found' })).toContain('ya no tiene asiento en esta cuenta');
-    expect(dialogo({ code: 'recent-mfa' })).toContain('Para hacer esta acción tienes que volver a ingresar tu código');
-    expect(dialogo({ code: 'recent-mfa' })).toContain('Ingresar el código');
     expect(dialogo({ code: 'email-in-other-company', company: null })).toContain('es de otra cuenta: desde aquí no se toca');
   });
 });

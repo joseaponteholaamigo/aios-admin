@@ -71,7 +71,6 @@ describe('crear una cuenta', () => {
       [409, { codigo: 'correo-de-otra-empresa', empresa: { id: 'otra-1', nombre: 'Otra' } }, { code: 'email-in-other-company', company: { id: 'otra-1', name: 'Otra' } }],
       [409, { codigo: 'correo-en-cuenta-personal', cuenta: { id: 'web-1', nombre: 'W', pagaPorStripe: false } }, { code: 'email-in-personal-account', account: { id: 'web-1', name: 'W', paysWithStripe: false } }],
       [422, { codigo: 'plan-rechazado', rechazos: ['«asientos» tiene que ser…'] }, { code: 'plan-rejected', rejections: ['«asientos» tiene que ser…'] }],
-      [401, { codigo: 'mfa-reciente' }, { code: 'recent-mfa' }],
       [503, { codigo: 'mover-incompleto' }, { code: 'move-incomplete' }],
     ];
     for (const [status, body, rejection] of casos) {
@@ -153,7 +152,6 @@ describe('una acción sobre una persona', () => {
       [409, { codigo: 'correo-de-otra-empresa', empresa: null }, { code: 'email-in-other-company', company: null }],
       [503, { codigo: 'accion-incompleta' }, { code: 'action-incomplete' }],
       [503, { codigo: 'borrar-incompleto' }, { code: 'delete-incomplete' }],
-      [401, { codigo: 'mfa-reciente' }, { code: 'recent-mfa' }],
       [404, { codigo: 'no-existe' }, { code: 'not-found' }],
     ];
     for (const [status, body, rejection] of casos) {

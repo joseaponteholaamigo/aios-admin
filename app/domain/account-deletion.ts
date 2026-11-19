@@ -1,5 +1,5 @@
 // Borrar una cuenta entera desde el panel (spec «Borrar cuentas y destrabar personas», CA-23 a
-// CA-27). Solo el superadministrador, con MFA reciente; el backend lo vuelve a revisar.
+// CA-27). Solo el superadministrador; el backend lo vuelve a revisar.
 import type { SeatStatus } from './client-users';
 import type { AccountKind, CompanyPlan } from './companies';
 

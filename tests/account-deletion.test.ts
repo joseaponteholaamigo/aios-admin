@@ -135,7 +135,6 @@ describe('la API del borrado', () => {
       [409, { codigo: 'cuenta-con-cobro' }, { code: 'account-charging' }],
       [409, { codigo: 'borrado-en-curso' }, { code: 'deletion-in-progress' }],
       [503, { codigo: 'borrado-incompleto', sitios: ['identidades', 'auditoria'] }, { code: 'deletion-incomplete', sites: [{ key: 'logins', raw: 'identidades' }, { key: 'audit', raw: 'auditoria' }] }],
-      [401, { codigo: 'mfa-reciente' }, { code: 'recent-mfa' }],
     ];
     for (const [status, body, rejection] of casos) {
       const { write } = apiAnswering(() => Response.json(body, { status }));

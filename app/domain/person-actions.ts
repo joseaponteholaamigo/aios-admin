@@ -1,6 +1,6 @@
 // Las acciones del equipo de ENSŌ sobre una persona de una cuenta (spec «Borrar cuentas y destrabar
 // personas», CA-9 a CA-12): restablecer su verificación en dos pasos, borrar su login o borrarla.
-// Solo las hace el superadministrador, con MFA reciente; el backend lo vuelve a revisar.
+// Solo las hace el superadministrador; el backend lo vuelve a revisar.
 
 export const PERSON_ACTIONS = ['reset-mfa', 'delete-login', 'delete-person'] as const;
 export type PersonAction = (typeof PERSON_ACTIONS)[number];

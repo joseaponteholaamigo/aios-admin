@@ -80,7 +80,6 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'alta-en-curso': () => ({ code: 'in-progress' }),
   'filtro-de-clientes': () => ({ code: 'filter-on' }),
   'mover-incompleto': () => ({ code: 'move-incomplete' }),
-  'mfa-reciente': () => ({ code: 'recent-mfa' }),
   'no-existe': () => ({ code: 'not-found' }),
   'sin-login': (b) => ({ code: 'no-login', seat: b.asiento == null ? null : toSeatStatus(b.asiento) }),
   'ultimo-admin': () => ({ code: 'last-admin' }),
