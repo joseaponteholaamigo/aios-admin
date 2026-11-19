@@ -1,0 +1,37 @@
+/* El esqueleto de carga: barras con los colores del tema y un brillo que las recorre. Sin
+ * movimiento para quien lo pidió al sistema (`prefers-reduced-motion`). */
+
+.page-skeleton { display: flex; flex-direction: column; gap: 22px; }
+.page-skeleton__label {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+.page-skeleton__head { display: flex; flex-direction: column; gap: 12px; }
+.page-skeleton__card { display: flex; flex-direction: column; gap: 18px; padding: 20px; }
+.page-skeleton__row { display: flex; gap: 4%; padding-top: 14px; border-top: 1px solid var(--line-2); }
+
+.page-skeleton__bar {
+  display: block; height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--line) 25%, var(--line-2) 50%, var(--line) 75%);
+  background-size: 200% 100%;
+  animation: page-skeleton-shine 1.4s ease-in-out infinite;
+}
+.page-skeleton__bar--crumbs { width: 180px; height: 10px; }
+.page-skeleton__bar--title { width: min(360px, 70%); height: 32px; border-radius: 8px; }
+.page-skeleton__bar--lead { width: min(620px, 90%); height: 14px; }
+.page-skeleton__bar--card-title { width: 160px; height: 18px; }
+
+.page-skeleton__row > :nth-child(1) { width: 22%; }
+.page-skeleton__row > :nth-child(2) { width: 26%; }
+.page-skeleton__row > :nth-child(3) { width: 14%; }
+.page-skeleton__row > :nth-child(4) { width: 10%; }
+.page-skeleton__row > :nth-child(5) { width: 12%; }
+
+@keyframes page-skeleton-shine {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-skeleton__bar { animation: none; }
+}

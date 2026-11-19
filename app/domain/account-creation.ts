@@ -1,0 +1,104 @@
+// Crear una cuenta e invitar a una persona desde el panel (spec «Crear empresas e invitar personas»,
+// M2b): lo que se pide y por qué el backend puede negarse. Los nombres del backend se traducen en
+// `app/shared/api/write-mapping.ts`: aquí no aparece ninguno.
+import type { AccountKind, Company } from './companies';
+import type { DeletionSite } from './account-deletion';
+import type { SeatStatus } from './client-users';
+
+/**
+ * Los planes que se eligen al crear. Pro y Team con suscripción se compran en la web (decisión 2); `pro` es el Pro
+ * sin suscripción de una cuenta personal, que en pantalla se llama «Pro» (`PRO_CONDITIONS`).
+ */
+export const CREATION_PLANS = ['custom', 'free', 'pro'] as const;
+export type CreationPlan = (typeof CREATION_PLANS)[number];
+
+/** El contenido base de un Personalizado: todo, el de Free o nada. */
+export const CONTENT_LEVELS = ['all', 'free', 'none'] as const;
+export type ContentLevel = (typeof CONTENT_LEVELS)[number];
+
+/** Los recursos con cupo, en el orden en que se muestran. */
+export const QUOTA_RESOURCES = ['radar', 'projects', 'skills', 'chains'] as const;
+export type QuotaResource = (typeof QUOTA_RESOURCES)[number];
+
+/** Un cupo por recurso: un número, o `null` para «sin tope». Un recurso que no está, hereda el del plan. */
+export type Quotas = Partial<Record<QuotaResource, number | null>>;
+
+export type PlanConditions = {
+  content: ContentLevel;
+  seats: number;
+  team: boolean;
+  schedules: boolean;
+  /** `AAAA-MM-DD`, o `null` sin fecha de fin. */
+  endsOn: string | null;
+  quotas: Quotas;
+};
+
+/**
+ * El Pro del panel, sin suscripción: un Personalizado con las condiciones de Pro, las mismas del webinar y de los códigos (`CONDICIONES_PRO`
+ * del backend). Son fijas: con otras condiciones ya no es Pro, es Personalizado. Solo se elige la fecha de fin, que es
+ * opcional (`endsOn` aquí es la de por defecto: sin fecha). Solo para una cuenta personal.
+ */
+export const PRO_CONDITIONS: Readonly<PlanConditions> = Object.freeze({ content: 'all', seats: 1, team: false, schedules: true, endsOn: null, quotas: {} });
+
+/** El Pro del panel es de una persona: una empresa elige Personalizado o Free. */
+export const planFitsKind = (plan: CreationPlan, kind: AccountKind) => plan !== 'pro' || kind === 'personal';
+
+export type NewAccount = {
+  name: string;
+  kind: AccountKind;
+  plan: CreationPlan;
+  /** En Personalizado, las elegidas; en Pro, `PRO_CONDITIONS`; en Free, ninguna. */
+  conditions: PlanConditions | null;
+  adminEmail: string;
+  /** La clave del formulario: la misma en cada reintento, para que crear dos veces sea crear una (CA-6). */
+  key: string;
+  moveFromPersonal: boolean;
+};
+
+export type NewPerson = { email: string; isAdmin: boolean; role: string | null; reason: string; moveFromPersonal: boolean };
+
+/** La cuenta personal donde ya está un correo. */
+export type PersonalAccountRef = { id: string; name: string; paysWithStripe: boolean };
+
+/** Por qué el backend no creó o no invitó, en las palabras del panel. */
+export type WriteRejection =
+  /** `field`: el campo que el backend señala (en el nombre del panel), cuando lo señala. */
+  | { code: 'invalid'; message: string; field?: string | null }
+  | { code: 'plan-rejected'; rejections: string[] }
+  | { code: 'email-in-other-company'; company: { id: string; name: string } | null }
+  | { code: 'email-in-personal-account'; account: PersonalAccountRef }
+  | { code: 'personal-account-pays'; account: PersonalAccountRef }
+  | { code: 'unknown-role'; roles: string[] }
+  | { code: 'no-seats'; used: number; cap: number | null }
+  | { code: 'already-has-seat' | 'seat-revoked' | 'seats-unknown' }
+  /** La cuenta ya mandó hoy todas las invitaciones de su tope diario; `retryAt`, desde cuándo se puede volver a invitar. */
+  | { code: 'daily-invite-cap'; retryAt: string | null }
+  | { code: 'key-used' | 'key-expired' | 'filter-on' | 'move-incomplete' | 'not-found' | 'in-progress' }
+  /** Las acciones sobre una persona: sin login (con el estado de su asiento), la única admin, o un corte que se termina repitiendo. */
+  | { code: 'no-login'; seat: SeatStatus | null }
+  | { code: 'last-admin' | 'delete-incomplete' }
+  /** Un corte a medias que se termina repitiendo; `message`, lo que dijo el backend (qué quedó hecho). */
+  | { code: 'action-incomplete'; message?: string | null }
+  /** Borrar una cuenta: sin la confirmación exacta, cobrando, con otro borrado en curso, o a medias (con lo que falló). */
+  | { code: 'confirmation' | 'account-charging' | 'deletion-in-progress' }
+  | { code: 'deletion-incomplete'; sites: DeletionSite[] }
+  /** Cambiar los asientos: hay más personas que los asientos pedidos, es una cuenta personal, o no es Personalizado. */
+  | { code: 'seats-in-use'; used: number }
+  | { code: 'personal-account' | 'not-custom' }
+  /** Otra operación con los créditos de esa persona escribió primero: se vuelve a intentar. */
+  | { code: 'busy' }
+  /** Los códigos de registro: uno que ya existe, una acción que su estado no permite, o uno que otra escritura está cambiando. */
+  | { code: 'code-exists' | 'code-busy' }
+  /** El estado no permite la acción; `message`, lo que dijo el backend (en el equipo, qué hacer). */
+  | { code: 'state-not-allowed'; message?: string | null }
+  /**
+   * El equipo ENSŌ: un correo que ya está (con su `sub`), una acción sobre uno mismo, una invitación
+   * que ya se usó, otro cambio que llegó primero, o el login del equipo que no respondió.
+   */
+  | { code: 'already-in-team'; sub: string | null }
+  | { code: 'self-action' | 'invitation-accepted' | 'conflict' | 'pool-unavailable' }
+  /** La API no respondió a tiempo, o respondió un 5xx: no se sabe si se hizo. */
+  | { code: 'unavailable' };
+
+export type CreatedAccount = { company: Company; invitationSent: boolean; movedFrom: string | null };
+export type InvitedPerson = { invitationSent: boolean; movedFrom: string | null };

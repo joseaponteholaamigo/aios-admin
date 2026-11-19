@@ -1,0 +1,7 @@
+/* La confirmación de la marca de superadministrador. */
+.superadmin-confirm { width: min(480px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.superadmin-confirm::backdrop { background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.superadmin-confirm__body { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.superadmin-confirm__title { font-size: 18px; font-weight: 650; }
+.superadmin-confirm__body p { font-size: 14px; color: var(--ink-2); }
+.superadmin-confirm__buttons { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }

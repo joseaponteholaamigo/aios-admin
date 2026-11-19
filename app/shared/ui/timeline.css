@@ -1,0 +1,10 @@
+/* Una línea de tiempo: copiada del panel viejo (`admin.css` de beenso, `d74d3fb`). */
+
+.timeline { display: flex; flex-direction: column; }
+.timeline li { list-style: none; display: grid; grid-template-columns: 140px 18px minmax(0, 1fr); gap: 10px; font-size: 12.5px; padding: 6px 0; }
+.timeline ul { margin: 0; padding: 0; }
+.timeline .ts { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.timeline .pt { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin-top: 5px; box-shadow: 0 0 0 3px var(--accent-soft); }
+.timeline code { font-family: var(--mono); font-size: 11.5px; font-weight: 600; }
+.timeline .what { display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 860px) { .timeline li { grid-template-columns: 96px 14px minmax(0, 1fr); } }

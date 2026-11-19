@@ -1,0 +1,2 @@
+/* La fila entera se abre con un clic: el cursor lo dice. El fondo al pasar el mouse ya lo pone `.tbl`. */
+.tbl tbody tr.linked-row { cursor: pointer; }

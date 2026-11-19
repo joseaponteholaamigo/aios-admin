@@ -1,0 +1,6 @@
+/* La hoja global del panel: solo tokens, reset y primitivas. Lo de cada pantalla o pieza del marco
+ * vive con su componente. Vite junta estos archivos en uno solo al construir. */
+@import './fonts.css';
+@import './tokens.css';
+@import './base.css';
+@import './primitives.css';

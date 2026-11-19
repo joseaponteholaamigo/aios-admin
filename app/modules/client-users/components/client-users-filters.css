@@ -1,0 +1,4 @@
+/* La barra de filtros de Usuarios de clientes: en su propia fila, a todo el ancho de la tarjeta. */
+
+.client-users-filters { gap: 12px; padding: 16px 20px 0; }
+.client-users-filters select { max-width: 280px; }

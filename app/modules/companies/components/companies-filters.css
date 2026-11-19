@@ -1,0 +1,5 @@
+/* La barra de filtros de Empresas: en su propia fila, a todo el ancho de la tarjeta, como la de
+ * Usuarios de clientes. */
+
+.companies-filters { gap: 12px; padding: 16px 20px 0; }
+.companies-filters select { max-width: 220px; }

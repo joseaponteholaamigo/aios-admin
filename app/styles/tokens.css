@@ -1,0 +1,58 @@
+/* Los tokens del panel: colores, temas claro y oscuro, radio, sombra y familias (CA-22).
+ *
+ * Copiados TAL CUAL del panel viejo: `beenso`, `src/lib/administrador/admin.css`, commit
+ * `d74d3fb`, líneas 7 a 53. Para comprobar que no derivaron:
+ *
+ *   diff <(grep -o -- '--[a-z0-9-]*: [^;]*' ../beenso/src/lib/administrador/admin.css | sort -u) \
+ *        <(grep -o -- '--[a-z0-9-]*: [^;]*' app/styles/tokens.css | sort -u)
+ *
+ * El tema lo fija `data-theme` en <html> (el script de `theme-script.tsx`); sin él, manda el
+ * sistema. Las variables cuelgan de `.adm`, que lleva el <body>. */
+
+.adm {
+  --bg: #F4F6F9;
+  --panel: #FFFFFF;
+  --panel-2: #F8F9FB;
+  --ink: #0D131F;
+  --ink-2: #2A3346;
+  --muted: #5F6B7E;
+  --faint: #8A94A6;
+  --line: #E4E7ED;
+  --line-2: #EEF0F4;
+  --accent: #1567D6;
+  --accent-ink: #0A4FB8;
+  --accent-soft: #E8F0FC;
+  --on-accent: #FFFFFF;
+  --ok: #0B6B47;
+  --ok-soft: #E3F4EC;
+  --warn: #9A5B00;
+  --warn-soft: #FFF3DC;
+  --bad: #B42318;
+  --bad-soft: #FDECEA;
+  --violet: #5B4BD6;
+  --violet-soft: #EEEBFD;
+  --clay: #B0543A;
+  --shadow: 0 1px 2px rgba(13, 19, 31, .04), 0 4px 16px rgba(13, 19, 31, .04);
+  --r: 14px;
+  --sans: "Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .adm {
+    --bg: #0A0E16; --panel: #111827; --panel-2: #0E1522; --ink: #EEF1F6; --ink-2: #CDD3DE;
+    --muted: #97A1B3; --faint: #6B768A; --line: #222C3E; --line-2: #1A2333;
+    --accent: #1F8BFF; --accent-ink: #7BC0FF; --accent-soft: #0F2340; --on-accent: #04070D;
+    --ok: #56D39A; --ok-soft: #0E2A20; --warn: #F2B555; --warn-soft: #2B2010; --bad: #FF8A80; --bad-soft: #2E1414;
+    --violet: #A79BFF; --violet-soft: #1D1A3A; --clay: #D77757;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] .adm {
+  --bg: #0A0E16; --panel: #111827; --panel-2: #0E1522; --ink: #EEF1F6; --ink-2: #CDD3DE;
+  --muted: #97A1B3; --faint: #6B768A; --line: #222C3E; --line-2: #1A2333;
+  --accent: #1F8BFF; --accent-ink: #7BC0FF; --accent-soft: #0F2340; --on-accent: #04070D;
+  --ok: #56D39A; --ok-soft: #0E2A20; --warn: #F2B555; --warn-soft: #2B2010; --bad: #FF8A80; --bad-soft: #2E1414;
+  --violet: #A79BFF; --violet-soft: #1D1A3A; --clay: #D77757;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;
+}

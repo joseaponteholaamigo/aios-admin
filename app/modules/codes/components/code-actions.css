@@ -1,0 +1,6 @@
+/* Las acciones de un código. Revocar es rojo: no se deshace. */
+/* `.btn.` delante: `.adm button { color: inherit }` pesa más que una sola clase y el texto saldría oscuro. */
+.code-actions { display: flex; flex-direction: column; gap: 12px; max-width: 640px; }
+.code-actions__buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn.code-actions__revoke { background: var(--bad); color: var(--panel); border-color: var(--bad); }
+.btn.code-actions__revoke:hover { background: color-mix(in srgb, var(--bad) 85%, var(--ink)); border-color: var(--bad); }

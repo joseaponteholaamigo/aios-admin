@@ -1,0 +1,8 @@
+/* El encabezado de una página: copiado del panel viejo (`admin.css` de beenso, `d74d3fb`). */
+
+.adm-crumbs { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.adm-crumbs a { color: var(--accent-ink); }
+.adm-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.adm-head h1 { font-size: clamp(26px, 3vw, 36px); font-weight: 700; max-width: 760px; }
+.adm-head p.lead { color: var(--muted); max-width: 720px; margin-top: 8px; font-size: 14.5px; }
+.adm-actions { display: flex; gap: 8px; flex-wrap: wrap; }

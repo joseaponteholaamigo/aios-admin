@@ -1,0 +1,3 @@
+/* El resultado de la búsqueda por correo, en el lugar de la lista. */
+
+.search-results { display: flex; flex-direction: column; gap: 12px; }

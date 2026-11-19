@@ -1,0 +1,7 @@
+/* La X de borrar, dentro del buscador y a la derecha. */
+
+.search-input__clear {
+  display: grid; place-items: center; flex: none; padding: 2px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--faint); cursor: pointer;
+}
+.search-input__clear:hover, .search-input__clear:focus-visible { color: var(--ink); background: var(--line-2); }

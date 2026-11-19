@@ -1,0 +1,3 @@
+/* El resultado de la búsqueda de Empresas, en el lugar de la lista. */
+
+.companies-search-results { display: flex; flex-direction: column; gap: 12px; }

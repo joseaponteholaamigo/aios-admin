@@ -2,8 +2,8 @@
 
 - **Fecha:** 2026-10-21
 - **Origen:** idea interna. El plan (`2026-10-20-plan-superadmin-aws.md`, versión 3, fase M1 en su §13) y su auditoría (`2026-10-21-auditoria-plan-superadmin.md`) viven en `docs/` de la raíz del workspace, fuera de este repo, porque nombran clientes reales.
-- **Estado:** backend implementado en `aios-backend` (`feat/backend-superadmin-m1`, 2026-10-21); panel e infraestructura del panel, pendientes
-- **Dónde se implementa:** la parte del panel y su infraestructura, en este repo. La del backend, en `aios-backend`, rama `feat/backend-superadmin-m1` (worktree `aios-backend-superadmin`, en la raíz del workspace).
+- **Estado:** backend implementado en `aios-backend` (2026-10-21); panel en construcción; infraestructura del panel, pendiente
+- **Dónde se implementa:** todo el superadmin va en la rama `superadmin_v2` de los dos repos (decisión de Jose, 2026-10-22). El panel y su infraestructura, en este repo; el backend, en `aios-backend` (worktree `aios-backend-superadmin`, en la raíz del workspace).
 - **Proyectos:** `aios-backend` (los CA marcados **[backend]**), `aios-admin` (**[panel]**) y la infraestructura de `aios-admin` (**[infra]**).
 
 ## Objetivo
@@ -351,7 +351,7 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
   - CloudFront sin web ACL, con dos comportamientos: `/assets/*` con caché, y el resto con `AllViewerExceptHostHeader` + `CachingDisabled`;
   - la tabla de sesiones con TTL, `DeletionProtectionEnabled` y `DeletionPolicy: Retain`;
   - una llave KMS de sesiones que solo el rol del panel puede usar para descifrar;
-  - un secreto con la llave de la cookie;
+  - ~~un secreto con la llave de la cookie~~: no se crea en M1, porque nada lo usaría (la cookie lleva solo un id al azar). Llega con su primer uso: las claves de Mappi (M3) o el login pendiente sin escritura en la tabla (observación #7 del `quality-gate`);
   - los grupos de logs `/aws/lambda/web/<fn>` y `<fn>.local`, con 30 días de retención;
   - alarmas de errores 5xx y de throttles del endpoint (`AWS/Lambda/Web`) que avisan al tema de alarmas del backend, pasado por ARN;
   - `terminationProtection` activado y una política del stack.
@@ -373,8 +373,9 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Dado** una URL desplegada
 - **Cuando** se corre `npm run smoke -- <url>`
 - **Entonces** comprueba que:
-  - `GET /` responde 302 a `authorize` del pool del equipo;
-  - un archivo de `/assets/` responde 200;
+  - `GET /` responde 302 a `/auth/login`, y `/auth/login` responde 302 a `authorize` del pool del equipo, con PKCE (son dos saltos: el primero guarda la vuelta);
+  - una página responde con CSP y `Cache-Control: no-store`, y un archivo de `/assets/` que ella nombra responde 200;
+  - un POST a `/auth/logout` con el `Origin` del panel llega al servidor (302 con `no-store`): es el criterio 1 de CA-32;
   - `GET <api>/v1/admin/yo` sin token responde 401.
 - **Y** termina con un código distinto de 0 si falla cualquiera.
 
@@ -390,7 +391,7 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 - **Dado** una sesión con un `auth_time` de hace más de 15 minutos
 - **Cuando** el panel redirige con `acr_values=urn:cognito:loa:4&max_age=900`
 - **Entonces** Cognito vuelve a pedir el código TOTP.
-- **Y** el token nuevo trae `acr = urn:cognito:loa:4` y un `auth_time` actualizado.
+- **Y** el token nuevo trae `acr = urn:cognito:loa:4` y un `auth_time` actualizado. Como el token no llega al navegador, esto se ve en el log del panel: cada login completo deja una línea `login completo` con el `acr` y el `auth_time` del access token, sin el token ni quién entró.
 - **Y** si Cognito no lo soporta en el plan del pool, queda escrito en esta spec y se aplica la alternativa de «Riesgos».
 
 ## Casos borde y de error
@@ -454,7 +455,11 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 ### CB-12: El servidor tarda en arrancar
 - **Dado** que leer el secreto o SSM tarda
 - **Cuando** arranca la Web Function
-- **Entonces** el servidor empieza a escuchar antes de esas lecturas (que van después de `listen`), dentro de los 10 s que da Lambda, y los pedidos que llegan antes de tener la configuración responden 503.
+- **Entonces** el servidor empieza a escuchar antes de esas lecturas (que van después de `listen`), dentro de los 10 s que da Lambda.
+- **Y** un pedido que llega mientras la app se prepara espera a que termine, hasta 8 s, y recibe su página. Es el primer pedido después de cada rato sin uso, porque la Web Function apaga sus entornos (lo encontró la prueba rápida en AWS: responderle 503 hacía fallar la primera visita).
+- **Y** si leer la configuración falló, el pedido responde 503 enseguida, sin esperar.
+- **Y** si falta un parámetro (el backend todavía no hizo su segunda pasada) o SSM no responde, el primer pedido que llega 15 s después dispara otro intento: el panel entra en servicio sin volver a desplegarse.
+- **Y** si la configuración se leyó pero no carga (una variable mal escrita), el proceso termina con el nombre de la variable: no hay nada que reintentar.
 
 ### CB-14: Fila de sesión vencida que DynamoDB todavía no borró
 - **Dado** una fila con el TTL vencido pero aún presente
@@ -483,13 +488,15 @@ Que las personas del equipo ensō (3 hoy, hasta 5) entren con MFA a un panel nue
 | CA-26 | integration (concurrencia) | `aios-admin/tests/concurrent-requests.test.ts` |
 | CA-27, CB-11 | unit | `aios-admin/tests/csrf.test.ts` |
 | CA-28 | unit (cabeceras) | `aios-admin/tests/security-headers.test.ts` |
-| CA-29 | unit (build) | `aios-admin/tests/dev-identity-excluded.test.ts` |
+| CA-29 | unit (build) | `aios-admin/tests/production-build.test.ts` (también exige la CSP del build real, CA-28) |
 | CA-30 | unit | `aios-admin/tests/api-client-mapping.test.ts` |
 | CA-31 | unit (*loader* + componente) | `aios-admin/tests/home.test.ts` |
 | CA-32, CA-37, CA-38 | manual (en AWS, lo despliega Jose) | resultado escrito en esta spec |
-| CA-33, CA-35, CB-12 | unit (plantilla sintetizada) | `aios-admin/infra/tests/stack.test.ts` |
-| CA-34 | unit | `aios-admin/infra/tests/account-guard.test.ts` |
-| CA-36 | manual + script | `aios-admin/scripts/smoke.mjs`, después de cada despliegue |
+| CA-33, CA-35 | unit (plantilla sintetizada) | `aios-admin/tests/infra-stack.test.ts` (también la política del stack) |
+| CB-12 | unit + integración (el servidor construido, con un SSM falso que tarda) | `aios-admin/tests/startup.test.ts`, `aios-admin/tests/runtime-config.test.ts`, `aios-admin/tests/production-build.test.ts` |
+| CA-34 | unit | `aios-admin/tests/infra-accounts.test.ts` |
+| CA-36 | unit + script, después de cada despliegue | `aios-admin/tests/smoke.test.ts`, `npm run smoke` |
+| CA-32 | script, durante la prueba técnica | `npm run probe` (arranque en frío y continuidad durante el despliegue) |
 
 Presupuesto de las pruebas: ≤ 100 ms cada una y 1 s de techo, según el `CLAUDE.md` global. Las de concurrencia (CA-26) y las del build (CA-16, CA-29) llevan escrito al lado qué esperan, si pasan el techo.
 
@@ -524,18 +531,23 @@ Presupuesto de las pruebas: ≤ 100 ms cada una y 1 s de techo, según el `CLAUD
 - `server/`: el servidor Express de React Router, que escucha en `AWS_LAMBDA_HTTP_ENDPOINT || PORT`.
 - `dev/`: la identidad falsa.
 - `infra/`: el stack, la guarda de cuenta y sus pruebas.
-- `scripts/smoke.mjs`.
+- `scripts/smoke.mjs`, `scripts/probe.mjs` y `scripts/build-lambda-asset.mjs` (el paquete del servidor, por allow-list).
+- `server/runtime-config.js` y `server/startup.js`: la configuración de SSM y el arranque en dos tiempos (CB-12).
 - `tests/`.
 
 ## Resultado de la prueba técnica
 
-*(Se completa al correr CA-32 y CA-38.)*
+*(CA-32 se corrió el 2026-10-23 y el 2026-10-26; CA-38, el 2026-10-26.)*
 
-- Camino elegido: —
-- POST por CloudFront: —
-- Arranque en frío: —
-- Despliegue sin corte: —
-- MFA reciente con `acr_values`: —
+- Camino elegido: **A**, la Lambda Web Function detrás de CloudFront con OAC. Se cumplen los tres criterios de CA-32.
+- POST por CloudFront: `POST /auth/logout` con el `Origin` del panel llega al servidor y responde su 302 con `no-store` (`npm run smoke`, 2026-10-23). No es 2xx porque el logout redirige. Lo que el criterio mide es que CloudFront y la firma de OAC dejen pasar un POST, y lo dejan.
+- Arranque en frío: `GET /` responde su 302 al login en 1,64 s en un entorno recién creado (2026-10-23) y en 1,75 s después de días sin uso (2026-10-26). Se mide desde afuera, con la conexión TLS incluida. Antes de CB-12 (`320fbec`), ese primer pedido respondía 503.
+- Despliegue sin corte: `npm run infra:deploy` de `c8a877c` con `npm run probe` corriendo, el 2026-10-26 entre 17:04:22 y 17:09:21 UTC. Fueron 300 pedidos a `/auth/no-access`: todos respondieron 200 y el más lento tardó 881 ms. Según los eventos de CloudFormation, el endpoint cambió de revisión entre 17:06:14 y 17:06:20 y la revisión vieja se borró entre 17:06:25 y 17:06:29. El cambio cayó en la mitad de la medición, con casi tres minutos de pedidos después.
+- MFA reciente con `acr_values` (CA-38): **se cumple a medias.**
+  - Lo que sí funciona: con `/auth/login?mfa=1` (`acr_values=urn:cognito:loa:4`, `max_age=900`), Cognito vuelve a pedir la contraseña y el código si el último ingreso tiene más de 15 minutos. Se probó a las 21:28 UTC, 30 minutos después del login.
+  - Lo que no: el token nunca trae `acr`, ni en ese login ni en ninguno; la línea `login completo` del log dice `acr=(no viene)`. El pool está en el plan `ESSENTIALS` (confirmado con `describe-user-pool`), así que lo más probable es que la función todavía no le llegue: según la documentación de Cognito, se habilita de a poco y, mientras no esté, ignora `acr_values` sin dar error.
+  - Un hallazgo más: un inicio silencioso (Cognito con su sesión abierta, sin pedir nada) renueva `auth_time`. Por eso `auth_time` solo no prueba que se escribió el código hace poco.
+  - Consecuencia: tal como está, el backend (`exigirMfaReciente`) rechazaría todo cambio de permisos. Cómo protegerlos se decide antes de la pantalla de Equipo (M2).
 
 ## Riesgos y preguntas abiertas
 

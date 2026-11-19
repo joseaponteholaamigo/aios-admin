@@ -1,0 +1,133 @@
+// Las cuentas de los clientes, como las ve el panel (M2a y spec «Cuentas personales»): una empresa
+// o la cuenta personal de una persona sola. Los nombres del backend se traducen solo en
+// `app/shared/api/`: aquí no aparece ninguno.
+import type { SeatStatus } from './client-users';
+import type { PageInfo } from './pagination';
+
+/** El plan contratado: `custom` es el Personalizado; otro valor es un tier del backend. */
+export type CompanyPlan = 'custom' | 'free' | 'pro' | 'team' | string;
+
+/** Los planes por los que se filtra y se cuenta, en el orden en que se ofrecen. */
+export const LIST_PLANS = ['free', 'pro', 'team', 'custom'] as const;
+export type ListPlan = (typeof LIST_PLANS)[number];
+
+export const isListPlan = (value: string | null): value is ListPlan => LIST_PLANS.includes(value as ListPlan);
+
+/** Una empresa, o la cuenta de una persona sola (quien compró Pro, cada persona del webinar). */
+export type AccountKind = 'company' | 'personal';
+
+/** La persona de una cuenta personal: su asiento vigente. */
+export type AccountPerson = { email: string; status: SeatStatus; invitedAt: string | null; acceptedAt: string | null };
+
+/**
+ * De dónde salió una cuenta personal (spec «Registro abierto» de aios-tower, CA-23): el registro abierto, un
+ * código, una compra en la web, el webinar o un alta del equipo. Se anota al crearla y no cambia: una cuenta
+ * del registro que después canjea un código sigue siendo del registro. En este orden se muestran sus números.
+ */
+export const ACCOUNT_ORIGINS = ['signup', 'code', 'purchase', 'webinar', 'team'] as const;
+export type AccountOrigin = (typeof ACCOUNT_ORIGINS)[number];
+
+export type Company = {
+  id: string;
+  name: string;
+  kind: AccountKind;
+  /** La persona de una cuenta personal; `null` en una empresa, o en una cuenta personal sin nadie. */
+  person: AccountPerson | null;
+  /** De dónde salió una cuenta personal; `null` en una empresa, o si el backend no dijo uno que el panel conozca. */
+  origin: AccountOrigin | null;
+  plan: CompanyPlan | null;
+  /** El estado del backend tal cual (`active`, `revoked`, `canceled`…). */
+  status: string | null;
+  expiry: { expired: boolean; expiredBy: 'subscription' | 'date' | null; until: string | null };
+  /** El aviso de vencimiento, ya redactado por el backend (`vence el 1 nov`), o `null`. */
+  notice: string | null;
+  seats: { used: number; cap: number | null };
+  admins: number;
+  paysWithStripe: boolean;
+  createdAt: string | null;
+};
+
+/**
+ * Cuántas cuentas hay de un tipo: en total y de cada plan. `plans` en `null` es «sin dato»: con el índice de
+ * empresas (D-13), la lista de Empresas ya no cuenta por plan las cuentas personales. Nunca se lee como ceros.
+ */
+export type KindCount = { total: number; plans: Record<ListPlan, number> | null };
+
+/** Los números de las pestañas y de la lista de planes. No dependen de la búsqueda ni de la página. */
+export type AccountCounts = { companies: KindCount; personal: KindCount };
+
+export type CompaniesPage = { companies: Company[]; page: PageInfo; counts: AccountCounts; onlySome: boolean };
+
+/** Cuántas cuentas de un tipo cuenta el índice de las listas: en total y por origen (CA-24 de «Registro abierto»). */
+export type OriginCount = { total: number; byOrigin: Record<AccountOrigin, number> };
+
+/** Los números de las dos pestañas según el índice. No cambian con la página. */
+export type IndexCounts = { companies: OriginCount; personal: OriginCount };
+
+/**
+ * Una página de las cuentas personales por el índice (CA-23 y CA-24 de «Registro abierto»), de la más nueva a
+ * la más vieja. `next` es el cursor de la página siguiente, o `null` en la última.
+ *
+ * `counts` en `null` es «sin contar todavía» (D-17 de la fase R del plan de créditos): el relleno del índice
+ * (CA-44) no ha corrido, así que los contadores no cuentan las cuentas que ya existían y la lista puede estar
+ * incompleta. Ninguna pantalla tiene entonces un número que mostrar.
+ */
+export type PersonalAccountsPage = { accounts: Company[]; next: string | null; counts: IndexCounts | null; onlySome: boolean };
+
+/** Las cuentas que contienen un texto. `hasMore`: hubo más que las que vinieron. */
+export type CompaniesSearch = { companies: Company[]; hasMore: boolean; onlySome: boolean };
+
+/** Los cupos de un plan por nombre (`radar`, `projects`, `skills`, `chains`); `null` es sin tope. */
+export type Quotas = Record<string, number | null>;
+
+export type EffectivePlan = {
+  tier: string | null;
+  preset: string | null;
+  flags: { collaboration: boolean; scheduling: boolean };
+  quotas: Quotas;
+  seats: number | null;
+  managesSeats: boolean;
+};
+
+/** De qué contenido parte una empresa antes de sus reglas: todo, lo de Free o nada. */
+export type ContentBase = 'everything' | 'free' | 'nothing';
+
+/** Una regla de acceso de empresa: dar o quitar una skill o un dominio. */
+export type AccessRule = { key: string; action: 'grant' | 'remove' | 'unknown'; missing: boolean; inactive: boolean };
+
+export type CompanyAccess = {
+  base: ContentBase | null;
+  rules: AccessRule[];
+  counts: { skills: number; agents: number; chains: number };
+};
+
+/** Lo que se acordó con un cliente Personalizado. */
+export type CustomConditions = {
+  seats: number | null;
+  content: ContentBase | null;
+  team: boolean | null;
+  scheduling: boolean | null;
+  until: string | null;
+  quotas: Quotas;
+};
+
+export type CompanyFile = Company & {
+  effectivePlan: EffectivePlan | null;
+  /** Las condiciones de un Personalizado; `null` en los demás planes. */
+  conditions: CustomConditions | null;
+  access: CompanyAccess | null;
+  /** Por qué no se pudo calcular el acceso (falta publicar algo), cuando `access` es `null`. */
+  accessPending: string | null;
+};
+
+export type CompanyHistoryEvent = {
+  source: 'account' | 'audit';
+  at: string;
+  actor: string | null;
+  what: string;
+  reason: string | null;
+  channel: string | null;
+  detail: unknown;
+  before: unknown;
+  after: unknown;
+};

@@ -1,0 +1,6 @@
+{
+  "app": "node infra/app.ts",
+  "watch": {
+    "exclude": ["node_modules/**", "tests/**", ".lambda-asset/**", "build/**", ".react-router/**"]
+  }
+}

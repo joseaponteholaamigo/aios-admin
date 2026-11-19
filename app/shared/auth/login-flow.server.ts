@@ -1,0 +1,160 @@
+// El login del equipo con el login administrado de Cognito: empezar, volver, renovar y salir
+// (plan §3.3; CA-18 a CA-23).
+//
+// Código + PKCE + `state` + `nonce`, aunque el cliente sea confidencial. El retorno vuelve siempre
+// al primer origen público (`PUBLIC_ORIGINS`), nunca al `Host` del pedido, que detrás de
+// CloudFront es el del endpoint de Lambda. Los tokens nunca llegan al navegador.
+import { createHash } from 'node:crypto';
+import { redirect } from 'react-router';
+import type { PanelConfig } from '../config/config.server';
+import type { ActiveSession, SessionService } from '../session/session.server';
+import { IdentityProviderError, type CognitoClient } from './cognito-client.server';
+import { expiredLoginCookie, type PendingLogins } from './pending-login.server';
+
+/** Se renueva el access token cuando le queda menos de esto. */
+export const REFRESH_MARGIN_MS = 60 * 1000;
+
+/** Un origen que no existe: sirve para resolver la vuelta como lo haría el navegador. */
+const RETURN_BASE = 'https://panel.invalid';
+
+/**
+ * Una ruta del propio panel a la que volver, o `/`. Nunca otro sitio: no es una redirección abierta.
+ *
+ * ⚠️ Se resuelve con el analizador de URL, como el navegador, en vez de mirar el texto: el
+ * navegador quita tabuladores y saltos de línea, así que `/\t/evil.example` termina siendo
+ * `//evil.example`, otro sitio. Por eso se rechazan los caracteres de control y la barra
+ * invertida, y la vuelta tiene que quedar en el mismo origen.
+ *
+ * ⚠️ Y se revisa también la ruta ya normalizada, que es lo que va en la redirección: los puntos
+ * se resuelven, así que `/.//evil.example` queda en el panel al entrar pero sale `//evil.example`.
+ */
+export function safeReturnTo(value: string | null | undefined): string {
+  if (!value || !value.startsWith('/') || /[\u0000-\u001f\u007f\\]/.test(value)) return '/';
+  let url: URL;
+  try {
+    url = new URL(value, RETURN_BASE);
+  } catch {
+    return '/';
+  }
+  const path = `${url.pathname}${url.search}${url.hash}`;
+  const staysInPanel = url.origin === RETURN_BASE && new URL(path, RETURN_BASE).origin === RETURN_BASE;
+  return staysInPanel ? path : '/';
+}
+
+/** La ruta que pidió el navegador. En un pedido de datos (`.data`) se quita el sufijo y la consulta interna. */
+export function documentPath(url: URL): string {
+  const path = url.pathname;
+  if (path.endsWith('/_.data')) return path.slice(0, -'_.data'.length);
+  if (path.endsWith('.data')) return path.slice(0, -'.data'.length);
+  return `${path}${url.search}`;
+}
+
+/** A dónde mandar a quien no tiene sesión: al login, con la vuelta a donde estaba. */
+export function loginRedirect(request: Request, { headers }: { headers?: HeadersInit } = {}) {
+  const params = new URLSearchParams({ returnTo: documentPath(new URL(request.url)) });
+  return redirect(`/auth/login?${params}`, { headers });
+}
+
+export type FinishedLogin =
+  | { ok: true; response: Response }
+  | { ok: false; status: number; message: string; headers: Headers };
+
+const challengeOf = (verifier: string) => createHash('sha256').update(verifier).digest('base64url');
+
+export function createLoginFlow({
+  config,
+  cognito,
+  pending,
+  sessions,
+  now = Date.now,
+  log = (message: string) => console.warn(message),
+}: {
+  config: PanelConfig;
+  cognito: CognitoClient;
+  pending: PendingLogins;
+  sessions: SessionService;
+  now?: () => number;
+  log?: (message: string) => void;
+}) {
+  const origin = config.publicOrigins[0]!;
+  const redirectUri = `${origin}/auth/callback`;
+
+  function failed(status: number, message: string): FinishedLogin {
+    return { ok: false, status, message, headers: new Headers({ 'Set-Cookie': expiredLoginCookie() }) };
+  }
+
+  function claimsAreValid(claims: Record<string, unknown>, nonce: string): claims is { sub: string } {
+    return claims.iss === config.cognito.issuer
+      && claims.aud === config.cognito.clientId
+      && claims.nonce === nonce
+      && typeof claims.exp === 'number' && claims.exp * 1000 > now()
+      && typeof claims.sub === 'string' && claims.sub.length > 0;
+  }
+
+  return {
+    async startLogin(request: Request): Promise<Response> {
+      const url = new URL(request.url);
+      const { state, pending: login, cookie } = await pending.start({ returnTo: safeReturnTo(url.searchParams.get('returnTo')) });
+      const location = cognito.authorizeUrl({ redirectUri, state, nonce: login.nonce, codeChallenge: challengeOf(login.verifier) });
+      return redirect(location, { headers: { 'Set-Cookie': cookie } });
+    },
+
+    async finishLogin(request: Request): Promise<FinishedLogin> {
+      const params = new URL(request.url).searchParams;
+      if (params.get('error')) return failed(400, 'El ingreso se canceló o no se completó. Vuelve a intentarlo.');
+      const login = await pending.consume(request, params.get('state'));
+      const code = params.get('code');
+      if (!login || !code) return failed(400, 'Este ingreso venció o no empezó en este navegador. Vuelve a intentarlo.');
+
+      let result;
+      try {
+        result = await cognito.exchangeCode({ code, verifier: login.verifier, redirectUri });
+      } catch (e) {
+        log(`No se pudo completar el login con el proveedor de identidad: ${e instanceof IdentityProviderError ? e.reason : 'error'}`);
+        return failed(502, 'No pudimos comprobar tu ingreso. Vuelve a intentarlo en un momento.');
+      }
+      if (!claimsAreValid(result.idClaims, login.nonce)) return failed(400, 'No pudimos verificar tu ingreso. Vuelve a intentarlo.');
+
+      const { cookie } = await sessions.create(request, result.idClaims.sub, result.tokens);
+      const headers = new Headers();
+      headers.append('Set-Cookie', cookie);
+      headers.append('Set-Cookie', expiredLoginCookie());
+      // Se vuelve a limpiar aunque ya se limpió al empezar: la fila del login pendiente es dato guardado.
+      return { ok: true, response: redirect(safeReturnTo(login.returnTo), { headers }) };
+    },
+
+    async logout(request: Request): Promise<Response> {
+      const { cookie, session } = await sessions.destroy(request);
+      if (session) {
+        // Revocar corta el refresh token en Cognito; si falla, la sesión ya no existe de este lado.
+        await cognito.revoke(session.tokens.refreshToken).catch(() => log('No se pudo revocar el refresh token al cerrar sesión'));
+      }
+      // Pasar por el /logout de Cognito cierra también su sesión: sin eso, volver a entrar no pediría el MFA.
+      return redirect(cognito.logoutUrl(`${origin}/`), { headers: { 'Set-Cookie': cookie } });
+    },
+
+    /**
+     * La sesión con un access token vigente, renovándolo si hace falta; `null` si el refresh token
+     * ya no sirve (revocado o vencido: Cognito responde `invalid_grant`).
+     *
+     * ⚠️ Una falla pasajera de Cognito (sin respuesta, un 5xx) NO cierra la sesión: si el access
+     * token todavía vale, se sigue con él; si ya venció, **lanza** `IdentityProviderError` y el
+     * middleware responde 503. Tratarla como revocación sacaba a todos al login en cada tropiezo.
+     */
+    async refreshIfNeeded(session: ActiveSession): Promise<ActiveSession | null> {
+      if (session.tokens.accessTokenExpiresAt - now() > REFRESH_MARGIN_MS) return session;
+      let tokens;
+      try {
+        tokens = await cognito.refresh(session.tokens.refreshToken);
+      } catch (e) {
+        if (e instanceof IdentityProviderError && e.status === 400 && e.reason === 'invalid_grant') return null;
+        log(`No se pudo renovar el access token: ${e instanceof IdentityProviderError ? `${e.status} ${e.reason}` : 'error'}`);
+        if (session.tokens.accessTokenExpiresAt > now()) return session;
+        throw e;
+      }
+      return sessions.saveTokens(session, tokens);
+    },
+  };
+}
+
+export type LoginFlow = ReturnType<typeof createLoginFlow>;
