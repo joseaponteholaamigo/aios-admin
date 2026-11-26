@@ -64,7 +64,7 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'deletion-in-progress': return 'Esta cuenta ya se está borrando: espera unos segundos y recarga la página.';
     case 'seats-in-use': return `Hoy tienen asiento ${rejection.used} personas: saca a las que sobran antes de bajar los asientos.`;
     case 'personal-account': return 'Una cuenta personal es de una persona: sus asientos no se cambian.';
-    case 'not-custom': return 'Solo se cambian aquí los asientos de una empresa con plan Personalizado.';
+    case 'not-custom': return 'La cuenta no es Personalizado: pásala primero a Personalizado desde «Cambiar plan».';
     case 'busy': return 'Hay otra operación con los créditos de esa persona en curso: vuelve a oprimir el botón en unos segundos.';
     case 'code-exists': return 'Ya hay un código con ese texto (sin importar mayúsculas): elige otro.';
     case 'state-not-allowed': return 'El código cambió de estado mientras tanto: recarga la página para ver cómo quedó.';
@@ -86,5 +86,10 @@ export function rejectionMessage(rejection: WriteRejection): string {
         : 'La invitación ya salió tres veces, o acaba de salir con otro pedido: no se reenvía más.';
     case 'account-revoked': return 'La cuenta está revocada: no cambia de plan hasta que se reactive.';
     case 'needs-confirmation': return 'Este cambio le quita algo a la cuenta: revisa la vista previa y confírmalo con «Guardar».';
+    case 'access-rejected': return 'El cambio no se puede aplicar así, y no se aplicó nada:';
+    case 'no-catalog':
+      return rejection.message
+        ? `No se puede calcular el acceso: ${rejection.message}.`
+        : 'No se puede calcular el acceso: falta publicar el catálogo o la receta del plan.';
   }
 }

@@ -5,6 +5,7 @@
 // es «el enlace ya no sirve», es un rechazo que el formulario muestra junto a su campo. Por eso aquí
 // se lee el cuerpo de los errores, y allá no.
 import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, WriteRejection } from '../../domain/account-creation';
+import type { AccessChange, AccessChangeResult } from '../../domain/access-rules';
 import type { AccountDeletion, DeletedAccount } from '../../domain/account-deletion';
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
 import type { CreditLoad, LoadedLot } from '../../domain/credits';
@@ -18,6 +19,7 @@ import {
 } from './team-mapping';
 import { toBackendLoad, toLoadedLot } from './credits-mapping';
 import { planChangePath, toBackendPlanChange, toPlanChangeResult } from './plan-change-mapping';
+import { companyAccessPath, toAccessChangeResult, toBackendAccessChange } from './access-rules-mapping';
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
@@ -47,6 +49,8 @@ export type AdminWriteApi = {
   deleteAccount(token: string, companyId: string, deletion: AccountDeletion): Promise<WriteResult<DeletedAccount>>;
   /** El plan y las características de una cuenta: ver el cambio, o guardarlo (spec «Editar cuentas y personas», CA-28). */
   changePlan(token: string, companyId: string, change: PlanChange): Promise<WriteResult<PlanChangeResult>>;
+  /** Dar o quitar dominios y skills a una empresa Personalizado, o volver a la base: ver el cambio, o guardarlo (spec «Reglas de acceso», CA-13). */
+  changeAccess(token: string, companyId: string, change: AccessChange): Promise<WriteResult<AccessChangeResult>>;
   /** Cargar créditos a una persona de esa cuenta: un lote que vence a un mes. */
   loadCredits(token: string, companyId: string, load: CreditLoad): Promise<WriteResult<LoadedLot>>;
   /** Crear un código de registro: con la misma clave, crear dos veces es crear uno (CA-7). */
@@ -111,6 +115,7 @@ export function createAdminWriteApi({
     deleteAccount: (token, companyId, deletion) =>
       post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/borrado`, token, toBackendDeletion(deletion), toDeletedAccount),
     changePlan: (token, companyId, change) => post(planChangePath(companyId), token, toBackendPlanChange(change), (b) => toPlanChangeResult(b, log), 'PATCH'),
+    changeAccess: (token, companyId, change) => post(companyAccessPath(companyId), token, toBackendAccessChange(change), (b) => toAccessChangeResult(b, log)),
     // El correo va en el cuerpo, como en las acciones sobre una persona: nunca en la URL.
     loadCredits: (token, companyId, load) => post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/creditos`, token, toBackendLoad(load), toLoadedLot),
     createCode: (token, code) => post('/v1/admin/codigos', token, toBackendNewCode(code), toWrittenCode),

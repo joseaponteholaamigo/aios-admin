@@ -94,6 +94,12 @@ export type WriteRejection =
   | { code: 'resend-limited'; retryAt: string | null }
   /** Cambiar el plan: la cuenta está revocada, o el cambio le quita algo y no vino confirmado. */
   | { code: 'account-revoked' | 'needs-confirmation' }
+  /**
+   * Las reglas de acceso de una empresa (spec «Reglas de acceso»): el cambio no se puede aplicar (`rejections`, por qué,
+   * redactado por el backend), o falta publicar algo para calcularlo (`message`, qué).
+   */
+  | { code: 'access-rejected'; rejections: string[] }
+  | { code: 'no-catalog'; message?: string | null }
   /** Otra operación con los créditos de esa persona escribió primero: se vuelve a intentar. */
   | { code: 'busy' }
   /** Los códigos de registro: uno que ya existe, una acción que su estado no permite, o uno que otra escritura está cambiando. */

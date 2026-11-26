@@ -1,0 +1,11 @@
+/* La vista previa de un cambio de acceso: lo que entra y lo que sale en grupos, los conteos y «Guardar». */
+.access-preview__body { display: grid; gap: 14px; }
+.access-preview__groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.access-preview__group { border-radius: 12px; padding: 10px 14px; border: 1px solid var(--line); }
+.access-preview__group--enters { background: var(--ok-soft); border-color: transparent; }
+.access-preview__group--leaves { background: var(--bad-soft); border-color: transparent; }
+.access-preview__group h3 { font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.access-preview__items { margin: 0; padding-left: 18px; color: var(--ink-2); display: grid; gap: 2px; max-height: 220px; overflow-y: auto; }
+.access-preview__counts { margin: 0; padding-left: 18px; color: var(--ink-2); display: grid; gap: 4px; }
+.access-preview__save { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 760px) { .access-preview__groups { grid-template-columns: minmax(0, 1fr); } }

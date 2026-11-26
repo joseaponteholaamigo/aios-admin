@@ -2,7 +2,8 @@
 // cuenta personal se nombra por su persona y la muestra en lugar de la parte de equipo (spec
 // «Cuentas personales», CA-22), con lo que se le puede hacer a esa persona (spec «Editar cuentas y
 // personas», CA-1). La tarjeta «Cuenta» junta lo que el equipo mira antes de cambiar algo (CA-2, CA-3), y
-// «Cambiar plan» lleva a cambiar el plan y sus características, o dice por qué no se puede (CA-27).
+// «Cambiar plan» lleva a cambiar el plan y sus características, o dice por qué no se puede (CA-27). «Lo que
+// recibe» lleva a sus reglas de acceso, con el mismo permiso (spec «Reglas de acceso», CA-11).
 import { Link, redirect, useSearchParams } from 'react-router';
 import type { Route } from './+types/company';
 import { can } from '../../../domain/permissions';
@@ -118,7 +119,7 @@ export default function Company({ loaderData, actionData }: Route.ComponentProps
             />
           )}
           <CompanyAccountCard file={file} voiceCap={voiceCap} />
-          <CompanyAccessCard file={file} />
+          <CompanyAccessCard file={file} canEdit={canChangePlan} planBlocked={planBlock !== null} />
         </div>
         <CompanyHistoryCard history={history} />
       </div>

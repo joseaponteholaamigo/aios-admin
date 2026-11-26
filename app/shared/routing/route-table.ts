@@ -52,6 +52,9 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   // Cambiar el plan y las características de una cuenta (spec «Editar cuentas y personas», CA-27 y CA-28): reemplaza a
   // «Cambiar asientos», con el mismo permiso.
   { path: 'companies/:companyId/plan', file: 'modules/companies/routes/company-plan.tsx', access: { module: 'companies', level: 'edit' } },
+  // Dar o quitar dominios y skills a un Personalizado (spec «Reglas de acceso», decisión 1): el mismo permiso que
+  // «Cambiar plan». Ver las reglas ya está en la ficha, con «ver».
+  { path: 'companies/:companyId/access', file: 'modules/companies/routes/company-access.tsx', access: { module: 'companies', level: 'edit' } },
   // Borrar una cuenta: solo el superadministrador (CA-23). Tener «editar» en Empresas no alcanza.
   { path: 'companies/:companyId/delete', file: 'modules/companies/routes/company-delete.tsx', access: 'superadmin' },
   {

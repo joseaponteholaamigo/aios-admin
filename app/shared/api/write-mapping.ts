@@ -117,6 +117,10 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   // Cambiar el plan (la misma spec).
   'cuenta-revocada': () => ({ code: 'account-revoked' }),
   'falta-confirmar': () => ({ code: 'needs-confirmation' }),
+  // Las reglas de acceso de una empresa (spec «Reglas de acceso»): una clave fuera del catálogo o con dos acciones, y
+  // lo que falta publicar para calcularlas (`error`: qué). `no-es-personalizado`, `falta-confirmar` y `conflicto`, arriba.
+  'acceso-rechazado': (b) => ({ code: 'access-rejected', rejections: strings(b.rechazos) }),
+  'sin-catalogo': (b) => ({ code: 'no-catalog', ...withMessage(b) }),
 };
 
 /**

@@ -1,0 +1,10 @@
+/* El catálogo para elegir: los dominios en columnas y las skills en grupos plegables por dominio. */
+.access-picker { display: grid; gap: 16px; }
+.access-picker__set { border: 1px solid var(--line-2); border-radius: 12px; padding: 12px 16px 14px; margin: 0; display: grid; gap: 6px; }
+.access-picker__set legend { font-size: 12px; font-weight: 600; color: var(--ink-2); padding: 0 6px; }
+.access-picker__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+.access-picker__group { border-top: 1px solid var(--line); padding: 8px 0; }
+.access-picker__group:first-of-type { border-top: 0; }
+.access-picker__group summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.access-picker__group[open] summary { margin-bottom: 4px; }
+@media (max-width: 860px) { .access-picker__list { grid-template-columns: minmax(0, 1fr); } }

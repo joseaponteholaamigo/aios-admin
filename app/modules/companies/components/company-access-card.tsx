@@ -1,21 +1,37 @@
 // Lo que recibe una empresa, en su ficha: su contenido de base, sus reglas de empresa y cuántas
-// skills, agentes y cadenas le llegan. Con los nombres técnicos: el catálogo con etiquetas llega en M2b.
-import type { AccessRule, CompanyFile } from '../../../domain/companies';
+// skills, agentes y cadenas le llegan. Con los nombres técnicos: los visibles están en «Reglas de acceso».
+// Para quien tiene «editar» en Empresas, enlaza a «Reglas de acceso»; en un plan que no es Personalizado,
+// dice por qué no y enlaza a «Cambiar plan» (spec «Reglas de acceso», CA-11).
+import { Link } from 'react-router';
+import type { CompanyFile } from '../../../domain/companies';
 import { Icon } from '../../../shared/icons/icon';
+import { badgeClass } from '../../../shared/ui/badge';
 import { FactList } from '../../../shared/ui/fact-list';
+import { NOT_CUSTOM_REASON, RULE_ACTION_LABELS, ruleStateLabel } from '../access-change-labels';
 import { CONTENT_LABELS } from '../company-labels';
 
-const ACTIONS: Record<AccessRule['action'], string> = { grant: 'Da', remove: 'Quita', unknown: '—' };
+type CompanyAccessCardProps = {
+  file: CompanyFile;
+  /** «Editar» en Empresas: el permiso de «Reglas de acceso» y de «Cambiar plan». */
+  canEdit: boolean;
+  /** «Cambiar plan» no se ofrece (cobra por Stripe, o está revocada): no se enlaza. */
+  planBlocked: boolean;
+};
 
-export function CompanyAccessCard({ file }: { file: CompanyFile }) {
+export function CompanyAccessCard({ file, canEdit, planBlocked }: CompanyAccessCardProps) {
   const { access } = file;
+  const custom = file.plan === 'custom';
   return (
     <section className="card">
       <div className="card-h">
         <div>
           <h2>Lo que recibe</h2>
           <p>Su contenido de base y las reglas de empresa, como las ve su admin en «Mi equipo».</p>
+          {canEdit && !custom && (
+            <p>{NOT_CUSTOM_REASON}{!planBlocked && <> <Link to={`/companies/${file.id}/plan`}>Cambiar plan</Link></>}</p>
+          )}
         </div>
+        {canEdit && custom && <Link className="btn" to={`/companies/${file.id}/access`}>Reglas de acceso</Link>}
       </div>
       <div className="card-b">
         {!access ? (
@@ -33,17 +49,16 @@ export function CompanyAccessCard({ file }: { file: CompanyFile }) {
                 <table className="tbl">
                   <thead><tr><th>Regla</th><th>Qué hace</th><th>Estado</th></tr></thead>
                   <tbody>
-                    {access.rules.map((rule) => (
-                      <tr key={rule.key}>
-                        <td><code className="mono small">{rule.key}</code></td>
-                        <td className="small">{ACTIONS[rule.action]}</td>
-                        <td>
-                          {rule.missing ? <span className="badge bad">Ya no existe</span>
-                            : rule.inactive ? <span className="badge warn">Inactiva: la empresa no lo tiene</span>
-                            : <span className="badge ok">Vale</span>}
-                        </td>
-                      </tr>
-                    ))}
+                    {access.rules.map((rule) => {
+                      const state = ruleStateLabel(rule);
+                      return (
+                        <tr key={rule.key}>
+                          <td><code className="mono small">{rule.key}</code></td>
+                          <td className="small">{RULE_ACTION_LABELS[rule.action]}</td>
+                          <td><span className={badgeClass(state.tone)}>{state.text}</span></td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

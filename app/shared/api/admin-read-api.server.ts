@@ -5,6 +5,7 @@
 // Llama con el access token de la sesión, que nunca sale del servidor del panel, y traduce cada
 // respuesta aquí mismo: el resto del panel no ve un nombre del backend.
 import type { DeletionPreview, PendingDeletion } from '../../domain/account-deletion';
+import type { CompanyAccessReading } from '../../domain/access-rules';
 import type { CreditLogFilters, CreditLogPage, PersonCredits } from '../../domain/credits';
 import type { AuditPage } from '../../domain/audit';
 import type { CodeDetail, RegistrationCode } from '../../domain/codes';
@@ -12,6 +13,7 @@ import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '
 import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan, PersonalAccountsPage } from '../../domain/companies';
 import type { TeamPerson } from '../../domain/team';
 import type { VoiceCaps } from '../../domain/voice-cap';
+import { companyAccessPath, toCompanyAccessReading, toUnpublishedAccess } from './access-rules-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
@@ -53,6 +55,11 @@ export type AdminReadApi = {
   searchCompanies(token: string, q: { text: string; kind: AccountKind; plan: ListPlan | null }): Promise<ApiResult<CompaniesSearch>>;
   getCompany(token: string, id: string): Promise<ApiResult<CompanyFile>>;
   getCompanyHistory(token: string, id: string): Promise<ApiResult<CompanyHistoryEvent[]>>;
+  /**
+   * Las reglas de acceso de una empresa, cuánto recibe y el catálogo con nombres (spec «Reglas de acceso»). Si falta
+   * publicar algo para calcularlas, lo dice en vez de lanzar: no es que el backend no respondiera.
+   */
+  getCompanyAccess(token: string, id: string): Promise<ApiResult<CompanyAccessReading>>;
   getCompanyPeople(token: string, id: string): Promise<ApiResult<CompanyPeople>>;
   /** `kind`: solo las personas de cuentas de ese tipo. No va con `company`: se filtra por una o por el otro. */
   listClientUsers(token: string, q: { company?: string; kind?: AccountKind | null; page?: number }): Promise<ApiResult<ClientUsersPage>>;
@@ -98,7 +105,11 @@ export function createAdminReadApi({
   fetchImpl = fetch,
   log = (message: string) => console.warn(message),
 }: { baseUrl: string; fetchImpl?: typeof fetch; log?: Log }): AdminReadApi {
-  async function send<T>(path: string, token: string, map: (body: unknown) => T, { body, timeoutMs = TIMEOUT_MS }: { body?: unknown; timeoutMs?: number } = {}): Promise<ApiResult<T>> {
+  /** `unavailable`: lee un 503 que la pantalla sabe decir (falta publicar algo); si devuelve `null`, el 503 lanza como siempre. */
+  async function send<T>(
+    path: string, token: string, map: (body: unknown) => T,
+    { body, timeoutMs = TIMEOUT_MS, unavailable }: { body?: unknown; timeoutMs?: number; unavailable?: (body: unknown) => T | null } = {},
+  ): Promise<ApiResult<T>> {
     let response: Response;
     try {
       response = await fetchImpl(`${baseUrl}${path}`, {
@@ -112,6 +123,10 @@ export function createAdminReadApi({
     }
     const kind = STATUS_RESULT[response.status];
     if (kind) return { kind } as ApiResult<T>;
+    if (response.status === 503 && unavailable) {
+      const value = unavailable(await response.json().catch(() => null));
+      if (value) return { kind: 'ok', value };
+    }
     if (!response.ok) throw new AdminApiUnavailableError(`La API de admin respondió ${response.status} (${path.split('?')[0]})`);
     let json: unknown;
     try {
@@ -134,6 +149,7 @@ export function createAdminReadApi({
       send('/v1/admin/clientes/buscar', token, (b) => toCompaniesSearch(b, log), { body: { texto: text, tipo: kindToApi(kind), plan: planToApi(plan) } }),
     getCompany: (token, id) => send(company(id), token, (b) => toCompanyFile(b, log)),
     getCompanyHistory: (token, id) => send(`${company(id)}/historia`, token, toCompanyHistory),
+    getCompanyAccess: (token, id) => send(companyAccessPath(id), token, (b) => toCompanyAccessReading(b, log), { unavailable: toUnpublishedAccess }),
     getCompanyPeople: (token, id) => send(`${company(id)}/personas`, token, (b) => toCompanyPeople(b, log)),
     listClientUsers: (token, { company, kind, page }) =>
       send(`/v1/admin/personas${query({ empresa: company, tipo: kindToApi(kind), pagina: pageToApi(page) })}`, token, (b) => toClientUsersPage(b, log)),
