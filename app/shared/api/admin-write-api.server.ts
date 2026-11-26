@@ -7,7 +7,8 @@
 import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, WriteRejection } from '../../domain/account-creation';
 import type { AccountDeletion, DeletedAccount } from '../../domain/account-deletion';
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
-import type { CreditLoad, LoadedLot, SeatsChange, SeatsChanged } from '../../domain/credits';
+import type { CreditLoad, LoadedLot } from '../../domain/credits';
+import type { PlanChange, PlanChangeResult } from '../../domain/plan-change';
 import type { CodeAction, NewCode, RegistrationCode } from '../../domain/codes';
 import type { VoiceCapChange, VoiceCapChanged } from '../../domain/voice-cap';
 import type { CreatedTeamMember, NewTeamMember, PermissionsChange, TeamAction, TeamPerson } from '../../domain/team';
@@ -15,12 +16,15 @@ import { codePath, toBackendCodeAction, toBackendNewCode, toWrittenCode } from '
 import {
   teamActionPath, teamPermissionsPath, toBackendNewTeamMember, toBackendPermissionsChange, toChangedTeamPerson, toCreatedTeamMember, toTeamPersonBody,
 } from './team-mapping';
-import { toBackendLoad, toBackendSeatsChange, toLoadedLot, toSeatsChanged } from './credits-mapping';
+import { toBackendLoad, toLoadedLot } from './credits-mapping';
+import { planChangePath, toBackendPlanChange, toPlanChangeResult } from './plan-change-mapping';
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { VOICE_CAP_PATH, toBackendVoiceCapChange, toVoiceCapChanged } from './voice-cap-mapping';
-import { personActionPath, toBackendAccount, toBackendPerson, toCreatedAccount, toInvitedPerson, toPersonActionDone, toWriteRejection } from './write-mapping';
+import {
+  personActionPath, toBackendAccount, toBackendPerson, toBackendPersonAction, toCreatedAccount, toInvitedPerson, toPersonActionDone, toWriteRejection,
+} from './write-mapping';
 
 /** Crear una cuenta mueve y borra cosas: le cabe más que a una lectura, por debajo de los 30 s de su Lambda. */
 const TIMEOUT_MS = 25000;
@@ -41,8 +45,8 @@ export type AdminWriteApi = {
   invitePerson(token: string, companyId: string, person: NewPerson): Promise<WriteResult<InvitedPerson>>;
   personAction(token: string, companyId: string, request: PersonActionRequest): Promise<WriteResult<PersonActionDone>>;
   deleteAccount(token: string, companyId: string, deletion: AccountDeletion): Promise<WriteResult<DeletedAccount>>;
-  /** Los asientos de una empresa Personalizado. */
-  changeSeats(token: string, companyId: string, change: SeatsChange): Promise<WriteResult<SeatsChanged>>;
+  /** El plan y las características de una cuenta: ver el cambio, o guardarlo (spec «Editar cuentas y personas», CA-28). */
+  changePlan(token: string, companyId: string, change: PlanChange): Promise<WriteResult<PlanChangeResult>>;
   /** Cargar créditos a una persona de esa cuenta: un lote que vence a un mes. */
   loadCredits(token: string, companyId: string, load: CreditLoad): Promise<WriteResult<LoadedLot>>;
   /** Crear un código de registro: con la misma clave, crear dos veces es crear uno (CA-7). */
@@ -102,12 +106,11 @@ export function createAdminWriteApi({
     createAccount: (token, account) => post('/v1/admin/clientes', token, toBackendAccount(account), (b) => toCreatedAccount(b, log)),
     invitePerson: (token, companyId, person) =>
       post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/personas`, token, toBackendPerson(person), toInvitedPerson),
-    personAction: (token, companyId, { action, email }) =>
-      post(personActionPath(companyId, action), token, { correo: email }, (b) => toPersonActionDone(action, b)),
+    personAction: (token, companyId, request) =>
+      post(personActionPath(companyId, request.action), token, toBackendPersonAction(request), (b) => toPersonActionDone(request.action, b)),
     deleteAccount: (token, companyId, deletion) =>
       post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/borrado`, token, toBackendDeletion(deletion), toDeletedAccount),
-    changeSeats: (token, companyId, change) =>
-      post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/condiciones`, token, toBackendSeatsChange(change), toSeatsChanged, 'PATCH'),
+    changePlan: (token, companyId, change) => post(planChangePath(companyId), token, toBackendPlanChange(change), (b) => toPlanChangeResult(b, log), 'PATCH'),
     // El correo va en el cuerpo, como en las acciones sobre una persona: nunca en la URL.
     loadCredits: (token, companyId, load) => post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/creditos`, token, toBackendLoad(load), toLoadedLot),
     createCode: (token, code) => post('/v1/admin/codigos', token, toBackendNewCode(code), toWrittenCode),

@@ -1,37 +1,14 @@
 // Lo que llega del formulario de «Nueva empresa» y «Nueva cuenta personal», validado (spec «Crear
-// empresas e invitar personas», CA-17), y con qué viene lleno al abrirlo. Puro: lo prueba
-// `tests/new-account-form.test.ts`. El fondo del plan (una fecha que ya pasó, un paquete que no está
-// publicado) lo juzga el backend: aquí solo la forma de cada campo.
+// empresas e invitar personas», CA-17). Puro: lo prueba `tests/new-account-form.test.ts`. Las
+// condiciones del plan se leen en `plan-conditions-form-data.ts`, que comparte con «Cambiar plan».
 import { z } from 'zod';
-import { CONTENT_LEVELS, CREATION_PLANS, PRO_CONDITIONS, QUOTA_RESOURCES, planFitsKind, type NewAccount, type PlanConditions, type Quotas } from '../../domain/account-creation';
-import type { AccountKind } from '../../domain/companies';
+import { CREATION_PLANS, planFitsKind, type NewAccount } from '../../domain/account-creation';
 import { MOVE_FIELD, MOVE_VALUE } from '../../shared/ui/move-from-personal-notice';
+import { errorsOf, readPlanConditions, type Errors } from './plan-conditions-form-data';
 
 export const NAME_MAX = 120;
 
-/** El caso más común al abrir el formulario (CA-17). Una cuenta personal: un asiento y sin equipo. */
-export function defaultConditions(kind: AccountKind): PlanConditions {
-  return kind === 'personal'
-    ? { content: 'all', seats: 1, team: false, schedules: true, endsOn: null, quotas: {} }
-    : { content: 'all', seats: 2, team: true, schedules: true, endsOn: null, quotas: {} };
-}
-
-/** Lo escrito en el formulario, tal cual, para volver a llenarlo si el backend lo rechaza (CA-19). */
-export type FormValues = Record<string, string>;
-
-export const valuesOf = (form: FormData): FormValues =>
-  Object.fromEntries([...form.entries()].filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
-
-export const quotaField = (resource: (typeof QUOTA_RESOURCES)[number]) => `quota-${resource}`;
-
-/**
- * La fecha de fin del Pro. Va en su propio campo: el `endsOn` de las condiciones de Personalizado sigue en el formulario
- * aunque esté oculto, y con el mismo nombre se leería uno por otro.
- */
-export const PRO_ENDS_ON_FIELD = 'proEndsOn';
-
 const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 const ACCOUNT = z.object({
   kind: z.enum(['company', 'personal']),
@@ -41,47 +18,6 @@ const ACCOUNT = z.object({
   key: z.string().regex(/^[A-Za-z0-9-]{16,64}$/, 'El formulario está incompleto: vuelve a abrirlo.'),
 });
 
-const CONDITIONS = z.object({
-  content: z.enum(CONTENT_LEVELS, 'Elige el contenido.'),
-  seats: z.coerce.number('Escribe cuántos asientos.').int('Los asientos van en números enteros.').min(1, 'Al menos un asiento.'),
-  endsOn: z.union([z.literal(''), z.string().regex(DAY, 'La fecha va como AAAA-MM-DD.')]),
-});
-
-type Errors = Record<string, string>;
-const errorsOf = (issues: z.core.$ZodIssue[]): Errors => Object.fromEntries(issues.map((i) => [String(i.path[0]), i.message]));
-
-/** Los cupos escritos: vacío no se manda (queda sin tope, como el plan); un número es el cupo. */
-function readQuotas(form: FormData, errors: Errors): Quotas {
-  const quotas: Quotas = {};
-  for (const resource of QUOTA_RESOURCES) {
-    const raw = String(form.get(quotaField(resource)) ?? '').trim();
-    if (!raw) continue;
-    const n = Number(raw);
-    if (Number.isInteger(n) && n >= 0) quotas[resource] = n;
-    else errors[quotaField(resource)] = 'Un número entero desde 0, o vacío para sin tope.';
-  }
-  return quotas;
-}
-
-function readConditions(form: FormData, kind: AccountKind, errors: Errors): PlanConditions | null {
-  const personal = kind === 'personal';
-  const parsed = CONDITIONS.safeParse({
-    content: form.get('content'), seats: personal ? 1 : form.get('seats'), endsOn: String(form.get('endsOn') ?? ''),
-  });
-  if (!parsed.success) Object.assign(errors, errorsOf(parsed.error.issues));
-  const quotas = readQuotas(form, errors);
-  if (!parsed.success) return null;
-  const { content, seats, endsOn } = parsed.data;
-  return { content, seats, team: personal ? false : form.get('team') === 'on', schedules: form.get('schedules') === 'on', endsOn: endsOn || null, quotas };
-}
-
-/** Las condiciones de Pro, fijas, con la fecha de fin que se eligió (vacía: sin fecha de fin). */
-function readProConditions(form: FormData, errors: Errors): PlanConditions {
-  const endsOn = String(form.get(PRO_ENDS_ON_FIELD) ?? '').trim();
-  if (endsOn && !DAY.test(endsOn)) errors[PRO_ENDS_ON_FIELD] = 'La fecha va como AAAA-MM-DD.';
-  return { ...PRO_CONDITIONS, quotas: {}, endsOn: endsOn || null };
-}
-
 /** El pedido del formulario (`{ account }`) o sus errores por campo (`{ errors }`). */
 export function readNewAccount(form: FormData): { account: NewAccount } | { errors: Errors } {
   const base = ACCOUNT.safeParse(Object.fromEntries(['kind', 'name', 'plan', 'adminEmail', 'key'].map((k) => [k, form.get(k) ?? ''])));
@@ -89,8 +25,7 @@ export function readNewAccount(form: FormData): { account: NewAccount } | { erro
   const kind = base.success ? base.data.kind : 'company';
   const plan = base.success ? base.data.plan : null;
   if (plan && !planFitsKind(plan, kind)) errors.plan = 'Pro es solo para una cuenta personal.';
-  // Pro no lee las condiciones del formulario: son fijas, aunque alguien las mande. Solo se elige su fecha de fin.
-  const conditions = plan === 'custom' ? readConditions(form, kind, errors) : plan === 'pro' ? readProConditions(form, errors) : null;
+  const conditions = plan ? readPlanConditions(form, plan, kind, errors) : null;
   if (!base.success || Object.keys(errors).length) return { errors };
   return {
     account: { ...base.data, adminEmail: base.data.adminEmail.toLowerCase(), conditions, moveFromPersonal: form.get(MOVE_FIELD) === MOVE_VALUE },

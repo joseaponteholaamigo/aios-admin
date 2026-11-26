@@ -112,6 +112,11 @@ export type CustomConditions = {
 };
 
 export type CompanyFile = Company & {
+  /**
+   * Tiene una suscripción de Stripe que cobra, o que puede volver a cobrar (spec «Editar cuentas y personas»). Mientras
+   * tanto no cambia de plan desde el panel. `paysWithStripe` dice solo si tiene cliente de Stripe.
+   */
+  stripeCanCharge: boolean;
   effectivePlan: EffectivePlan | null;
   /** Las condiciones de un Personalizado; `null` en los demás planes. */
   conditions: CustomConditions | null;

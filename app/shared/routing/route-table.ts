@@ -49,8 +49,9 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   // Antes que `:companyId`: la tabla se lee en orden, y `new` no es una empresa.
   { path: 'companies/new', file: 'modules/companies/routes/company-new.tsx', access: { module: 'companies', level: 'edit' } },
   { path: 'companies/:companyId', file: 'modules/companies/routes/company.tsx', access: { module: 'companies', level: 'view' } },
-  // Cambiar los asientos de un Personalizado (spec «Créditos por persona» de aios-tower, CA-19).
-  { path: 'companies/:companyId/seats', file: 'modules/companies/routes/company-seats.tsx', access: { module: 'companies', level: 'edit' } },
+  // Cambiar el plan y las características de una cuenta (spec «Editar cuentas y personas», CA-27 y CA-28): reemplaza a
+  // «Cambiar asientos», con el mismo permiso.
+  { path: 'companies/:companyId/plan', file: 'modules/companies/routes/company-plan.tsx', access: { module: 'companies', level: 'edit' } },
   // Borrar una cuenta: solo el superadministrador (CA-23). Tener «editar» en Empresas no alcanza.
   { path: 'companies/:companyId/delete', file: 'modules/companies/routes/company-delete.tsx', access: 'superadmin' },
   {

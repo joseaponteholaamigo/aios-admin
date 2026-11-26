@@ -76,5 +76,15 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'invitation-accepted': return 'Ya entró con su invitación: si no puede entrar, restablece su MFA.';
     case 'conflict': return 'Otro cambio llegó primero: recarga la página y repítelo.';
     case 'pool-unavailable': return 'El login del equipo no respondió y no se creó nada: vuelve a intentarlo.';
+    case 'already-revoked': return 'Esta persona ya tenía el acceso revocado: recarga la página para ver cómo quedó.';
+    case 'already-joined': return 'Esta persona ya entró a ENSŌ: no hay invitación que reenviar.';
+    case 'seat-paused': return 'Esta persona está en pausa porque el plan de la cuenta es de una sola persona: su invitación no se reenvía.';
+    case 'email-unavailable': return 'Ese correo ya entra a ENSŌ con otra cuenta: la invitación no se reenvió.';
+    case 'resend-limited':
+      return rejection.retryAt
+        ? `La invitación salió hace menos de una hora. Se puede reenviar desde el ${formatDateTime(rejection.retryAt)} (hora de Bogotá).`
+        : 'La invitación ya salió tres veces, o acaba de salir con otro pedido: no se reenvía más.';
+    case 'account-revoked': return 'La cuenta está revocada: no cambia de plan hasta que se reactive.';
+    case 'needs-confirmation': return 'Este cambio le quita algo a la cuenta: revisa la vista previa y confírmalo con «Guardar».';
   }
 }

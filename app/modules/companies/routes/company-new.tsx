@@ -11,7 +11,8 @@ import { ModuleError } from '../../../shared/layout/module-error';
 import { PageHeader } from '../../../shared/layout/page-header';
 import { createdNoticeParams } from '../company-labels';
 import { NewAccountForm } from '../components/new-account-form';
-import { readNewAccount, valuesOf } from '../new-account-form-data';
+import { readNewAccount } from '../new-account-form-data';
+import { valuesOf } from '../plan-conditions-form-data';
 
 export function loader({ request, context }: Route.LoaderArgs) {
   const kind = new URL(request.url).searchParams.get('kind') === 'personal' ? ('personal' as const) : ('company' as const);

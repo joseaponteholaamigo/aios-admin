@@ -19,10 +19,13 @@ export function usePersonActionDialog(lastAttempt: PersonActionAttempt | null) {
   const trigger = useRef<HTMLElement | null>(null);
   // Al volver de una acción que salió bien (otra dirección) se cierra; si la rechazó, se reabre con el rechazo.
   useEffect(() => setChosen(targetOf(lastAttempt)), [location.key, lastAttempt]);
+  const sameAsChosen = lastAttempt !== null && sameTarget(targetOf(lastAttempt), chosen);
   return {
     chosen,
     /** El rechazo del último intento, solo si es de la acción y la persona del diálogo abierto. */
-    rejection: lastAttempt && sameTarget(targetOf(lastAttempt), chosen) ? lastAttempt.rejection : null,
+    rejection: sameAsChosen ? lastAttempt.rejection : null,
+    /** Lo que mandó ese intento (el motivo escrito, el rol elegido), para volver a llenar el diálogo. */
+    attempt: sameAsChosen ? lastAttempt.attempt : null,
     open(action: PersonAction, email: string, button: HTMLElement) {
       trigger.current = button;
       setChosen({ action, email });

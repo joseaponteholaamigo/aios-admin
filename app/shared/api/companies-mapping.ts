@@ -13,7 +13,7 @@ const CONTENT_FROM_API: Record<string, ContentBase> = { todo: 'everything', free
 const ACTION_FROM_API: Record<string, AccessRule['action']> = { dar: 'grant', quitar: 'remove' };
 const QUOTA_FROM_API: Record<string, string> = { radar: 'radar', proyectos: 'projects', skills: 'skills', cadenas: 'chains' };
 
-const toContent = (value: unknown): ContentBase | null => CONTENT_FROM_API[String(value)] ?? null;
+export const toContent = (value: unknown): ContentBase | null => CONTENT_FROM_API[String(value)] ?? null;
 const boolOrNull = (value: unknown) => (typeof value === 'boolean' ? value : null);
 
 /** Los cupos con sus nombres en inglés. `null` es «sin tope» (`SIN_TOPE` del backend); un cupo que el panel no conoce queda en el log. */
@@ -29,7 +29,7 @@ function toQuotas(raw: unknown, log: Log): Quotas {
 }
 
 const COMPANY_FIELDS = ['id', 'nombre', 'tipo', 'persona', 'nacidaDe', 'plan', 'estado', 'vencimiento', 'aviso', 'asientos', 'admins', 'pagaPorStripe', 'creadaEl'] as const;
-const FILE_FIELDS = [...COMPANY_FIELDS, 'planEfectivo', 'condiciones', 'acceso', 'accesoPendiente'] as const;
+const FILE_FIELDS = [...COMPANY_FIELDS, 'stripePuedeCobrar', 'planEfectivo', 'condiciones', 'acceso', 'accesoPendiente'] as const;
 
 const EXPIRED_BY: Record<string, Company['expiry']['expiredBy']> = { suscripcion: 'subscription', fecha: 'date' };
 
@@ -182,7 +182,7 @@ function toEffectivePlan(raw: unknown, log: Log): EffectivePlan | null {
   };
 }
 
-function toConditions(raw: unknown, log: Log): CustomConditions | null {
+export function toConditions(raw: unknown, log: Log): CustomConditions | null {
   if (!raw || typeof raw !== 'object') return null;
   const c = raw as Record<string, unknown>;
   return {
@@ -211,6 +211,8 @@ export function toCompanyFile(body: unknown, log: Log): CompanyFile {
   warnUnknownFields(r, FILE_FIELDS, 'la ficha de una empresa', log);
   return {
     ...toCompanyFields(r, log),
+    // Sin el dato (un backend anterior), no se frena aquí: si cobra, el backend rechaza el cambio de plan igual.
+    stripeCanCharge: r.stripePuedeCobrar === true,
     effectivePlan: toEffectivePlan(r.planEfectivo, log),
     conditions: toConditions(r.condiciones, log),
     access: toAccess(r.acceso),

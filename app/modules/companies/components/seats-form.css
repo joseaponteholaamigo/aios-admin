@@ -1,4 +1,0 @@
-/* El formulario de cambiar asientos: angosto, con los botones al final. */
-
-.seats-form { display: grid; gap: 16px; max-width: 760px; }
-.seats-form__actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

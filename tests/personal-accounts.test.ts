@@ -25,6 +25,7 @@ const cuenta = (extra: Partial<Company> = {}): Company => ({
 
 const ficha = (extra: Partial<CompanyFile> = {}): CompanyFile => ({
   ...cuenta(),
+  stripeCanCharge: false,
   effectivePlan: { tier: 'pro', preset: 'pro', flags: { collaboration: false, scheduling: true }, quotas: {}, seats: 1, managesSeats: false },
   conditions: null, access: null, accessPending: 'falta publicar', ...extra,
 });

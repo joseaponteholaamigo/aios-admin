@@ -45,6 +45,9 @@ export function expiryLabel(company: Company): Label | null {
   return null;
 }
 
+/** Cómo se llama una cuenta en su ficha: una cuenta personal, por el correo de su persona (o su id si no tiene). */
+export const accountTitle = (file: Pick<Company, 'kind' | 'person' | 'id' | 'name'>) => (file.kind === 'personal' ? file.person?.email ?? file.id : file.name);
+
 /** Cómo se nombra cada tipo de cuenta, en singular y en plural. */
 const KIND_NAMES: Record<AccountKind, { one: string; many: string; none: string }> = {
   company: { one: 'empresa', many: 'empresas', none: 'Ninguna empresa' },
@@ -89,22 +92,4 @@ export function createdNotice(params: URLSearchParams): string | null {
     ? 'Cuenta creada. Le enviamos la invitación a su admin.'
     : 'Cuenta creada, pero el correo de invitación no salió: el admin puede entrar igual con su correo.';
   return params.get('movida') === '1' ? `${text} Su cuenta personal anterior se borró.` : text;
-}
-
-/** El aviso al volver de cambiar los asientos: el antes y el después, que no son datos de una persona. */
-const SEATS_CHANGED = 'asientos';
-
-/** ¿Se le pueden cambiar los asientos desde el panel? Solo a una empresa Personalizado (CB-10). */
-export const seatsEditable = (file: { kind: AccountKind; plan: string | null }) => file.kind === 'company' && file.plan === 'custom';
-
-export function seatsChangedNoticeParams({ before, after }: { before: number | null; after: number }) {
-  return new URLSearchParams({ aviso: SEATS_CHANGED, antes: String(before ?? ''), despues: String(after) });
-}
-
-/** Qué dice la ficha al volver de cambiar los asientos, o `null` si no viene de ahí. */
-export function seatsChangedNotice(params: URLSearchParams): string | null {
-  if (params.get('aviso') !== SEATS_CHANGED) return null;
-  const [before, after] = [params.get('antes'), params.get('despues')];
-  if (!after) return null;
-  return before && before !== after ? `Asientos cambiados de ${before} a ${after}.` : `La empresa ya tenía ${after} asientos: no cambió nada.`;
 }

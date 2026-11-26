@@ -1,9 +1,9 @@
 // La traducción de los créditos entre el panel y el backend: el saldo de una persona
-// (`POST /v1/admin/clientes/{id}/saldo`), la carga (`POST …/creditos`), la bitácora
-// (`POST /v1/admin/creditos/bitacora`) y el cambio de asientos (`PATCH …/condiciones`).
+// (`POST /v1/admin/clientes/{id}/saldo`), la carga (`POST …/creditos`) y la bitácora
+// (`POST /v1/admin/creditos/bitacora`).
 import type {
   CreditAccess, CreditLoad, CreditLogFilters, CreditLogKind, CreditLogPage, CreditLogRow, CreditLot, CreditModule,
-  CreditMovement, CreditSource, CreditStatus, LoadedLot, PersonCredits, SeatsChange, SeatsChanged,
+  CreditMovement, CreditSource, CreditStatus, LoadedLot, PersonCredits,
 } from '../../domain/credits';
 import { asArray, asRecord, num, numOrNull, str, strOrNull, ApiContractError } from './api-reading';
 import { toPageInfo } from './page-mapping';
@@ -61,14 +61,6 @@ export const toBackendLoad = (load: CreditLoad) => ({ correo: load.email, credit
 export function toLoadedLot(body: unknown): LoadedLot {
   const lot = toLot(asRecord(body, 'la carga').lote);
   return { credits: lot.credits, expiresAt: lot.expiresAt };
-}
-
-/** El cuerpo del cambio de asientos. */
-export const toBackendSeatsChange = (change: SeatsChange) => ({ asientos: change.seats, motivo: change.reason });
-
-export function toSeatsChanged(body: unknown): SeatsChanged {
-  const seats = asRecord(asRecord(body, 'el cambio de asientos').asientos, 'el cambio de asientos: asientos');
-  return { before: numOrNull(seats.antes), after: num(seats.despues) };
 }
 
 /** El cuerpo de la bitácora: solo lo que se filtró, y la página si no es la primera. */

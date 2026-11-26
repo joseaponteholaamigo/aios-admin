@@ -28,13 +28,19 @@ function VoiceCapValue({ view, accountId }: { view: Exclude<VoiceCapView, null>;
   return <>{dollarsLabel(view.cap.usd)} por persona al mes · {VOICE_SOURCES[view.cap.source]} · {change}</>;
 }
 
+/** Si tiene cliente de Stripe y, si su suscripción cobra, que lo dice: es lo que frena «Cambiar plan». */
+const stripeText = (file: CompanyFile) => {
+  if (!file.paysWithStripe) return 'No';
+  return file.stripeCanCharge ? 'Sí · su suscripción cobra o puede volver a cobrar' : 'Sí';
+};
+
 function accountFacts(file: CompanyFile, voiceCap: VoiceCapView): Fact[] {
   const personal = file.kind === 'personal';
   return [
     { label: 'Creada', value: formatDate(file.createdAt) },
     ...(personal ? [{ label: 'Origen', value: originLabel(file.origin) }] : []),
     { label: 'Vence', value: <ExpiryValue file={file} /> },
-    { label: 'Cliente de Stripe', value: file.paysWithStripe ? 'Sí' : 'No' },
+    { label: 'Cliente de Stripe', value: stripeText(file) },
     // Una cuenta personal tiene una sola persona: contar sus admins la haría parecer una empresa a medio armar.
     ...(personal ? [] : [{ label: 'Admins', value: String(file.admins) }]),
     ...(voiceCap ? [{ label: 'Tope de la voz', value: <VoiceCapValue view={voiceCap} accountId={file.id} /> }] : []),
