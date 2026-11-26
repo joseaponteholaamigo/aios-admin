@@ -165,7 +165,7 @@ describe('CA-3 a CA-5 · lo que la ficha ya podía mostrar', () => {
     expect(changeLines({ estado: 'activo' }, null)).toEqual(['estado: activo → —']);
     expect(changeLines('free', 'personalizado')).toEqual(['free → personalizado']);
     expect(changeLines(null, null)).toEqual([]);
-    const html = render(CompanyHistoryCard, { history: [{ source: 'audit', at: '2026-11-20T15:00:00Z', actor: 'equipo:sub-jose', what: 'voz.tope-de-la-cuenta', reason: 'contrato', channel: null, detail: null, before: { topeUsd: null }, after: { topeUsd: 15 } }] });
+    const html = render(CompanyHistoryCard, { history: [{ source: 'audit', at: '2026-11-20T15:00:00Z', actor: 'equipo:sub-jose', what: 'voz.tope-de-la-cuenta', kind: null, reason: 'contrato', channel: null, detail: null, before: { topeUsd: null }, after: { topeUsd: 15 } }] });
     expect(html).toContain('topeUsd: — → 15');
   });
 

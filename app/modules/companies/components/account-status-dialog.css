@@ -1,0 +1,13 @@
+/* El diálogo que revoca o reactiva una cuenta. Revocar va en rojo: le corta todo a todas sus personas. Reactivar usa
+   el botón principal de siempre. */
+/* `.btn.` delante: `.adm button { color: inherit }` pesa más que una sola clase y el texto saldría oscuro. */
+.account-status-dialog { width: min(560px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.account-status-dialog::backdrop { background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.account-status-dialog__form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.account-status-dialog__title { font-size: 18px; font-weight: 650; overflow-wrap: anywhere; }
+.account-status-dialog__form > p { font-size: 14px; color: var(--ink-2); }
+.account-status-dialog__facts { display: flex; flex-direction: column; gap: 6px; margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); list-style: disc; }
+.field .account-status-dialog__reason { min-height: 72px; font-family: var(--sans); font-size: 13.5px; }
+.account-status-dialog__buttons { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.btn.account-status-dialog__confirm { background: var(--bad); color: var(--panel); border-color: var(--bad); }
+.btn.account-status-dialog__confirm:hover { background: color-mix(in srgb, var(--bad) 85%, var(--ink)); border-color: var(--bad); }

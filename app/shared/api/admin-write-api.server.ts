@@ -7,6 +7,7 @@
 import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, WriteRejection } from '../../domain/account-creation';
 import type { AccessChange, AccessChangeResult } from '../../domain/access-rules';
 import type { AccountDeletion, DeletedAccount } from '../../domain/account-deletion';
+import type { AccountStatusChange, AccountStatusResult } from '../../domain/account-status';
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
 import type { CreditLoad, LoadedLot } from '../../domain/credits';
 import type { PlanChange, PlanChangeResult } from '../../domain/plan-change';
@@ -20,6 +21,7 @@ import {
 import { toBackendLoad, toLoadedLot } from './credits-mapping';
 import { planChangePath, toBackendPlanChange, toPlanChangeResult } from './plan-change-mapping';
 import { companyAccessPath, toAccessChangeResult, toBackendAccessChange } from './access-rules-mapping';
+import { accountStatusPath, toAccountStatusResult, toBackendStatusChange } from './account-status-mapping';
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
@@ -51,6 +53,8 @@ export type AdminWriteApi = {
   changePlan(token: string, companyId: string, change: PlanChange): Promise<WriteResult<PlanChangeResult>>;
   /** Dar o quitar dominios y skills a una empresa Personalizado, o volver a la base: ver el cambio, o guardarlo (spec «Reglas de acceso», CA-13). */
   changeAccess(token: string, companyId: string, change: AccessChange): Promise<WriteResult<AccessChangeResult>>;
+  /** Revocar o reactivar una cuenta entera: ver qué pasaría, o hacerlo. Solo el superadministrador (spec «Revocar y reactivar una cuenta»). */
+  changeAccountStatus(token: string, companyId: string, change: AccountStatusChange): Promise<WriteResult<AccountStatusResult>>;
   /** Cargar créditos a una persona de esa cuenta: un lote que vence a un mes. */
   loadCredits(token: string, companyId: string, load: CreditLoad): Promise<WriteResult<LoadedLot>>;
   /** Crear un código de registro: con la misma clave, crear dos veces es crear uno (CA-7). */
@@ -116,6 +120,7 @@ export function createAdminWriteApi({
       post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/borrado`, token, toBackendDeletion(deletion), toDeletedAccount),
     changePlan: (token, companyId, change) => post(planChangePath(companyId), token, toBackendPlanChange(change), (b) => toPlanChangeResult(b, log), 'PATCH'),
     changeAccess: (token, companyId, change) => post(companyAccessPath(companyId), token, toBackendAccessChange(change), (b) => toAccessChangeResult(b, log)),
+    changeAccountStatus: (token, companyId, change) => post(accountStatusPath(companyId), token, toBackendStatusChange(change), toAccountStatusResult),
     // El correo va en el cuerpo, como en las acciones sobre una persona: nunca en la URL.
     loadCredits: (token, companyId, load) => post(`/v1/admin/clientes/${encodeURIComponent(companyId)}/creditos`, token, toBackendLoad(load), toLoadedLot),
     createCode: (token, code) => post('/v1/admin/codigos', token, toBackendNewCode(code), toWrittenCode),

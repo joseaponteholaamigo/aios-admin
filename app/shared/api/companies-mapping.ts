@@ -2,7 +2,7 @@
 import {
   ACCOUNT_ORIGINS, type AccessRule, type AccountCounts, type AccountOrigin, type AccountPerson, type CompaniesPage, type CompaniesSearch,
   type Company, type CompanyAccess, type CompanyFile, type CompanyHistoryEvent, type ContentBase, type CustomConditions, type EffectivePlan,
-  type IndexCounts, type KindCount, type OriginCount, type PersonalAccountsPage, type Quotas,
+  type HistoryEventKind, type IndexCounts, type KindCount, type OriginCount, type PersonalAccountsPage, type Quotas,
 } from '../../domain/companies';
 import { isCursor } from '../../domain/pagination';
 import { ApiContractError, asArray, asRecord, num, numOrNull, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
@@ -220,14 +220,25 @@ export function toCompanyFile(body: unknown, log: Log): CompanyFile {
   };
 }
 
+/**
+ * Los eventos que la historia nombra en palabras (spec «Revocar y reactivar una cuenta», CA-15): el de la bitácora del
+ * cliente (firmado «equipo-enso», con un motivo genérico) y el de la auditoría del equipo (con el motivo real).
+ */
+const HISTORY_KIND_FROM_API = new Map<string, HistoryEventKind>([
+  ['revocado', 'account-revoked'], ['empresas.revocar', 'account-revoked'],
+  ['reactivado', 'account-reactivated'], ['empresas.reactivar', 'account-reactivated'],
+]);
+
 export function toCompanyHistory(body: unknown): CompanyHistoryEvent[] {
   return asArray(asRecord(body, 'la historia').historia, 'historia').map((raw) => {
     const e = asRecord(raw, 'un evento de la historia');
+    const what = str(e.que, 'evento.que');
     return {
       source: e.origen === 'auditoria' ? 'audit' : 'account',
       at: str(e.fecha, 'evento.fecha'),
       actor: strOrNull(e.actor),
-      what: str(e.que, 'evento.que'),
+      what,
+      kind: HISTORY_KIND_FROM_API.get(what) ?? null,
       reason: strOrNull(e.motivo),
       channel: strOrNull(e.canal),
       detail: e.detalle ?? null,

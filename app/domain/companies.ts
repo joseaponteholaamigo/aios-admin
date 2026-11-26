@@ -125,11 +125,20 @@ export type CompanyFile = Company & {
   accessPending: string | null;
 };
 
+/**
+ * Un evento de la historia que el panel sabe nombrar en palabras (spec «Revocar y reactivar una cuenta», CA-15). La
+ * bitácora del cliente y la auditoría del equipo anotan cada uno con su propio nombre técnico; los dos llegan aquí igual.
+ */
+export type HistoryEventKind = 'account-revoked' | 'account-reactivated';
+
 export type CompanyHistoryEvent = {
   source: 'account' | 'audit';
   at: string;
   actor: string | null;
+  /** El nombre técnico del evento, tal cual. */
   what: string;
+  /** Qué es, si el panel lo sabe nombrar; `null` en los demás. */
+  kind: HistoryEventKind | null;
   reason: string | null;
   channel: string | null;
   detail: unknown;

@@ -57,6 +57,9 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   { path: 'companies/:companyId/access', file: 'modules/companies/routes/company-access.tsx', access: { module: 'companies', level: 'edit' } },
   // Borrar una cuenta: solo el superadministrador (CA-23). Tener «editar» en Empresas no alcanza.
   { path: 'companies/:companyId/delete', file: 'modules/companies/routes/company-delete.tsx', access: 'superadmin' },
+  // Revocar o reactivar una cuenta desde los diálogos de su ficha (spec «Revocar y reactivar una cuenta», decisión 1):
+  // solo el superadministrador. Solo responde a un POST.
+  { path: 'companies/:companyId/status', file: 'modules/companies/routes/company-status.tsx', access: 'superadmin' },
   {
     path: 'client-users', file: 'modules/client-users/routes/client-users.tsx', access: { module: 'clientUsers', level: 'view' },
     menu: { label: 'Usuarios de clientes', group: 'administration', icon: 'usuarios' },
