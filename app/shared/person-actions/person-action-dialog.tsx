@@ -3,11 +3,11 @@
 // hasta que se oprime el botón. El correo va en el cuerpo del formulario, nunca en la dirección.
 import { useEffect, useId, useRef } from 'react';
 import { Form, useLocation, useNavigation } from 'react-router';
-import type { WriteRejection } from '../../../domain/account-creation';
-import type { PersonAction } from '../../../domain/person-actions';
-import { FormRejection } from '../../../shared/ui/form-rejection';
-import { SubmitButton, submitState } from '../../../shared/ui/submit-button';
-import { personActionRejectionMessage, personActionTexts } from '../person-action-labels';
+import type { WriteRejection } from '../../domain/account-creation';
+import type { PersonAction } from '../../domain/person-actions';
+import { FormRejection } from '../ui/form-rejection';
+import { SubmitButton, submitState } from '../ui/submit-button';
+import { personActionRejectionMessage, personActionTexts } from './person-action-labels';
 import './person-action-dialog.css';
 
 type PersonActionDialogProps = {

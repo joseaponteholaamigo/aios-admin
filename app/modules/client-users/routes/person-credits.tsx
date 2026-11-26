@@ -2,10 +2,8 @@
 // «Créditos por persona» de aios-tower, CA-23). Pide «ver» en Consumo (`route-table.ts`); el backend
 // lo vuelve a pedir. Solo responde a un POST: el correo va en el cuerpo, nunca en la dirección.
 import type { Route } from './+types/person-credits';
-import type { PersonCredits } from '../../../domain/credits';
-import { fromAdminApiInBackground, type ModuleErrorReason } from '../../../shared/api/admin-loader.server';
-
-export type PersonCreditsAnswer = { email: string } & ({ ok: true; credits: PersonCredits } | { ok: false; reason: ModuleErrorReason });
+import { fromAdminApiInBackground } from '../../../shared/api/admin-loader.server';
+import type { PersonCreditsAnswer } from '../../../shared/credits/credit-answers';
 
 export async function action({ request, context, params }: Route.ActionArgs): Promise<PersonCreditsAnswer> {
   const email = String((await request.formData()).get('email') ?? '').trim().toLowerCase();

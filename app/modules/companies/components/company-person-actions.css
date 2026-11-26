@@ -1,0 +1,2 @@
+/* Los botones de la persona de una cuenta personal, en fila debajo de sus datos. */
+.company-person-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

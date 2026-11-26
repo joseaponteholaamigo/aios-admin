@@ -15,8 +15,8 @@ import { invitedNotice } from '../client-user-labels';
 import { CompanyDomainsCard } from '../components/company-domains-card';
 import { GovernanceLogCard } from '../components/governance-log-card';
 import { PeoplePanel } from '../components/people-panel';
-import { readPersonAction } from '../person-action-form-data';
-import { personActionNotice, personActionNoticeParams } from '../person-action-labels';
+import { readPersonAction, UNREADABLE_PERSON_ACTION } from '../../../shared/person-actions/person-action-form-data';
+import { personActionNotice, personActionNoticeParams } from '../../../shared/person-actions/person-action-labels';
 import { RolesTable } from '../components/roles-table';
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
@@ -38,7 +38,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 export async function action({ request, context, params }: Route.ActionArgs) {
   if (context.get(teamMemberContext)?.isSuperadmin !== true) throw fail('forbidden', 403);
   const attempt = readPersonAction(await request.formData());
-  if (!attempt) return { attempt: null, rejection: { code: 'invalid' as const, message: 'el pedido no se entiende' } };
+  if (!attempt) return UNREADABLE_PERSON_ACTION;
   const outcome = await toAdminApi({ request, context }, (api, token) => api.personAction(token, params.companyId, attempt));
   if (!outcome.ok) return { attempt, rejection: outcome.rejection };
   return redirect(`/client-users/${encodeURIComponent(params.companyId)}?${personActionNoticeParams(outcome.value)}`);
@@ -47,23 +47,26 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 export default function CompanyPeople({ loaderData, actionData }: Route.ComponentProps) {
   const { people, canSeeCompany, canInvite, canActOnPeople, credits } = loaderData;
   const [params] = useSearchParams();
+  const personal = people.company.kind === 'personal';
+  // Una cuenta personal es de una persona: no se invita a nadie más (spec «Editar cuentas y personas», CA-6).
+  const showInvite = canInvite && !personal;
   return (
     <>
       <PageHeader
         crumbs={[{ label: 'Administración' }, { label: 'Usuarios de clientes', to: '/client-users' }, { label: people.company.name }]}
         title={`Personas de ${people.company.name}`}
         lead={<span className="mono">{people.company.id}</span>}
-        actions={(canSeeCompany || canInvite) ? (
+        actions={(canSeeCompany || showInvite) ? (
           <>
             {canSeeCompany && <Link className="btn" to={`/companies/${people.company.id}`}>Ver su ficha</Link>}
-            {canInvite && <Link className="btn primary" to={`/client-users/${people.company.id}/invite`}><Icon name="plus" />Invitar persona</Link>}
+            {showInvite && <Link className="btn primary" to={`/client-users/${people.company.id}/invite`}><Icon name="plus" />Invitar persona</Link>}
           </>
         ) : undefined}
       />
       <DoneNotice text={invitedNotice(params) ?? personActionNotice(params)} />
       <PeoplePanel
         people={people.people} roles={people.roles} companyId={people.company.id} companyName={people.company.name}
-        personal={people.company.kind === 'personal'}
+        personal={personal}
         canAct={canActOnPeople} lastAttempt={actionData ?? null} credits={credits}
       />
       <div className="grid g2">

@@ -13,7 +13,7 @@ import type { PersonActionDone } from '../app/domain/person-actions';
 import { sessionContext } from '../app/middleware/session.server';
 import { teamMemberContext } from '../app/middleware/permissions.server';
 import type { ActiveSession } from '../app/shared/session/session.server';
-import { personActionNotice, personActionNoticeParams } from '../app/modules/client-users/person-action-labels';
+import { personActionNotice, personActionNoticeParams } from '../app/shared/person-actions/person-action-labels';
 
 const personAction = vi.fn();
 const getCompanyPeople = vi.fn();
@@ -21,7 +21,7 @@ vi.mock('../app/shared/api/admin-write-api-service.server', () => ({ getAdminWri
 vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ getCompanyPeople }) }));
 const { action, loader } = await import('../app/modules/client-users/routes/company-people');
 const { PeoplePanel } = await import('../app/modules/client-users/components/people-panel');
-const { PersonActionDialog } = await import('../app/modules/client-users/components/person-action-dialog');
+const { PersonActionDialog } = await import('../app/shared/person-actions/person-action-dialog');
 
 const superadmin: TeamMember = { actor: 'equipo:sub-jose', email: null, name: null, isSuperadmin: true, status: 'active', permissions: {} };
 const conTodo: TeamMember = { ...superadmin, isSuperadmin: false, permissions: { clientUsers: 'edit', companies: 'edit' } };

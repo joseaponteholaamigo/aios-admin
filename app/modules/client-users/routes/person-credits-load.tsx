@@ -2,14 +2,9 @@
 // aios-tower, CA-21, CA-22 y CB-11). Pide «editar» en Empresas (`route-table.ts`): el paquete de una
 // empresa es parte de lo que se acordó con ella, y se paga por factura. Solo responde a un POST.
 import type { Route } from './+types/person-credits-load';
-import type { WriteRejection } from '../../../domain/account-creation';
-import type { LoadedLot } from '../../../domain/credits';
 import { toAdminApi } from '../../../shared/api/admin-action.server';
-import { readCreditLoad } from '../credit-load-form-data';
-
-export type CreditLoadAnswer =
-  | { ok: true; loaded: LoadedLot }
-  | { ok: false; errors: Record<string, string>; rejection: WriteRejection | null };
+import type { CreditLoadAnswer } from '../../../shared/credits/credit-answers';
+import { readCreditLoad } from '../../../shared/credits/credit-load-form-data';
 
 export async function action({ request, context, params }: Route.ActionArgs): Promise<CreditLoadAnswer> {
   const read = readCreditLoad(await request.formData());

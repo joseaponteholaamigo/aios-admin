@@ -1,9 +1,26 @@
 // La historia de una empresa en su ficha: su bitácora de cuenta y lo que la auditoría dice de
-// ella, de lo más nuevo a lo más viejo.
+// ella, de lo más nuevo a lo más viejo. Un evento que trae el antes y el después los muestra (spec
+// «Editar cuentas y personas», CA-4).
 import type { CompanyHistoryEvent } from '../../../domain/companies';
 import { Timeline } from '../../../shared/ui/timeline';
+import { changeLines } from '../history-change';
+import './company-history-card.css';
 
 const SOURCES = { account: 'cuenta', audit: 'auditoría' } as const;
+
+function EventDetail({ event }: { event: CompanyHistoryEvent }) {
+  const lines = changeLines(event.before, event.after);
+  return (
+    <>
+      {[event.actor ?? 'sin actor', event.reason].filter(Boolean).join(' · ')}
+      {lines.length > 0 && (
+        <span className="company-history__change">
+          {lines.map((line) => <span key={line} className="mono">{line}</span>)}
+        </span>
+      )}
+    </>
+  );
+}
 
 export function CompanyHistoryCard({ history }: { history: CompanyHistoryEvent[] }) {
   const items = history.map((event, i) => ({
@@ -14,7 +31,7 @@ export function CompanyHistoryCard({ history }: { history: CompanyHistoryEvent[]
         <code>{event.what}</code> <span className="chip">{SOURCES[event.source]}</span>
       </span>
     ),
-    detail: [event.actor ?? 'sin actor', event.reason].filter(Boolean).join(' · '),
+    detail: <EventDetail event={event} />,
   }));
   return (
     <section className="card">

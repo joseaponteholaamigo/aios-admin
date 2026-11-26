@@ -1,12 +1,10 @@
 // Cómo se dicen el tope de la voz y sus cambios en el panel (spec «Registro abierto» de aios-tower,
 // CA-33). Puras: las prueba `tests/voice-cap.test.ts`.
 import type { VoiceCapChange, VoiceCapChanged } from '../../domain/voice-cap';
+import { dollarsLabel } from '../../shared/ui/format';
 import { ACCOUNT_ID } from './voice-form-data';
 
-/** «US$10» o «US$7,50»: los centavos solo si los hay, con coma. */
-export function dollarsLabel(usd: number): string {
-  return Number.isInteger(usd) ? `US$${usd}` : `US$${usd.toFixed(2).replace('.', ',')}`;
-}
+export { dollarsLabel };
 
 /** Desde cuándo vale un cambio (CA-33): quien lo hace tiene que saber que las llaves vivas tardan hasta un día. */
 export const WHEN_IT_APPLIES = 'Las llaves nuevas lo usan desde ya; las que ya existen, desde el próximo barrido diario.';

@@ -1,47 +1,78 @@
 // La ficha de una cuenta: su plan, lo que recibe y su historia (CA-23 y CA-26 de M2a). La de una
 // cuenta personal se nombra por su persona y la muestra en lugar de la parte de equipo (spec
-// «Cuentas personales», CA-22).
-import { Link, useSearchParams } from 'react-router';
+// «Cuentas personales», CA-22), con lo que se le puede hacer a esa persona (spec «Editar cuentas y
+// personas», CA-1). La tarjeta «Cuenta» junta lo que el equipo mira antes de cambiar algo (CA-2, CA-3).
+import { Link, redirect, useSearchParams } from 'react-router';
 import type { Route } from './+types/company';
 import type { CompanyFile } from '../../../domain/companies';
 import { can } from '../../../domain/permissions';
+import { PERSONAL_ACCOUNT_ACTIONS } from '../../../domain/person-actions';
+import { voiceCapOf, type VoiceCaps } from '../../../domain/voice-cap';
 import { teamMemberContext } from '../../../middleware/permissions.server';
-import { fromAdminApi } from '../../../shared/api/admin-loader.server';
+import { toAdminApi } from '../../../shared/api/admin-action.server';
+import { fail, fromAdminApi, fromAdminApiInBackground } from '../../../shared/api/admin-loader.server';
 import { ModuleError } from '../../../shared/layout/module-error';
 import { PageHeader } from '../../../shared/layout/page-header';
+import { readPersonAction, UNREADABLE_PERSON_ACTION } from '../../../shared/person-actions/person-action-form-data';
+import { personActionNotice, personActionNoticeParams } from '../../../shared/person-actions/person-action-labels';
 import { DoneNotice } from '../../../shared/ui/done-notice';
 import { badgeClass, createdNotice, planLabel, seatsChangedNotice, seatsEditable, statusLabel } from '../company-labels';
 import { CompanyAccessCard } from '../components/company-access-card';
+import { CompanyAccountCard, type VoiceCapView } from '../components/company-account-card';
 import { CompanyHistoryCard } from '../components/company-history-card';
+import { CompanyPersonActions } from '../components/company-person-actions';
 import { CompanyPersonCard } from '../components/company-person-card';
 import { CompanyPlanCard } from '../components/company-plan-card';
 
 /** Cómo se llama la cuenta en su ficha: una cuenta personal, por el correo de su persona (o su id si no tiene). */
 const titleOf = (file: CompanyFile) => (file.kind === 'personal' ? file.person?.email ?? file.id : file.name);
 
+/** El tope de la voz de la cuenta, o que no se pudo leer: un corte ahí no tumba la ficha entera. */
+const toVoiceCapView = (read: { ok: true; value: VoiceCaps } | { ok: false }, accountId: string): VoiceCapView =>
+  (read.ok ? { ok: true, cap: voiceCapOf(read.value, accountId) } : { ok: false });
+
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const id = params.companyId;
-  const [file, history] = await Promise.all([
+  const member = context.get(teamMemberContext);
+  const superadmin = member?.isSuperadmin === true;
+  const [file, history, voiceCaps] = await Promise.all([
     fromAdminApi({ request, context }, (api, token) => api.getCompany(token, id)),
     fromAdminApi({ request, context }, (api, token) => api.getCompanyHistory(token, id)),
+    // Solo el superadministrador: a cualquier otro el backend le respondería 403 (CA-2).
+    superadmin ? fromAdminApiInBackground({ request, context }, (api, token) => api.getVoiceCaps(token)) : null,
   ]);
-  const member = context.get(teamMemberContext);
   // El enlace a sus personas solo para quien puede abrirlas: esconder no protege, pero no tienta.
   return {
     file, history,
     canSeePeople: member ? can(member, 'clientUsers', 'view') : false,
     // Borrar la cuenta, solo el superadministrador (CA-23): la ruta también lo pide.
-    canDelete: member?.isSuperadmin === true,
+    canDelete: superadmin,
     // Cambiar los asientos de un Personalizado: «editar» en Empresas (CA-19, CA-20).
     canEditSeats: member ? can(member, 'companies', 'edit') && seatsEditable(file) : false,
+    voiceCap: voiceCaps ? toVoiceCapView(voiceCaps, file.id) : null,
+    // Destrabar a la persona de una cuenta personal, solo el superadministrador (CA-1): el backend lo vuelve a pedir.
+    personActions: superadmin ? PERSONAL_ACCOUNT_ACTIONS : [],
+    // Sus créditos: ver el saldo es de Consumo; cargarlos, de Empresas (spec «Créditos por persona»).
+    credits: { canSee: member ? can(member, 'usage', 'view') : false, canLoad: member ? can(member, 'companies', 'edit') : false },
   };
 }
 
-export default function Company({ loaderData }: Route.ComponentProps) {
-  const { file, history, canSeePeople, canDelete, canEditSeats } = loaderData;
+/** Una acción sobre la persona de una cuenta personal (CA-1). Al terminar vuelve aquí con el aviso; un rechazo reabre su diálogo. */
+export async function action({ request, context, params }: Route.ActionArgs) {
+  if (context.get(teamMemberContext)?.isSuperadmin !== true) throw fail('forbidden', 403);
+  const attempt = readPersonAction(await request.formData(), PERSONAL_ACCOUNT_ACTIONS);
+  if (!attempt) return UNREADABLE_PERSON_ACTION;
+  const outcome = await toAdminApi({ request, context }, (api, token) => api.personAction(token, params.companyId, attempt));
+  if (!outcome.ok) return { attempt, rejection: outcome.rejection };
+  return redirect(`/companies/${encodeURIComponent(params.companyId)}?${personActionNoticeParams(outcome.value)}`);
+}
+
+export default function Company({ loaderData, actionData }: Route.ComponentProps) {
+  const { file, history, canSeePeople, canDelete, canEditSeats, voiceCap, personActions, credits } = loaderData;
   const [params] = useSearchParams();
   const [plan, status] = [planLabel(file.plan), statusLabel(file)];
   const personal = file.kind === 'personal';
+  const hasPersonTools = personActions.length > 0 || credits.canSee || credits.canLoad;
   const crumbs = personal
     ? [{ label: 'Administración' }, { label: 'Empresas', to: '/companies' }, { label: 'Cuentas personales', to: '/companies?kind=personal' }]
     : [{ label: 'Administración' }, { label: 'Empresas', to: '/companies' }];
@@ -64,11 +95,22 @@ export default function Company({ loaderData }: Route.ComponentProps) {
           </>
         ) : undefined}
       />
-      <DoneNotice text={createdNotice(params) ?? seatsChangedNotice(params)} />
+      <DoneNotice text={createdNotice(params) ?? seatsChangedNotice(params) ?? personActionNotice(params)} />
       <div className="grid g-main">
         <div className="grid">
           <CompanyPlanCard file={file} />
-          {personal && <CompanyPersonCard person={file.person} />}
+          {personal && (
+            <CompanyPersonCard
+              person={file.person}
+              actions={file.person && hasPersonTools && (
+                <CompanyPersonActions
+                  email={file.person.email} companyId={file.id} companyName={titleOf(file)}
+                  actions={personActions} credits={credits} lastAttempt={actionData ?? null}
+                />
+              )}
+            />
+          )}
+          <CompanyAccountCard file={file} voiceCap={voiceCap} />
           <CompanyAccessCard file={file} />
         </div>
         <CompanyHistoryCard history={history} />

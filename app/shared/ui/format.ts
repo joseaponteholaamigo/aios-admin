@@ -35,6 +35,11 @@ export function formatDateTime(iso: string | null | undefined): string {
 /** Una cantidad con punto de miles: `5.012`. A mano y no con `Intl`, por lo mismo que las fechas. */
 export const formatCount = (n: number): string => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
+/** «US$10» o «US$7,50»: los centavos solo si los hay, con coma. Lo usan la pantalla de la voz y la ficha de una cuenta. */
+export function dollarsLabel(usd: number): string {
+  return Number.isInteger(usd) ? `US$${usd}` : `US$${usd.toFixed(2).replace('.', ',')}`;
+}
+
 /** Las iniciales de un nombre, como las del panel viejo: la primera letra de las dos primeras palabras. */
 export const initialsOf = (name: string) =>
   name.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join('').toUpperCase() || '·';

@@ -19,6 +19,15 @@ export type VoiceCaps = {
   onlySome: boolean;
 };
 
+/** El tope que rige para una cuenta, y de dónde sale: su excepción o el general (spec «Editar cuentas y personas», CA-2). */
+export type AccountVoiceCap = { usd: number; source: 'exception' | 'general' };
+
+/** El tope de `accountId`: el de su excepción si la tiene; si no, el general. */
+export function voiceCapOf(caps: VoiceCaps, accountId: string): AccountVoiceCap {
+  const exception = caps.exceptions.find((e) => e.accountId === accountId);
+  return exception ? { usd: exception.usd, source: 'exception' } : { usd: caps.general.usd, source: 'general' };
+}
+
 /** Un cambio: el tope general, o la excepción de una cuenta (`usd: null` la quita y la cuenta vuelve al general). */
 export type VoiceCapChange =
   | { target: 'general'; usd: number; reason: string }
