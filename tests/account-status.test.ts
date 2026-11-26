@@ -197,8 +197,13 @@ describe('CA-12 a CA-14 · la ruta de los diálogos', () => {
     expect(changeAccountStatus).toHaveBeenCalledWith('token', ID, { action: 'reactivate', reason: null, confirmation: null, previewOnly: true });
   });
 
-  test('⛔ guardar sin motivo se dice junto al campo y no llega a la API', async () => {
-    expect(await post({ change: 'revoke', intent: 'save', reason: '   ', confirmation: ID })).toEqual({ ok: false, rejection: null, errors: { reason: expect.stringContaining('Escribe el motivo') } });
+  test('⛔ el motivo es opcional: guardar sin él llega a la API sin motivo', async () => {
+    changeAccountStatus.mockResolvedValue({ kind: 'ok', value: REVOKE_SAVED });
+    await post({ change: 'revoke', intent: 'save', reason: '   ', confirmation: ID });
+    expect(changeAccountStatus).toHaveBeenCalledWith('token', ID, { action: 'revoke', reason: null, confirmation: ID, previewOnly: false });
+  });
+
+  test('⛔ un motivo de más de 500 caracteres se dice junto al campo y no llega a la API', async () => {
     expect(await post({ change: 'revoke', intent: 'save', reason: 'x'.repeat(501), confirmation: ID })).toMatchObject({ errors: { reason: 'El motivo va hasta 500 caracteres.' } });
     expect(changeAccountStatus).not.toHaveBeenCalled();
   });
@@ -254,9 +259,10 @@ describe('CA-12 y CA-13 · lo que dice el diálogo', () => {
     expect(html).toContain('reactívala por comando');
   });
 
-  test('⛔ el diálogo de revocar pide el motivo y el id exacto, y no deja confirmar antes de ver qué pasa', () => {
+  test('⛔ el diálogo de revocar pide el id exacto (el motivo es opcional), y no deja confirmar antes de ver qué pasa', () => {
     const html = render(AccountStatusDialog, { action: 'revoke', companyId: ID, companyTitle: 'Acme', onClose: () => {} });
-    expect(html).toMatch(/<textarea id="status-reason" name="reason" required=""/);
+    expect(html).toContain('Motivo (opcional)');
+    expect(html).not.toMatch(/<textarea id="status-reason"[^>]*required/);
     expect(html).toContain(`Escribe <span class="mono">${ID}</span> para confirmar`);
     expect(buttonWith(html, 'Revocar cuenta')).toContain('disabled=""');
   });

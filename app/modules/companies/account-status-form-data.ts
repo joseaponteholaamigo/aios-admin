@@ -30,7 +30,7 @@ const fieldError = (reason: string): { answer: StatusAnswer } => ({ answer: { ok
 
 /**
  * El pedido (`{ change }`), o lo que vuelve al diálogo sin llegar a la API (`{ answer }`). La vista previa no lleva
- * motivo: se pide al abrir el diálogo. Guardar exige el motivo (decisión 2) y, al revocar, lleva lo escrito como id.
+ * motivo: se pide al abrir el diálogo. Al guardar, el motivo es opcional (decisión 2) y, al revocar, lleva lo escrito como id.
  */
 export function readStatusChange(form: FormData): { change: AccountStatusChange } | { answer: StatusAnswer } {
   const action = form.get(STATUS_FIELDS.change);
@@ -38,10 +38,9 @@ export function readStatusChange(form: FormData): { change: AccountStatusChange 
   if (!isAccountStatusAction(action) || (intent !== PREVIEW_INTENT && intent !== SAVE_INTENT)) return { answer: UNREADABLE };
   if (intent === PREVIEW_INTENT) return { change: { action, reason: null, confirmation: null, previewOnly: true } };
   const reason = String(form.get(STATUS_FIELDS.reason) ?? '').trim();
-  if (!reason) return fieldError('Escribe el motivo: queda en la bitácora del cliente y en la auditoría del equipo.');
   if (reason.length > REASON_MAX) return fieldError(`El motivo va hasta ${REASON_MAX} caracteres.`);
   const confirmation = action === 'revoke' ? String(form.get(STATUS_FIELDS.confirmation) ?? '') : null;
-  return { change: { action, reason, confirmation, previewOnly: false } };
+  return { change: { action, reason: reason || null, confirmation, previewOnly: false } };
 }
 
 /** Los rechazos de la vista previa que guardar también recibiría: con ellos no se ofrece confirmar. */

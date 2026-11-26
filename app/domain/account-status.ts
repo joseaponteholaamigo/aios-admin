@@ -15,7 +15,7 @@ export const REVOKED_STATUS = 'revoked';
 
 /**
  * Lo que pide el panel. `previewOnly`: solo ver qué pasaría (sin motivo ni confirmación). Al guardar, el motivo es
- * obligatorio y revocar lleva el id escrito a mano (`confirmation`); reactivar no pide escribirlo (decisión 3).
+ * opcional (sin él, el backend anota «desde el panel») y revocar lleva el id escrito a mano (`confirmation`); reactivar no pide escribirlo (decisión 3).
  */
 export type AccountStatusChange = { action: AccountStatusAction; reason: string | null; confirmation: string | null; previewOnly: boolean };
 

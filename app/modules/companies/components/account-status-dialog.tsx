@@ -57,8 +57,8 @@ export function AccountStatusDialog({ action, companyId, companyTitle, onClose }
         <input type="hidden" name={STATUS_FIELDS.change} value={action} />
         <input type="hidden" name={STATUS_FIELDS.intent} value={SAVE_INTENT} />
         <div className="field">
-          <label htmlFor="status-reason">Motivo</label>
-          <textarea id="status-reason" name={STATUS_FIELDS.reason} required maxLength={REASON_MAX} className="account-status-dialog__reason" />
+          <label htmlFor="status-reason">Motivo (opcional)</label>
+          <textarea id="status-reason" name={STATUS_FIELDS.reason} maxLength={REASON_MAX} className="account-status-dialog__reason" />
           <small>Queda en la auditoría del equipo. Ante el cliente firma «equipo-enso».</small>
           <FieldError message={failed?.errors.reason} />
         </div>
