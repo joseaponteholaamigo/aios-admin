@@ -100,6 +100,11 @@ export type WriteRejection =
    */
   | { code: 'access-rejected'; rejections: string[] }
   | { code: 'no-catalog'; message?: string | null }
+  /**
+   * Pasar una empresa a cuenta personal, o al revés (spec «Pasar una empresa a cuenta personal, y al revés»): su plan
+   * admite más de una persona, tiene más de una persona con asiento, o su persona se está moviendo a una empresa.
+   */
+  | { code: 'team-plan' | 'several-people' | 'moving' }
   /** Otra operación con los créditos de esa persona escribió primero: se vuelve a intentar. */
   | { code: 'busy' }
   /** Los códigos de registro: uno que ya existe, una acción que su estado no permite, o uno que otra escritura está cambiando. */

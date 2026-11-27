@@ -19,7 +19,7 @@ import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
 import { toAuditPage } from './audit-mapping';
 import { codePath, toCodeDetail, toCodes } from './codes-mapping';
-import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } from './client-users-mapping';
+import { ACCOUNT_KIND_TO_API, toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } from './client-users-mapping';
 import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory, toPersonalAccountsPage } from './companies-mapping';
 import { toDeletionPreview, toPendingDeletions } from './deletion-mapping';
 import { housePath, toHouseReview } from './house-mapping';
@@ -92,9 +92,8 @@ export type AdminReadApi = {
 const STATUS_RESULT: Record<number, ApiResult<never>['kind']> = { 400: 'invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found', 422: 'invalid' };
 
 /** Los nombres del backend: el tipo de cuenta y el plan Personalizado. */
-const KIND_TO_API: Record<AccountKind, string> = { company: 'empresa', personal: 'personal' };
 const planToApi = (plan: ListPlan | null) => (plan === 'custom' ? 'personalizado' : plan);
-const kindToApi = (kind: AccountKind | null | undefined) => (kind ? KIND_TO_API[kind] : null);
+const kindToApi = (kind: AccountKind | null | undefined) => (kind ? ACCOUNT_KIND_TO_API[kind] : null);
 
 /** La página en el nombre del backend; la primera no viaja, como en la dirección del panel. */
 const pageToApi = (page: number | undefined) => (page && page > 1 ? String(page) : null);
