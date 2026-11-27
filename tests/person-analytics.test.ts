@@ -150,7 +150,7 @@ describe('CA-10 · quién ve «Analítica y términos» y dónde', () => {
     const fileWith = (canSee: boolean) => render(companyRoute.default as ComponentType<object>, {
       loaderData: {
         file: PERSONAL_FILE, history: [], canSeePeople: canSee, canDelete: false, canChangePlan: false, planBlock: null, statusAction: null,
-        voiceCap: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee, canChange: false },
+        voiceCap: null, house: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee, canChange: false },
       },
     }, `/companies/${PERSONAL_FILE.id}`);
     expect(buttonWith(fileWith(true), 'Analítica y términos')).not.toBe('');

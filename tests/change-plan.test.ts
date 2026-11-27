@@ -111,7 +111,7 @@ describe('CA-27 · quién ve «Cambiar plan» y cuándo se puede', () => {
 
   test('⛔ desactivado, dice por qué a la vista; activo, lleva a la pantalla del plan', () => {
     const ficha = (file: CompanyFile) => render(companyRoute.default as ComponentType<object>, {
-      loaderData: { file, history: [], canSeePeople: false, canDelete: false, canChangePlan: true, planBlock: planChangeBlock(file), voiceCap: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false } },
+      loaderData: { file, history: [], canSeePeople: false, canDelete: false, canChangePlan: true, planBlock: planChangeBlock(file), voiceCap: null, house: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false } },
     });
     const cobrando = ficha({ ...FILE, plan: 'team', stripeCanCharge: true });
     expect(cobrando).toMatch(/<button type="button" class="btn" disabled="" aria-describedby="plan-block-reason">Cambiar plan<\/button>/);

@@ -6,6 +6,7 @@
 // respuesta aquí mismo: el resto del panel no ve un nombre del backend.
 import type { DeletionPreview, PendingDeletion } from '../../domain/account-deletion';
 import type { CompanyAccessReading } from '../../domain/access-rules';
+import type { HouseReview } from '../../domain/house';
 import type { CreditLogFilters, CreditLogPage, PersonCredits } from '../../domain/credits';
 import type { AuditPage } from '../../domain/audit';
 import type { CodeDetail, RegistrationCode } from '../../domain/codes';
@@ -21,6 +22,7 @@ import { codePath, toCodeDetail, toCodes } from './codes-mapping';
 import { toClientUsersPage, toCompanyPeople, toDataCheckup, toPeopleSearch } from './client-users-mapping';
 import { toCompaniesPage, toCompaniesSearch, toCompanyFile, toCompanyHistory, toPersonalAccountsPage } from './companies-mapping';
 import { toDeletionPreview, toPendingDeletions } from './deletion-mapping';
+import { housePath, toHouseReview } from './house-mapping';
 import { creditLogFiltersToApi, toCreditLogPage, toPersonCredits } from './credits-mapping';
 import { teamPersonPath, toTeamPeople, toTeamPersonBody } from './team-mapping';
 import { VOICE_CAP_PATH, toVoiceCaps } from './voice-cap-mapping';
@@ -60,6 +62,8 @@ export type AdminReadApi = {
    * publicar algo para calcularlas, lo dice en vez de lanzar: no es que el backend no respondiera.
    */
   getCompanyAccess(token: string, id: string): Promise<ApiResult<CompanyAccessReading>>;
+  /** Si la cuenta está en pausa por un reembolso o una disputa de Stripe, y sus lotes congelados. Solo el superadministrador (spec «Reanudar la casa»). */
+  getCompanyHouse(token: string, id: string): Promise<ApiResult<HouseReview>>;
   getCompanyPeople(token: string, id: string): Promise<ApiResult<CompanyPeople>>;
   /** `kind`: solo las personas de cuentas de ese tipo. No va con `company`: se filtra por una o por el otro. */
   listClientUsers(token: string, q: { company?: string; kind?: AccountKind | null; page?: number }): Promise<ApiResult<ClientUsersPage>>;
@@ -150,6 +154,7 @@ export function createAdminReadApi({
     getCompany: (token, id) => send(company(id), token, (b) => toCompanyFile(b, log)),
     getCompanyHistory: (token, id) => send(`${company(id)}/historia`, token, toCompanyHistory),
     getCompanyAccess: (token, id) => send(companyAccessPath(id), token, (b) => toCompanyAccessReading(b, log), { unavailable: toUnpublishedAccess }),
+    getCompanyHouse: (token, id) => send(housePath(id), token, toHouseReview),
     getCompanyPeople: (token, id) => send(`${company(id)}/personas`, token, (b) => toCompanyPeople(b, log)),
     listClientUsers: (token, { company, kind, page }) =>
       send(`/v1/admin/personas${query({ empresa: company, tipo: kindToApi(kind), pagina: pageToApi(page) })}`, token, (b) => toClientUsersPage(b, log)),

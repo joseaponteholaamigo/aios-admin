@@ -60,6 +60,9 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   // Revocar o reactivar una cuenta desde los diálogos de su ficha (spec «Revocar y reactivar una cuenta», decisión 1):
   // solo el superadministrador. Solo responde a un POST.
   { path: 'companies/:companyId/status', file: 'modules/companies/routes/company-status.tsx', access: 'superadmin' },
+  // Quitar la pausa de la casa de una cuenta o descongelar un lote, desde la tarjeta de su ficha (spec «Reanudar la
+  // casa de una cuenta», decisión 2): solo el superadministrador. Solo responde a un POST, con el correo en el cuerpo.
+  { path: 'companies/:companyId/house', file: 'modules/companies/routes/company-house.tsx', access: 'superadmin' },
   {
     path: 'client-users', file: 'modules/client-users/routes/client-users.tsx', access: { module: 'clientUsers', level: 'view' },
     menu: { label: 'Usuarios de clientes', group: 'administration', icon: 'usuarios' },

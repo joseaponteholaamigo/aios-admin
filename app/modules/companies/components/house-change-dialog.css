@@ -1,0 +1,10 @@
+/* El diálogo que quita la pausa o descongela un lote. Lo que evita el paso equivocado va en el tono de aviso, para que
+   no se lea como letra chica. */
+.house-change-dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.house-change-dialog::backdrop { background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.house-change-dialog__form { display: flex; flex-direction: column; gap: 12px; padding: 20px; }
+.house-change-dialog__title { font-size: 18px; font-weight: 650; overflow-wrap: anywhere; }
+.house-change-dialog__form > p { font-size: 14px; color: var(--ink-2); }
+.house-change-dialog__form > .house-change-dialog__warn { padding: 10px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--ink); font-size: 13px; }
+.field .house-change-dialog__reason { min-height: 72px; font-family: var(--sans); font-size: 13.5px; }
+.house-change-dialog__buttons { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }

@@ -26,7 +26,7 @@ import { planChangeBlock } from '../app/domain/plan-change';
 import { teamMember } from './helpers/fake-admin-api';
 
 const changeAccountStatus = vi.fn();
-const read = { getCompany: vi.fn(), getCompanyHistory: vi.fn(), getVoiceCaps: vi.fn() };
+const read = { getCompany: vi.fn(), getCompanyHistory: vi.fn(), getVoiceCaps: vi.fn(), getCompanyHouse: vi.fn() };
 vi.mock('../app/shared/api/admin-write-api-service.server', () => ({ getAdminWriteApi: () => ({ changeAccountStatus }) }));
 vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => read }));
 const statusRoute = await import('../app/modules/companies/routes/company-status');
@@ -83,7 +83,7 @@ function render<P extends object>(Component: ComponentType<P>, props: P, at = `/
 const renderFile = (file: CompanyFile, statusAction: AccountStatusOffer | null = accountStatusOffer(file)) => render(companyRoute.default as ComponentType<object>, {
   loaderData: {
     file, history: [], canSeePeople: false, canDelete: statusAction !== null, canChangePlan: false, planBlock: planChangeBlock(file),
-    statusAction, voiceCap: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false },
+    statusAction, voiceCap: null, house: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false },
   },
 });
 
@@ -104,6 +104,7 @@ beforeEach(() => {
   for (const fn of Object.values(read)) fn.mockReset();
   read.getCompanyHistory.mockResolvedValue({ kind: 'ok', value: [] });
   read.getVoiceCaps.mockResolvedValue({ kind: 'ok', value: { general: { usd: 10 }, exceptions: [] } });
+  read.getCompanyHouse.mockResolvedValue({ kind: 'ok', value: { pause: null, frozenLots: [] } });
 });
 
 describe('CA-11 · quién ve «Revocar cuenta» y «Reactivar cuenta», y cuándo', () => {
