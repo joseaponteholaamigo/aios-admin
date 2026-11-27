@@ -1,9 +1,8 @@
 // Lo que dicen «Revocar cuenta» y «Reactivar cuenta» (spec «Revocar y reactivar una cuenta», CA-11 a CA-15): el
 // nombre de cada estado, por qué no se ofrece revocar, qué pasa en cada diálogo, los rechazos en su contexto, el aviso
-// al volver a la ficha y cómo se llaman sus eventos en la historia. Puras: las prueba `tests/account-status.test.ts`.
+// al volver a la ficha. Los nombres de sus eventos en la historia están en `history-event-labels.ts`. Puras: las prueba `tests/account-status.test.ts`.
 import type { WriteRejection } from '../../domain/account-creation';
 import type { AccountStatusAction, AccountStatusResult, StatusChangeBlock } from '../../domain/account-status';
-import type { HistoryEventKind } from '../../domain/companies';
 
 /**
  * Cómo se nombra cada estado del backend. Los que terminan una suscripción bajan la cuenta a Free. En un `Map`: el
@@ -115,9 +114,3 @@ export function statusChangedNotice(params: URLSearchParams): string | null {
   const name = STATUS_NAMES.get(params.get('estado') ?? '');
   return `Cuenta reactivada${name ? `: volvió a «${name}»` : ''}. Sus personas vuelven a entrar la próxima vez que ENSŌ sincronice.`;
 }
-
-/** Cómo se llaman en la historia los eventos que el panel sabe nombrar (CA-15). */
-export const HISTORY_EVENT_LABELS: Record<HistoryEventKind, string> = {
-  'account-revoked': 'Cuenta revocada',
-  'account-reactivated': 'Cuenta reactivada',
-};

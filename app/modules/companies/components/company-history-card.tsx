@@ -1,10 +1,10 @@
 // La historia de una empresa en su ficha: su bitácora de cuenta y lo que la auditoría dice de
 // ella, de lo más nuevo a lo más viejo. Un evento que trae el antes y el después los muestra (spec
 // «Editar cuentas y personas», CA-4). Los que el panel sabe nombrar llevan su nombre en palabras junto al
-// técnico (spec «Revocar y reactivar una cuenta», CA-15).
+// técnico (`history-event-labels.ts`).
 import type { CompanyHistoryEvent } from '../../../domain/companies';
 import { Timeline } from '../../../shared/ui/timeline';
-import { HISTORY_EVENT_LABELS } from '../account-status-labels';
+import { HISTORY_EVENT_LABELS } from '../history-event-labels';
 import { changeLines } from '../history-change';
 import './company-history-card.css';
 

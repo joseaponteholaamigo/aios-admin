@@ -331,4 +331,23 @@ describe('CA-15 · la historia de la ficha', () => {
     expect(html).toContain('<strong>Cuenta reactivada</strong> <code>reactivado</code>');
     expect(html).not.toContain('<strong>Cuenta revocada</strong> <code>alta</code>');
   });
+
+  test('⛔ la analítica de una persona se nombra por su dirección, de los dos lados; sin dirección, no se adivina', async () => {
+    const body = {
+      historia: [
+        { origen: 'auditoria', fecha: '2026-11-27T15:00:00Z', actor: 'equipo:sub-jose', canal: 'panel', que: 'usuarios.devolver-analitica', motivo: 'lo pidió', antes: { analitica: 'retirada' }, despues: { analitica: 'compartiendo' } },
+        { origen: 'cuenta', fecha: '2026-11-27T15:00:00Z', actor: 'equipo-enso', que: 'analitica', detalle: { correo: 'ana@acme.com', retirada: false } },
+        { origen: 'auditoria', fecha: '2026-11-26T15:00:00Z', actor: 'equipo:sub-jose', canal: 'panel', que: 'usuarios.retirar-analitica', motivo: 'lo pidió', antes: { analitica: 'compartiendo' }, despues: { analitica: 'retirada' } },
+        { origen: 'cuenta', fecha: '2026-11-26T15:00:00Z', actor: 'equipo-enso', que: 'analitica', detalle: { correo: 'ana@acme.com', retirada: true } },
+        { origen: 'cuenta', fecha: '2026-11-25T15:00:00Z', actor: null, que: 'analitica' },
+      ],
+    };
+    const api = createAdminReadApi({ baseUrl: 'https://api.example', log: () => {}, fetchImpl: (async () => Response.json(body)) as unknown as typeof fetch });
+    const r = await api.getCompanyHistory('t', ID);
+    if (r.kind !== 'ok') throw new Error('la historia no se leyó');
+    expect(r.value.map((e) => e.kind)).toEqual(['analytics-restored', 'analytics-restored', 'analytics-withdrawn', 'analytics-withdrawn', null]);
+    const html = render(CompanyHistoryCard, { history: r.value });
+    expect(html).toContain('<strong>Una persona dejó de compartir su uso</strong> <code>usuarios.retirar-analitica</code>');
+    expect(html).not.toContain('ana@acme.com');
+  });
 });
