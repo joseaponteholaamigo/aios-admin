@@ -229,6 +229,8 @@ const HISTORY_KIND_FROM_API = new Map<string, HistoryEventKind>([
   ['reactivado', 'account-reactivated'], ['empresas.reactivar', 'account-reactivated'],
   // La analítica de una persona (spec «Analítica de una persona»): la auditoría del equipo, por su operación.
   ['usuarios.retirar-analitica', 'analytics-withdrawn'], ['usuarios.devolver-analitica', 'analytics-restored'],
+  // Reanudar la casa (spec «Reanudar la casa»): solo la auditoría del equipo los anota.
+  ['casa.quitar-pausa', 'house-pause-lifted'], ['casa.descongelar', 'house-lot-unfrozen'],
 ]);
 
 /** La bitácora del cliente anota `analitica` en las dos direcciones: cuál fue lo dice `detalle.retirada`. */

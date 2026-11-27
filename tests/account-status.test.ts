@@ -351,4 +351,19 @@ describe('CA-15 · la historia de la ficha', () => {
     expect(html).toContain('<strong>Una persona dejó de compartir su uso</strong> <code>usuarios.retirar-analitica</code>');
     expect(html).not.toContain('ana@acme.com');
   });
+
+  test('⛔ quitar la pausa y descongelar se nombran en la historia', async () => {
+    const body = {
+      historia: [
+        { origen: 'auditoria', fecha: '2026-11-27T16:00:00Z', actor: 'equipo:sub-jose', canal: 'panel', que: 'casa.descongelar', motivo: 'la plata volvió', antes: { lote: 'lot_1', congelado: true }, despues: { lote: 'lot_1', congelado: false } },
+        { origen: 'auditoria', fecha: '2026-11-27T15:00:00Z', actor: 'equipo:sub-jose', canal: 'panel', que: 'casa.quitar-pausa', motivo: 'ganamos la disputa', antes: { pausa: null }, despues: { pausa: null } },
+      ],
+    };
+    const api = createAdminReadApi({ baseUrl: 'https://api.example', log: () => {}, fetchImpl: (async () => Response.json(body)) as unknown as typeof fetch });
+    const r = await api.getCompanyHistory('t', ID);
+    if (r.kind !== 'ok') throw new Error('la historia no se leyó');
+    const html = render(CompanyHistoryCard, { history: r.value });
+    expect(html).toContain('<strong>Se descongelaron créditos</strong> <code>casa.descongelar</code>');
+    expect(html).toContain('<strong>Se quitó la pausa de los servicios de ENSŌ</strong> <code>casa.quitar-pausa</code>');
+  });
 });

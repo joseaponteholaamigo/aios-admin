@@ -50,7 +50,8 @@ Cuando Stripe avisa un reembolso o una disputa, el backend pausa los servicios q
 ```
 
 - `pausa` es `null` si la cuenta no está en pausa. `congelados` lista los lotes congelados de las personas que tienen asiento en la cuenta (también un asiento revocado), del más viejo al más nuevo. Puede haber pausa sin lotes (un reembolso de Pro) y lotes sin pausa (ya se quitó la pausa).
-- `nombre`, `vence`, `congeladoEl` y `evento` pueden venir en `null`.
+- `nombre`, `vence`, `congeladoEl` y `evento` de cada lote, y `desde`, `motivo` y `evento` de la pausa, pueden venir en `null` (una fila vieja o escrita a mano).
+- Un lote no dice si vino de un reembolso o de una disputa: solo su aviso de Stripe. Si coincide con el de la pausa, el panel lo nombra; si no, el diálogo recuerda la regla igual.
 
 ### `POST /v1/admin/clientes/{id}/casa` · superadmin
 

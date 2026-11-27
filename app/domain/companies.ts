@@ -129,7 +129,8 @@ export type CompanyFile = Company & {
  * Un evento de la historia que el panel sabe nombrar en palabras (spec «Revocar y reactivar una cuenta», CA-15). La
  * bitácora del cliente y la auditoría del equipo anotan cada uno con su propio nombre técnico; los dos llegan aquí igual.
  */
-export type HistoryEventKind = 'account-revoked' | 'account-reactivated' | 'analytics-withdrawn' | 'analytics-restored';
+export type HistoryEventKind =
+  | 'account-revoked' | 'account-reactivated' | 'analytics-withdrawn' | 'analytics-restored' | 'house-pause-lifted' | 'house-lot-unfrozen';
 
 export type CompanyHistoryEvent = {
   source: 'account' | 'audit';
