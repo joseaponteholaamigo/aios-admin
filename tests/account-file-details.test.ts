@@ -21,7 +21,7 @@ import { prefilledAccount } from '../app/modules/voice/voice-form-data';
 import { teamMember } from './helpers/fake-admin-api';
 
 const personAction = vi.fn();
-const read = { getCompany: vi.fn(), getCompanyHistory: vi.fn(), getVoiceCaps: vi.fn() };
+const read = { getCompany: vi.fn(), getCompanyHistory: vi.fn(), getVoiceCaps: vi.fn(), getCompanyHouse: vi.fn() };
 vi.mock('../app/shared/api/admin-write-api-service.server', () => ({ getAdminWriteApi: () => ({ personAction }) }));
 vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => read }));
 const companyRoute = await import('../app/modules/companies/routes/company');
@@ -70,7 +70,7 @@ function render<P extends object>(Component: ComponentType<P>, props: P, at = `/
 
 type FileData = Awaited<ReturnType<typeof openFile>>;
 const renderFile = (loaderData: Partial<FileData>) => render(companyRoute.default as ComponentType<object>, {
-  loaderData: { file: FILE, history: [], canSeePeople: true, canDelete: false, canChangePlan: false, planBlock: null, voiceCap: null, personActions: [], credits: { canSee: false, canLoad: false }, ...loaderData },
+  loaderData: { file: FILE, history: [], canSeePeople: true, canDelete: false, canChangePlan: false, planBlock: null, voiceCap: null, house: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false }, ...loaderData },
 });
 
 beforeEach(() => {
@@ -79,6 +79,7 @@ beforeEach(() => {
   read.getCompany.mockResolvedValue({ kind: 'ok', value: FILE });
   read.getCompanyHistory.mockResolvedValue({ kind: 'ok', value: [] });
   read.getVoiceCaps.mockResolvedValue({ kind: 'ok', value: CAPS });
+  read.getCompanyHouse.mockResolvedValue({ kind: 'ok', value: { pause: null, frozenLots: [] } });
 });
 
 describe('CA-1 · la persona de una cuenta personal, desde su ficha', () => {
@@ -180,7 +181,7 @@ describe('CA-6 · invitar en una cuenta personal', () => {
   const peoplePage = (kind: 'company' | 'personal') => render(CompanyPeople as ComponentType<object>, {
     loaderData: {
       people: { company: { id: ID, name: 'Webinar C1', kind }, people: [], roles: [], revoked: [], log: [], domains: [], counts: { skills: 0, agents: 0, chains: 0 } },
-      canSeeCompany: true, canInvite: true, actor: { superadmin: false, editUsers: true }, credits: { canSee: false, canLoad: false },
+      canSeeCompany: true, canInvite: true, actor: { superadmin: false, editUsers: true }, credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false },
     },
   }, `/client-users/${ID}`);
 

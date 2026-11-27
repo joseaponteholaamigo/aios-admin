@@ -95,7 +95,7 @@ const NADIE = { superadmin: false, editUsers: false };
 
 describe('lo que se ve', () => {
   test('⛔ destrabar y borrar aparecen solo para el superadministrador; sin ninguna acción, no hay menú (CA-9)', () => {
-    const panel = (actor: typeof SUPERADMIN) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal: false, actor, lastAttempt: null, credits: SIN_CREDITOS }));
+    const panel = (actor: typeof SUPERADMIN) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal: false, actor, lastAttempt: null, credits: SIN_CREDITOS, analytics: { canSee: false, canChange: false } }));
 
     expect(panel(SUPERADMIN)).toContain('Restablecer verificación en dos pasos');
     expect(panel({ superadmin: false, editUsers: true })).not.toContain('Restablecer verificación en dos pasos');
@@ -103,7 +103,7 @@ describe('lo que se ve', () => {
   });
 
   test('⛔ en una cuenta personal no se ofrece borrar a su única persona: se ofrece borrar la cuenta (CB-4)', () => {
-    const panel = (personal: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal, actor: SUPERADMIN, lastAttempt: null, credits: SIN_CREDITOS }));
+    const panel = (personal: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal, actor: SUPERADMIN, lastAttempt: null, credits: SIN_CREDITOS, analytics: { canSee: false, canChange: false } }));
 
     expect(panel(true)).not.toContain('Borrar persona');
     expect(panel(true)).toContain(`href="/companies/${COMPANY}/delete"`);

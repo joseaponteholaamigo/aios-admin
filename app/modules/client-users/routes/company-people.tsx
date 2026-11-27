@@ -2,11 +2,13 @@
 // M2a). Lo mismo que ve su admin en «Mi equipo», más lo que soporte necesita. Desde aquí se les cambia
 // el rol y se les reenvía la invitación con «editar» en Usuarios, y el superadministrador puede además
 // destrabarlas, revocarlas o borrarlas (specs «Borrar cuentas y destrabar personas» y «Editar cuentas y
-// personas», CA-24 a CA-26).
-import { Link, redirect, useSearchParams } from 'react-router';
+// personas», CA-24 a CA-26). El menú de cada persona abre «Analítica y términos» (spec «Analítica de una persona»,
+// CA-10).
+import { Link, redirect, useSearchParams, type ShouldRevalidateFunctionArgs } from 'react-router';
 import type { Route } from './+types/company-people';
 import { can } from '../../../domain/permissions';
 import { actorOf, allowsPersonAction } from '../../../domain/person-actions';
+import { analyticsAccessOf } from '../../../domain/person-analytics';
 import { teamMemberContext } from '../../../middleware/permissions.server';
 import { toAdminApi } from '../../../shared/api/admin-action.server';
 import { fail, fromAdminApi } from '../../../shared/api/admin-loader.server';
@@ -21,6 +23,7 @@ import { PeoplePanel } from '../components/people-panel';
 import { RolesTable } from '../components/roles-table';
 import { readPersonAction, type PersonActionAttempt } from '../../../shared/person-actions/person-action-form-data';
 import { personActionNotice, personActionNoticeParams } from '../../../shared/person-actions/person-action-labels';
+import { isAnalyticsView } from '../../../shared/person-analytics/person-analytics-form-data';
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const people = await fromAdminApi({ request, context }, (api, token) => api.getCompanyPeople(token, params.companyId));
@@ -35,6 +38,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     actor: actorOf(member),
     // Sus créditos: ver el saldo es de Consumo; cargarlos, de Empresas (spec «Créditos por persona»).
     credits: { canSee: member ? can(member, 'usage', 'view') : false, canLoad: member ? can(member, 'companies', 'edit') : false },
+    // Su analítica: verla pide «ver» en Usuarios; cambiarla, «editar» (spec «Analítica de una persona», decisión 1).
+    analytics: analyticsAccessOf(member),
   };
 }
 
@@ -52,8 +57,13 @@ export async function action({ request, context, params }: Route.ActionArgs): Pr
   return redirect(`/client-users/${encodeURIComponent(params.companyId)}?${personActionNoticeParams(outcome.value)}`);
 }
 
+/** Ver la analítica de una persona solo lee: la página no se vuelve a pedir por eso. Cambiarla sí, por su bitácora. */
+export function shouldRevalidate({ formData, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+  return isAnalyticsView(formData) ? false : defaultShouldRevalidate;
+}
+
 export default function CompanyPeople({ loaderData, actionData }: Route.ComponentProps) {
-  const { people, canSeeCompany, canInvite, actor, credits } = loaderData;
+  const { people, canSeeCompany, canInvite, actor, credits, analytics } = loaderData;
   const [params] = useSearchParams();
   const personal = people.company.kind === 'personal';
   // Una cuenta personal es de una persona: no se invita a nadie más (spec «Editar cuentas y personas», CA-6).
@@ -75,7 +85,7 @@ export default function CompanyPeople({ loaderData, actionData }: Route.Componen
       <PeoplePanel
         people={people.people} roles={people.roles} companyId={people.company.id} companyName={people.company.name}
         personal={personal}
-        actor={actor} lastAttempt={actionData ?? null} credits={credits}
+        actor={actor} lastAttempt={actionData ?? null} credits={credits} analytics={analytics}
       />
       <div className="grid g2">
         <RolesTable roles={people.roles} />

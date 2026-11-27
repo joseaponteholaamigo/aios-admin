@@ -1,0 +1,8 @@
+/* El diálogo «Analítica y términos» de una persona: ancho como el de créditos, porque lleva la tabla de la prueba. */
+.person-analytics-dialog { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.person-analytics-dialog::backdrop { background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.person-analytics-dialog__body { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.person-analytics-dialog__title { font-size: 18px; font-weight: 650; overflow-wrap: anywhere; }
+.person-analytics-dialog__intro { font-size: 14px; color: var(--ink-2); }
+.person-analytics-dialog__note { color: var(--muted); font-size: 13px; }
+.person-analytics-dialog__buttons { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }

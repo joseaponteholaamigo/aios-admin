@@ -20,7 +20,7 @@ import { deletedNotice } from '../app/modules/companies/account-deletion-labels'
 import { teamMember } from './helpers/fake-admin-api';
 
 const deleteAccount = vi.fn();
-const read = { listCompanies: vi.fn(), listPendingDeletions: vi.fn(), getCompany: vi.fn(), getCompanyHistory: vi.fn(), getVoiceCaps: vi.fn() };
+const read = { listCompanies: vi.fn(), listPendingDeletions: vi.fn(), getCompany: vi.fn(), getCompanyHistory: vi.fn(), getVoiceCaps: vi.fn(), getCompanyHouse: vi.fn() };
 vi.mock('../app/shared/api/admin-write-api-service.server', () => ({ getAdminWriteApi: () => ({ deleteAccount }) }));
 vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => read }));
 const { action, shouldRevalidate } = await import('../app/modules/companies/routes/company-delete');
@@ -86,6 +86,7 @@ describe('quién llega (CA-23)', () => {
     read.getCompany.mockResolvedValue({ kind: 'ok', value: { id: ID, kind: 'company' } });
     read.getCompanyHistory.mockResolvedValue({ kind: 'ok', value: [] });
     read.getVoiceCaps.mockResolvedValue({ kind: 'ok', value: { general: { usd: 10 }, exceptions: [] } });
+    read.getCompanyHouse.mockResolvedValue({ kind: 'ok', value: { pause: null, frozenLots: [] } });
     const abrir = (member: ReturnType<typeof teamMember>) => open(companyRoute.loader as never, `https://dxxxx.cloudfront.net/companies/${ID}`, member, { companyId: ID }) as Promise<{ canDelete: boolean }>;
 
     expect([(await abrir(superadmin)).canDelete, (await abrir(editaEmpresas)).canDelete]).toEqual([true, false]);

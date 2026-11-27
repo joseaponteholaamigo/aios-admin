@@ -26,7 +26,7 @@ import { planChangeBlock } from '../app/domain/plan-change';
 import { teamMember } from './helpers/fake-admin-api';
 
 const changeAccountStatus = vi.fn();
-const read = { getCompany: vi.fn(), getCompanyHistory: vi.fn(), getVoiceCaps: vi.fn() };
+const read = { getCompany: vi.fn(), getCompanyHistory: vi.fn(), getVoiceCaps: vi.fn(), getCompanyHouse: vi.fn() };
 vi.mock('../app/shared/api/admin-write-api-service.server', () => ({ getAdminWriteApi: () => ({ changeAccountStatus }) }));
 vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => read }));
 const statusRoute = await import('../app/modules/companies/routes/company-status');
@@ -83,7 +83,7 @@ function render<P extends object>(Component: ComponentType<P>, props: P, at = `/
 const renderFile = (file: CompanyFile, statusAction: AccountStatusOffer | null = accountStatusOffer(file)) => render(companyRoute.default as ComponentType<object>, {
   loaderData: {
     file, history: [], canSeePeople: false, canDelete: statusAction !== null, canChangePlan: false, planBlock: planChangeBlock(file),
-    statusAction, voiceCap: null, personActions: [], credits: { canSee: false, canLoad: false },
+    statusAction, voiceCap: null, house: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false },
   },
 });
 
@@ -104,6 +104,7 @@ beforeEach(() => {
   for (const fn of Object.values(read)) fn.mockReset();
   read.getCompanyHistory.mockResolvedValue({ kind: 'ok', value: [] });
   read.getVoiceCaps.mockResolvedValue({ kind: 'ok', value: { general: { usd: 10 }, exceptions: [] } });
+  read.getCompanyHouse.mockResolvedValue({ kind: 'ok', value: { pause: null, frozenLots: [] } });
 });
 
 describe('CA-11 · quién ve «Revocar cuenta» y «Reactivar cuenta», y cuándo', () => {
@@ -330,5 +331,39 @@ describe('CA-15 · la historia de la ficha', () => {
     expect(html).toContain('estado: active → revoked');
     expect(html).toContain('<strong>Cuenta reactivada</strong> <code>reactivado</code>');
     expect(html).not.toContain('<strong>Cuenta revocada</strong> <code>alta</code>');
+  });
+
+  test('⛔ la analítica de una persona se nombra por su dirección, de los dos lados; sin dirección, no se adivina', async () => {
+    const body = {
+      historia: [
+        { origen: 'auditoria', fecha: '2026-11-27T15:00:00Z', actor: 'equipo:sub-jose', canal: 'panel', que: 'usuarios.devolver-analitica', motivo: 'lo pidió', antes: { analitica: 'retirada' }, despues: { analitica: 'compartiendo' } },
+        { origen: 'cuenta', fecha: '2026-11-27T15:00:00Z', actor: 'equipo-enso', que: 'analitica', detalle: { correo: 'ana@acme.com', retirada: false } },
+        { origen: 'auditoria', fecha: '2026-11-26T15:00:00Z', actor: 'equipo:sub-jose', canal: 'panel', que: 'usuarios.retirar-analitica', motivo: 'lo pidió', antes: { analitica: 'compartiendo' }, despues: { analitica: 'retirada' } },
+        { origen: 'cuenta', fecha: '2026-11-26T15:00:00Z', actor: 'equipo-enso', que: 'analitica', detalle: { correo: 'ana@acme.com', retirada: true } },
+        { origen: 'cuenta', fecha: '2026-11-25T15:00:00Z', actor: null, que: 'analitica' },
+      ],
+    };
+    const api = createAdminReadApi({ baseUrl: 'https://api.example', log: () => {}, fetchImpl: (async () => Response.json(body)) as unknown as typeof fetch });
+    const r = await api.getCompanyHistory('t', ID);
+    if (r.kind !== 'ok') throw new Error('la historia no se leyó');
+    expect(r.value.map((e) => e.kind)).toEqual(['analytics-restored', 'analytics-restored', 'analytics-withdrawn', 'analytics-withdrawn', null]);
+    const html = render(CompanyHistoryCard, { history: r.value });
+    expect(html).toContain('<strong>Una persona dejó de compartir su uso</strong> <code>usuarios.retirar-analitica</code>');
+    expect(html).not.toContain('ana@acme.com');
+  });
+
+  test('⛔ quitar la pausa y descongelar se nombran en la historia', async () => {
+    const body = {
+      historia: [
+        { origen: 'auditoria', fecha: '2026-11-27T16:00:00Z', actor: 'equipo:sub-jose', canal: 'panel', que: 'casa.descongelar', motivo: 'la plata volvió', antes: { lote: 'lot_1', congelado: true }, despues: { lote: 'lot_1', congelado: false } },
+        { origen: 'auditoria', fecha: '2026-11-27T15:00:00Z', actor: 'equipo:sub-jose', canal: 'panel', que: 'casa.quitar-pausa', motivo: 'ganamos la disputa', antes: { pausa: null }, despues: { pausa: null } },
+      ],
+    };
+    const api = createAdminReadApi({ baseUrl: 'https://api.example', log: () => {}, fetchImpl: (async () => Response.json(body)) as unknown as typeof fetch });
+    const r = await api.getCompanyHistory('t', ID);
+    if (r.kind !== 'ok') throw new Error('la historia no se leyó');
+    const html = render(CompanyHistoryCard, { history: r.value });
+    expect(html).toContain('<strong>Se descongelaron créditos</strong> <code>casa.descongelar</code>');
+    expect(html).toContain('<strong>Se quitó la pausa de los servicios de ENSŌ</strong> <code>casa.quitar-pausa</code>');
   });
 });

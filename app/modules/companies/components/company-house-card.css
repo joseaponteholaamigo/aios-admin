@@ -1,0 +1,2 @@
+/* La tarjeta «Servicios de ENSŌ en revisión»: un borde de aviso, porque la cuenta tiene algo detenido por Stripe. */
+.company-house-card { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }

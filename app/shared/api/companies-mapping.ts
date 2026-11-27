@@ -227,7 +227,21 @@ export function toCompanyFile(body: unknown, log: Log): CompanyFile {
 const HISTORY_KIND_FROM_API = new Map<string, HistoryEventKind>([
   ['revocado', 'account-revoked'], ['empresas.revocar', 'account-revoked'],
   ['reactivado', 'account-reactivated'], ['empresas.reactivar', 'account-reactivated'],
+  // La analítica de una persona (spec «Analítica de una persona»): la auditoría del equipo, por su operación.
+  ['usuarios.retirar-analitica', 'analytics-withdrawn'], ['usuarios.devolver-analitica', 'analytics-restored'],
+  // Reanudar la casa (spec «Reanudar la casa»): solo la auditoría del equipo los anota.
+  ['casa.quitar-pausa', 'house-pause-lifted'], ['casa.descongelar', 'house-lot-unfrozen'],
 ]);
+
+/** La bitácora del cliente anota `analitica` en las dos direcciones: cuál fue lo dice `detalle.retirada`. */
+const ANALYTICS_EVENT = 'analitica';
+
+function historyKindOf(what: string, detail: unknown): HistoryEventKind | null {
+  if (what !== ANALYTICS_EVENT) return HISTORY_KIND_FROM_API.get(what) ?? null;
+  const withdrawn = (detail as { retirada?: unknown } | null)?.retirada;
+  if (withdrawn === true) return 'analytics-withdrawn';
+  return withdrawn === false ? 'analytics-restored' : null;
+}
 
 export function toCompanyHistory(body: unknown): CompanyHistoryEvent[] {
   return asArray(asRecord(body, 'la historia').historia, 'historia').map((raw) => {
@@ -238,7 +252,7 @@ export function toCompanyHistory(body: unknown): CompanyHistoryEvent[] {
       at: str(e.fecha, 'evento.fecha'),
       actor: strOrNull(e.actor),
       what,
-      kind: HISTORY_KIND_FROM_API.get(what) ?? null,
+      kind: historyKindOf(what, e.detalle ?? null),
       reason: strOrNull(e.motivo),
       channel: strOrNull(e.canal),
       detail: e.detalle ?? null,

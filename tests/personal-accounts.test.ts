@@ -37,7 +37,7 @@ function render<P extends object>(Component: ComponentType<P>, props: P) {
 }
 
 const fileOf = (file: CompanyFile, canSeePeople = true) => render(Company_ as ComponentType<object>, {
-  loaderData: { file, history: [], canSeePeople, voiceCap: null, personActions: [], credits: { canSee: false, canLoad: false } },
+  loaderData: { file, history: [], canSeePeople, voiceCap: null, house: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false } },
 });
 
 describe('la tabla de cuentas personales', () => {

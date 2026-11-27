@@ -118,7 +118,7 @@ describe('lo que se ve', () => {
 
     const PERSONA = { email: 'luis@auteco.com', isAdmin: false, role: null, status: 'active', sees: { kind: 'all' }, counts: { skills: 0, agents: 0, chains: 0 }, invitedAt: null, acceptedAt: null };
     const panel = (credits: { canSee: boolean; canLoad: boolean }) => render(createElement(PeoplePanel, {
-      people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Auteco', personal: false, actor: { superadmin: false, editUsers: false }, lastAttempt: null, credits,
+      people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Auteco', personal: false, actor: { superadmin: false, editUsers: false }, lastAttempt: null, credits, analytics: { canSee: false, canChange: false },
     }));
     expect(panel({ canSee: false, canLoad: true })).toContain('>Créditos</button>');
     expect(panel({ canSee: false, canLoad: false })).not.toContain('Créditos');

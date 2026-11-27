@@ -1,0 +1,4 @@
+/* Los lotes congelados, debajo de la pausa. El id del aviso de Stripe y el del lote se cortan donde haga falta. */
+.frozen-lots-table { display: flex; flex-direction: column; gap: 8px; }
+.frozen-lots-table__lead { font-size: 13px; color: var(--muted); }
+.frozen-lots-table .tbl td.mono { overflow-wrap: anywhere; }

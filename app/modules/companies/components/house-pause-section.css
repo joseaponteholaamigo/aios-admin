@@ -1,0 +1,7 @@
+/* La pausa de la casa: en el tono de aviso, con el id del aviso de Stripe en monoespaciada para copiarlo. */
+.house-pause-section { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 12px; background: var(--warn-soft); }
+.house-pause-section > p { font-size: 13.5px; color: var(--ink-2); }
+.house-pause-section > .house-pause-section__status { font-weight: 650; color: var(--ink); }
+.house-pause-section > .house-pause-section__event { font-size: 12.5px; overflow-wrap: anywhere; }
+.house-pause-section__actions { display: flex; justify-content: flex-end; }
+.house-pause-section__none { font-size: 13.5px; color: var(--ink-2); }
