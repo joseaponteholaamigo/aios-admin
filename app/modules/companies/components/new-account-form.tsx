@@ -11,7 +11,8 @@ import { FieldError } from '../../../shared/ui/field-error';
 import { FormRejection } from '../../../shared/ui/form-rejection';
 import { MoveFromPersonalNotice, SUBMIT_FIELD, SUBMIT_VALUE } from '../../../shared/ui/move-from-personal-notice';
 import { SubmitButton } from '../../../shared/ui/submit-button';
-import { defaultConditions, NAME_MAX, PRO_ENDS_ON_FIELD, type FormValues } from '../new-account-form-data';
+import { NAME_MAX } from '../new-account-form-data';
+import { defaultConditions, PRO_ENDS_ON_FIELD, type FormValues } from '../plan-conditions-form-data';
 import { PlanConditionsFields } from './plan-conditions-fields';
 import './new-account-form.css';
 

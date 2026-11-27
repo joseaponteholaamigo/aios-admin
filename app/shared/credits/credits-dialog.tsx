@@ -1,20 +1,20 @@
 // El diálogo de «Créditos» de una persona (spec «Créditos por persona» de aios-tower, CA-21 a CA-23):
 // su saldo —la bolsa del mes, sus lotes y sus últimos movimientos— y, para quien puede, el formulario
 // para cargarle créditos. Los dos van por detrás con un fetcher: el correo viaja en el cuerpo y
-// nunca en la dirección, y la lista de personas no se mueve.
+// nunca en la dirección, y la pantalla no se mueve. Lo abren las personas de una cuenta y la ficha de
+// una cuenta personal (spec «Editar cuentas y personas», CA-1).
 import { useEffect, useId, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
-import type { PersonCredits } from '../../../domain/credits';
-import { LOAD_MAX } from '../../../domain/credits';
-import { accessLabel, formatCredits } from '../../../shared/labels/credit-labels';
-import { badgeClass } from '../../../shared/ui/badge';
-import { FieldError } from '../../../shared/ui/field-error';
-import { FormRejection } from '../../../shared/ui/form-rejection';
-import { formatDate, formatDateTime } from '../../../shared/ui/format';
-import { SubmitButton } from '../../../shared/ui/submit-button';
-import { REASON_MAX } from '../credit-load-form-data';
-import type { PersonCreditsAnswer } from '../routes/person-credits';
-import type { CreditLoadAnswer } from '../routes/person-credits-load';
+import type { PersonCredits } from '../../domain/credits';
+import { LOAD_MAX } from '../../domain/credits';
+import { accessLabel, formatCredits } from '../labels/credit-labels';
+import { badgeClass } from '../ui/badge';
+import { FieldError } from '../ui/field-error';
+import { FormRejection } from '../ui/form-rejection';
+import { formatDate, formatDateTime } from '../ui/format';
+import { SubmitButton } from '../ui/submit-button';
+import { REASON_MAX } from './credit-load-form-data';
+import { personCreditsPath, type CreditLoadAnswer, type PersonCreditsAnswer } from './credit-answers';
 import { CreditMovements } from './credit-movements';
 import './credits-dialog.css';
 
@@ -38,7 +38,7 @@ export function CreditsDialog({ email, companyId, canSee, canLoad, onClose }: Cr
   const load = useFetcher<CreditLoadAnswer>();
   const [key, setKey] = useState(newKey);
   const titleId = useId();
-  const base = `/client-users/${encodeURIComponent(companyId)}/credits`;
+  const base = personCreditsPath(companyId);
   // En una ref: si cambiara entre renders, el efecto volvería a pedir el saldo en cada respuesta.
   const ask = useRef(balance.submit);
   ask.current = balance.submit;

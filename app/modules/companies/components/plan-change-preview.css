@@ -1,0 +1,5 @@
+/* La vista previa del cambio de plan: la tabla del antes y el después, con lo que cambia resaltado. */
+.plan-change-preview__body { display: grid; gap: 14px; }
+.plan-change-preview__changed td { background: var(--accent-soft); }
+.plan-change-preview__changed td:first-child { font-weight: 600; }
+.plan-change-preview__notices { margin: 0; padding-left: 18px; color: var(--ink-2); display: grid; gap: 4px; }

@@ -4,9 +4,11 @@
 - **Origen:** dos pedidos de Jose del 2026-11-04, el mismo día.
   - Sobre cuentas: «¿Deberíamos tener la opción de borrar los clientes desde el superadmin?», y después «Sí».
   - Sobre personas: «También deberíamos contemplar cómo borrar un usuario específico solo de Cognito o completo, ya que hay usuarios que pueden perder el vínculo de la autenticación de dos factores y no pueden ingresar». Pidió que fuera en esta misma spec.
-  - El plan del superadmin (`docs/2026-10-20-plan-superadmin-aws.md`, §3.2) ya reserva al superadministrador, con MFA reciente, «borrar personas o empresas».
+  - El plan del superadmin (`docs/2026-10-20-plan-superadmin-aws.md`, §3.2) ya reserva al superadministrador, con MFA reciente, «borrar personas o empresas» (el MFA reciente se retiró el 2026-11-19).
 - **Estado:** decisiones cerradas (2026-11-05) y restablecimiento probado en producción (2026-11-10): lista para construir
 - **Repos:** `aios-backend` (worktree `aios-backend-superadmin`) y `aios-admin`, los dos en la rama `superadmin_v2`.
+
+> **Cambio del 2026-11-19 (Jose):** el superadmin ya no pide haber escrito el código hace menos de 15 minutos («MFA reciente»). Basta la sesión; el código se pide solo al entrar, porque el pool del equipo exige MFA. El backend ya no responde `mfa-reciente` y el panel no manda `max_age` ni `acr_values`. Los criterios de esta spec ya están al día; lo que dice de la opción B es historia.
 
 ## Objetivo
 
@@ -25,7 +27,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 | | **Restablecer la verificación en dos pasos.** El login sigue y solo se desvincula la app (`AdminDeleteSoftwareToken`). En el siguiente ingreso, Cognito pide escanear un QR nuevo. | |
 | | **Borrar solo el login.** Sirve cuando restablecer no alcanza. La persona se vuelve a registrar con el mismo correo y conserva su asiento, su rol y su acceso, porque el asiento se ata al correo y no al usuario de Cognito. El registro la acepta porque tiene asiento (`src/lib/pre-registro.js`). | |
 | | **Borrar a la persona por completo.** Se borran su login, su asiento, su fila del índice de correos y sus ajustes de acceso. Es para quien ya no va en esa cuenta. | |
-| 2 | **Las tres son solo del superadministrador, con MFA reciente y sin motivo.** Antes de hacerla, un diálogo le explica qué le va a pasar a la persona y le pide confirmar (CA-10). Cada una queda anotada: quién, qué, a qué cuenta y cuándo (CA-6). Es solo del superadministrador porque restablecer el segundo factor es justo lo que pide quien robó una contraseña («perdí el celular, restablézcanme»). | Jose, 2026-11-05 |
+| 2 | **Las tres son solo del superadministrador y sin motivo.** Antes de hacerla, un diálogo le explica qué le va a pasar a la persona y le pide confirmar (CA-10). Cada una queda anotada: quién, qué, a qué cuenta y cuándo (CA-6). Es solo del superadministrador porque restablecer el segundo factor es justo lo que pide quien robó una contraseña («perdí el celular, restablézcanme»). | Jose, 2026-11-05 |
 | 3 | **Restablecer y borrar el login le mandan un correo a la persona.** El texto dice qué pasó y qué tiene que hacer, sin una dirección de contacto (el remitente es `noreply@`). Borrar a la persona no manda correo. | Jose, 2026-11-05; sin contacto, Jose, 2026-11-10 |
 | 4 | **Las tres cierran todas las sesiones abiertas de la persona** (`AdminUserGlobalSignOut`), por si el celular perdido tenía una abierta. Sin esto, una sesión sigue viva hasta 30 días (`refreshTokenValidity`); con esto, el ENSŌ de ese equipo deja de funcionar cuando vence su pase de una hora (`accessTokenValidity`). | Jose, 2026-11-05 |
 | 5 | **El código del segundo factor llega solo por la app de códigos, nunca por correo.** Cognito no permite el código por correo en un pool que recupera la contraseña solo por correo, y con razón: quien entrara al correo de una persona tendría los dos factores. A quien pierde el celular se lo destraba con «Restablecer» (decisión 1). | Jose, 2026-11-05 |
@@ -36,7 +38,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 
 | # | Decisión | Quién y cuándo |
 |---|---|---|
-| 8 | **Solo el superadministrador, con MFA reciente** (opción B: `auth_time` de menos de 15 min). Tener «editar» en Empresas no alcanza. | Plan §3.2; Jose, 2026-11-04 |
+| 8 | **Solo el superadministrador.** Tener «editar» en Empresas no alcanza. (Pedía además MFA reciente; se retiró el 2026-11-19.) | Plan §3.2; Jose, 2026-11-04 |
 | 9 | **Motivo opcional.** El formulario tiene el campo «Motivo», pero se puede borrar sin llenarlo. Si se llena, queda en la auditoría del equipo, que es lo único que sobrevive al borrado: la bitácora del cliente se borra con él. | Jose, 2026-11-05 |
 | 10 | **Se confirma escribiendo el id de la cuenta**, igual que el borrado que pide el propio cliente (el campo `confirmo` de `/v1/team/cuenta`). | Jose, 2026-11-04 |
 | 11 | **No se borra una cuenta cuya suscripción de Stripe sigue cobrando, o puede volver a cobrar.** Primero se cancela en Stripe; si no, Stripe le sigue cobrando a una cuenta que ya no existe. Frenan también `unpaid`, `paused` e `incomplete`: hoy no cobran, pero Stripe los puede reanudar. Solo deja borrar una suscripción que Stripe ya no revive (`canceled`, `incomplete_expired`), o la de un Personalizado que la descartó (CB-12). La base es la regla de `compra.js` (`sigueCobrando`), más estricta para el borrado (`impideBorrar`); la de compra no cambia. | Jose, 2026-11-04; los estados que pueden volver, Jose, 2026-11-10 |
@@ -46,7 +48,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 
 ## Antes de empezar
 
-- **La opción B del MFA ya está aplicada y desplegada (2026-11-05):** backend `b96ef72` y panel `733c67f`. Jose la probó en producción: con `max_age=900`, Cognito cuenta los 15 minutos desde el código real y no desde un inicio silencioso, y el botón «Sign in as…» pide contraseña y código (el cliente del panel tiene `ALLOW_USER_AUTH`).
+- **La opción B del MFA se aplicó y desplegó el 2026-11-05, y se retiró el 2026-11-19:** backend `b96ef72` y panel `733c67f`. Jose la probó en producción: con `max_age=900`, Cognito cuenta los 15 minutos desde el código real y no desde un inicio silencioso, y el botón «Sign in as…» pide contraseña y código (el cliente del panel tiene `ALLOW_USER_AUTH`).
 - **El restablecimiento se probó en producción el 2026-11-10, y funciona.** Jose corrió `AdminDeleteSoftwareToken` (con el SDK del backend, `@aws-sdk/client-cognito-identity-provider` 3.1138.0) sobre una cuenta de prueba suya del pool de clientes y entró a ENSŌ: después de la contraseña, el login con marca mostró «Configurar MFA con una aplicación de autenticación», con el QR nuevo.
   - **Para saber si alguien tiene la app vinculada no sirve `AdminGetUser`:** su `UserMFASettingList` vino vacía aunque la app estaba vinculada. Lo que sí lo dice es `AdminGetUserAuthFactors`: su `ConfiguredUserAuthFactors` trae `SOFTWARE_TOKEN` mientras hay app, y deja de traerlo al desvincularla (CB-2).
   - Desvincular la app no toca la contraseña: la persona entra con la misma.
@@ -92,7 +94,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 ### Acciones sobre una persona: backend
 
 ### CA-1: Restablecer la verificación en dos pasos
-- **Dado** un superadministrador con MFA reciente y una persona con asiento vigente en una cuenta visible, con login y app de códigos vinculada
+- **Dado** un superadministrador y una persona con asiento vigente en una cuenta visible, con login y app de códigos vinculada
 - **Cuando** pide `POST …/personas/restablecer-mfa` con su correo
 - **Entonces** recibe 200
 - **Y** el usuario sigue en el pool de clientes, pero sin app de códigos (se llamó `AdminDeleteSoftwareToken`), y sus sesiones quedaron cerradas (`AdminUserGlobalSignOut`)
@@ -104,13 +106,13 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Entonces** el login le pide escanear un QR nuevo, y después de escanearlo entra a su cuenta con todo lo que tenía.
 
 ### CA-3: Borrar solo el login
-- **Dado** un superadministrador con MFA reciente y una persona con asiento vigente y login
+- **Dado** un superadministrador y una persona con asiento vigente y login
 - **Cuando** pide `POST …/personas/borrar-login` con su correo
 - **Entonces** recibe 200, el pool de clientes ya no tiene usuario con ese correo y el asiento no cambia
 - **Y** el pre-registro acepta ese correo (`src/lib/pre-registro.js`): la persona puede registrarse de nuevo y vuelve a su misma cuenta.
 
 ### CA-4: Borrar a la persona por completo
-- **Dado** un superadministrador con MFA reciente y una persona con asiento vigente y login, que no es la única admin
+- **Dado** un superadministrador y una persona con asiento vigente y login, que no es la única admin
 - **Cuando** pide `POST …/personas/borrar` con su correo
 - **Entonces** recibe 200, sus sesiones quedaron cerradas y su login ya no existe
 - **Y** ya no existen su asiento, su fila del índice de correos (el correo queda libre) ni su fila `persona#<correo>` del acceso de la cuenta
@@ -130,11 +132,10 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Y** la bitácora de gobierno de la cuenta tiene `restablecio-mfa`, `borro-login` o `borro-persona`, sobre ese correo, con actor `equipo-enso`
 - **Y** las tres son acciones nuevas de `ACCIONES` (`src/lib/bitacora-de-gobierno.js`).
 
-### CA-7: Solo el superadministrador, con MFA reciente
+### CA-7: Solo el superadministrador
 - **Dado** cualquiera de las tres acciones
 - **Cuando** la pide alguien del equipo que no es superadministrador, entonces recibe 403
-- **Cuando** la pide un superadministrador con el MFA vencido, entonces recibe 401 con `codigo: 'mfa-reciente'`
-- **Y** en los dos casos no cambia nada: ni el asiento, ni el login, ni las sesiones.
+- **Y** no cambia nada: ni el asiento, ni el login, ni las sesiones.
 
 ### CA-8: El correo nunca va en la URL
 - **Dado** las rutas nuevas de `RUTAS_ADMIN` (`src/lambda.js`) y de `route-table.ts`
@@ -166,7 +167,6 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 ### CA-12: Los rechazos se dicen junto a la acción
 - **Dado** un rechazo del backend
 - **Entonces** el diálogo lo dice en palabras simples:
-  - `mfa-reciente`: con el enlace para volver a ingresar el código (`FormRejection`);
   - `ultimo-admin`: «es la única admin: nombra a otra admin antes de borrarla»;
   - `sin-login`, con `asiento: 'invitado'`: «esta persona todavía no se registró: no tiene login»; con otro estado: «esta persona no tiene login: ya se borró, o nunca entró con este correo» (CB-8);
   - `correo-de-otra-empresa`: «el login de este correo es de otra cuenta: desde aquí no se toca» (CB-7);
@@ -175,7 +175,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 ### Borrar una cuenta: backend
 
 ### CA-13: La vista previa dice qué se borra sin borrar nada
-- **Dado** un superadministrador con MFA reciente y una cuenta visible con personas, paquetes y bitácora
+- **Dado** un superadministrador y una cuenta visible con personas, paquetes y bitácora
 - **Cuando** pide `GET /v1/admin/clientes/{id}/borrado`
 - **Entonces** recibe 200 con:
   - el id, el nombre, el tipo (empresa o personal) y el plan de la cuenta;
@@ -185,7 +185,7 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Y** después del pedido cada sitio sigue con las mismas filas.
 
 ### CA-14: Borrar se lleva todo lo de la cuenta
-- **Dado** un superadministrador con MFA reciente y una cuenta visible que no cobra por Stripe
+- **Dado** un superadministrador y una cuenta visible que no cobra por Stripe
 - **Cuando** pide `POST /v1/admin/clientes/{id}/borrado` con `confirmo` igual al id
 - **Entonces** recibe 200 con `completo: true` y la cuenta de filas borradas en cada sitio
 - **Y** ningún sitio de `sitiosDeUnCliente(id)` conserva filas de esa cuenta, y `teambundles` no tiene nada bajo `<id>/`.
@@ -207,14 +207,13 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Dado** un borrado desde el panel
 - **Entonces** los renglones `borrado-pedido` y `borrado-hecho` de la bitácora del cliente llevan el actor `equipo-enso` (`EQUIPO_ANTE_EL_CLIENTE`), nunca el `sub` de la persona del equipo.
 
-### CA-18: Solo el superadministrador, con MFA reciente
+### CA-18: Solo el superadministrador
 - **Dado** una persona del equipo con «editar» en Empresas que no es superadministradora
 - **Cuando** pide la vista previa, el borrado o los pendientes
 - **Entonces** recibe 403 y no se borra nada
-- **Y** un superadministrador con el MFA vencido recibe 401 `mfa-reciente` al pedir el borrado.
 
 ### CA-19: Sin la confirmación exacta no se borra
-- **Dado** un superadministrador con MFA reciente
+- **Dado** un superadministrador
 - **Cuando** `confirmo` falta, está vacío o no es el id (también si solo cambian mayúsculas o espacios), entonces recibe 422 con `codigo: 'confirmacion'`
 - **Cuando** el motivo pasa de 500 caracteres (`LARGO_DEL_MOTIVO`), entonces recibe 422 con `codigo: 'invalido'`
 - **Y** en los dos casos no se borra nada
@@ -267,7 +266,6 @@ El equipo de ENSŌ resuelve desde el panel dos cosas que hoy pasan por la termin
 - **Dado** un borrado que respondió incompleto
 - **Entonces** la pantalla dice que no terminó, nombra los sitios que fallaron y ofrece «Terminar el borrado», que repite el pedido
 - **Y** mientras haya borrados pendientes (CA-22), Empresas muestra «Hay borrados sin terminar», con un enlace a la confirmación de cada uno
-- **Y** un rechazo `mfa-reciente` muestra el enlace para volver a ingresar el código (`FormRejection`).
 
 ## Casos borde y de error
 

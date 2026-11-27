@@ -12,7 +12,7 @@ import type { TeamMember } from '../app/domain/permissions';
 import { sessionContext } from '../app/middleware/session.server';
 import { teamMemberContext } from '../app/middleware/permissions.server';
 import type { ActiveSession } from '../app/shared/session/session.server';
-import { readCreditLoad, REASON_MAX } from '../app/modules/client-users/credit-load-form-data';
+import { readCreditLoad, REASON_MAX } from '../app/shared/credits/credit-load-form-data';
 import { ROUTE_TABLE } from '../app/shared/routing/route-table';
 
 const loadCredits = vi.fn();
@@ -24,7 +24,7 @@ const { action: loadAction } = await import('../app/modules/client-users/routes/
 const { action: balanceAction } = await import('../app/modules/client-users/routes/person-credits');
 const { loader: peopleLoader } = await import('../app/modules/client-users/routes/company-people');
 const { PeoplePanel } = await import('../app/modules/client-users/components/people-panel');
-const { CreditsDialog } = await import('../app/modules/client-users/components/credits-dialog');
+const { CreditsDialog } = await import('../app/shared/credits/credits-dialog');
 
 const COMPANY = 'auteco-4d5e6f';
 const miembro = (permissions: TeamMember['permissions']): TeamMember => ({ actor: 'equipo:sub', email: null, name: null, isSuperadmin: false, status: 'active', permissions });
@@ -118,7 +118,7 @@ describe('lo que se ve', () => {
 
     const PERSONA = { email: 'luis@auteco.com', isAdmin: false, role: null, status: 'active', sees: { kind: 'all' }, counts: { skills: 0, agents: 0, chains: 0 }, invitedAt: null, acceptedAt: null };
     const panel = (credits: { canSee: boolean; canLoad: boolean }) => render(createElement(PeoplePanel, {
-      people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Auteco', personal: false, canAct: false, lastAttempt: null, credits,
+      people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Auteco', personal: false, actor: { superadmin: false, editUsers: false }, lastAttempt: null, credits,
     }));
     expect(panel({ canSee: false, canLoad: true })).toContain('>Créditos</button>');
     expect(panel({ canSee: false, canLoad: false })).not.toContain('Créditos');

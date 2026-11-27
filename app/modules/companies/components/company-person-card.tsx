@@ -1,12 +1,14 @@
 // La persona de una cuenta personal, en su ficha: su correo, el estado de su asiento y cuándo la
-// invitaron y entró (spec «Cuentas personales», CA-22). Ocupa el lugar de la parte de equipo.
+// invitaron y entró (spec «Cuentas personales», CA-22). Ocupa el lugar de la parte de equipo. Con
+// `actions`, lo que se le puede hacer desde aquí (spec «Editar cuentas y personas», CA-1).
+import type { ReactNode } from 'react';
 import type { AccountPerson } from '../../../domain/companies';
 import { seatStatusLabel } from '../../../shared/labels/seat-status-labels';
 import { badgeClass } from '../../../shared/ui/badge';
 import { FactList } from '../../../shared/ui/fact-list';
 import { formatDate } from '../../../shared/ui/format';
 
-export function CompanyPersonCard({ person }: { person: AccountPerson | null }) {
+export function CompanyPersonCard({ person, actions }: { person: AccountPerson | null; actions?: ReactNode }) {
   const status = person ? seatStatusLabel(person.status) : null;
   return (
     <section className="card">
@@ -28,6 +30,7 @@ export function CompanyPersonCard({ person }: { person: AccountPerson | null }) 
           )
           : <p className="empty">Esta cuenta no tiene a nadie: nadie puede entrar a ENSŌ con ella.</p>}
       </div>
+      {person && actions && <div className="card-b">{actions}</div>}
     </section>
   );
 }

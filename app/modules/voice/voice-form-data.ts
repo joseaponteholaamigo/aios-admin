@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import type { WriteRejection } from '../../domain/account-creation';
 import type { VoiceCapChange } from '../../domain/voice-cap';
+import { VOICE_ACCOUNT_PARAM } from '../../shared/routing/voice-href';
 
 /** El campo que dice qué formulario se mandó: viaja con el botón que se oprimió. */
 export const INTENT_FIELD = 'intent';
@@ -49,6 +50,15 @@ export type VoiceAttempt = { intent: VoiceIntent | null; values: FormValues; err
 const isIntent = (value: unknown): value is VoiceIntent => VOICE_INTENTS.includes(value as VoiceIntent);
 const errorsOf = (issues: z.core.$ZodIssue[]): Errors => Object.fromEntries(issues.map((i) => [String(i.path[0]), i.message]));
 const fieldsOf = (form: FormData, names: string[]) => Object.fromEntries(names.map((n) => [n, form.get(n) ?? '']));
+
+/**
+ * La cuenta que trae la dirección para el formulario de la excepción (`voiceCapHref`, el «Cambiar» de la ficha
+ * de una cuenta: spec «Editar cuentas y personas», CA-2), o `null` si no trae una con forma de id.
+ */
+export function prefilledAccount(params: URLSearchParams): string | null {
+  const raw = (params.get(VOICE_ACCOUNT_PARAM) ?? '').trim().toLowerCase();
+  return ACCOUNT_ID.test(raw) ? raw : null;
+}
 
 /** El cambio que pide el formulario (`{ change }`), sus errores por campo (`{ errors }`), o `intent: null` si no es uno de la pantalla. */
 export function readVoiceCapChange(form: FormData):

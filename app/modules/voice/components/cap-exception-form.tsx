@@ -14,9 +14,11 @@ type CapExceptionFormProps = {
   maxUsd: number;
   /** El último intento de este formulario que no se hizo, con lo escrito y por qué. */
   attempt: VoiceAttempt | null;
+  /** La cuenta que trae la dirección (el «Cambiar» de su ficha): va puesta, y el foco espera en el tope. */
+  prefilledAccountId?: string | null;
 };
 
-export function CapExceptionForm({ maxUsd, attempt }: CapExceptionFormProps) {
+export function CapExceptionForm({ maxUsd, attempt, prefilledAccountId = null }: CapExceptionFormProps) {
   // `key` y `action` sin la consulta: lo mismo que en el tope general (`general-cap-card.tsx`).
   const { key, pathname } = useLocation();
   const rejection = attempt?.rejection ?? null;
@@ -28,13 +30,13 @@ export function CapExceptionForm({ maxUsd, attempt }: CapExceptionFormProps) {
       <div className="grid g3">
         <div className="field">
           <label htmlFor="exception-account">Cuenta</label>
-          <input id="exception-account" name="accountId" required maxLength={ACCOUNT_ID_MAX} defaultValue={attempt?.values.accountId ?? ''} placeholder="auteco-4d5e6f" autoCapitalize="none" spellCheck={false} />
+          <input id="exception-account" name="accountId" required maxLength={ACCOUNT_ID_MAX} defaultValue={attempt?.values.accountId ?? prefilledAccountId ?? ''} placeholder="auteco-4d5e6f" autoCapitalize="none" spellCheck={false} />
           <small>Su id, como aparece en Empresas. Si ya tiene una excepción, la cambia.</small>
           <FieldError message={attempt?.errors.accountId ?? (rejection && accountRejected ? rejectionMessage(rejection) : null)} />
         </div>
         <div className="field">
           <label htmlFor="exception-usd">Tope (US$ por persona al mes)</label>
-          <input id="exception-usd" name="usd" type="number" required min={0.01} max={maxUsd} step={0.01} defaultValue={attempt?.values.usd ?? ''} />
+          <input id="exception-usd" name="usd" type="number" required min={0.01} max={maxUsd} step={0.01} defaultValue={attempt?.values.usd ?? ''} autoFocus={Boolean(prefilledAccountId) && !attempt} />
           <small>Mayor que 0 y hasta {dollarsLabel(maxUsd)}.</small>
           <FieldError message={attempt?.errors.usd} />
         </div>

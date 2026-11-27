@@ -49,10 +49,17 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   // Antes que `:companyId`: la tabla se lee en orden, y `new` no es una empresa.
   { path: 'companies/new', file: 'modules/companies/routes/company-new.tsx', access: { module: 'companies', level: 'edit' } },
   { path: 'companies/:companyId', file: 'modules/companies/routes/company.tsx', access: { module: 'companies', level: 'view' } },
-  // Cambiar los asientos de un Personalizado (spec «Créditos por persona» de aios-tower, CA-19).
-  { path: 'companies/:companyId/seats', file: 'modules/companies/routes/company-seats.tsx', access: { module: 'companies', level: 'edit' } },
+  // Cambiar el plan y las características de una cuenta (spec «Editar cuentas y personas», CA-27 y CA-28): reemplaza a
+  // «Cambiar asientos», con el mismo permiso.
+  { path: 'companies/:companyId/plan', file: 'modules/companies/routes/company-plan.tsx', access: { module: 'companies', level: 'edit' } },
+  // Dar o quitar dominios y skills a un Personalizado (spec «Reglas de acceso», decisión 1): el mismo permiso que
+  // «Cambiar plan». Ver las reglas ya está en la ficha, con «ver».
+  { path: 'companies/:companyId/access', file: 'modules/companies/routes/company-access.tsx', access: { module: 'companies', level: 'edit' } },
   // Borrar una cuenta: solo el superadministrador (CA-23). Tener «editar» en Empresas no alcanza.
   { path: 'companies/:companyId/delete', file: 'modules/companies/routes/company-delete.tsx', access: 'superadmin' },
+  // Revocar o reactivar una cuenta desde los diálogos de su ficha (spec «Revocar y reactivar una cuenta», decisión 1):
+  // solo el superadministrador. Solo responde a un POST.
+  { path: 'companies/:companyId/status', file: 'modules/companies/routes/company-status.tsx', access: 'superadmin' },
   {
     path: 'client-users', file: 'modules/client-users/routes/client-users.tsx', access: { module: 'clientUsers', level: 'view' },
     menu: { label: 'Usuarios de clientes', group: 'administration', icon: 'usuarios' },

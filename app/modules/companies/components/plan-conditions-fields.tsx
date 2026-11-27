@@ -1,28 +1,34 @@
 // Las condiciones de un Personalizado en el formulario de crear (spec «Crear empresas e invitar
-// personas», CA-17): contenido, asientos, equipo, horarios, fecha de fin y cupos. En una cuenta
-// personal, los asientos y el equipo no se eligen: es de una persona.
+// personas», CA-17) y en el de cambiar el plan (spec «Editar cuentas y personas», CA-28): contenido,
+// asientos, equipo, horarios, fecha de fin y cupos. En una cuenta personal, los asientos y el equipo no
+// se eligen: es de una persona.
 import type { AccountKind } from '../../../domain/companies';
 import { QUOTA_RESOURCES, type PlanConditions } from '../../../domain/account-creation';
 import { FieldError } from '../../../shared/ui/field-error';
-import { quotaField, type FormValues } from '../new-account-form-data';
+import { quotaField, type FormValues } from '../plan-conditions-form-data';
 import './plan-conditions-fields.css';
 
 const QUOTA_LABELS = { radar: 'Radar', projects: 'Proyectos', skills: 'Skills', chains: 'Cadenas' } as const;
 
 type Props = {
   kind: AccountKind;
-  /** Lo que viene lleno: lo escrito antes de un rechazo, o el caso más común. */
+  /** Lo escrito antes de un rechazo o de ver el cambio. */
   values: FormValues | null;
+  /** Lo que viene lleno al abrirlo: el caso más común al crear, o lo que la cuenta tiene hoy al cambiar el plan. */
   defaults: PlanConditions;
   errors: Record<string, string>;
   hidden: boolean;
+  /** Lo que conviene saber de los asientos (al cambiar el plan, cuántos están en uso). */
+  seatsHint?: string;
 };
 
 /** El valor de un campo: lo escrito, o el de por defecto si el formulario se abre por primera vez. */
 const pick = (values: FormValues | null, field: string, fallback: string) => (values ? values[field] ?? '' : fallback);
 const picked = (values: FormValues | null, field: string, fallback: boolean) => (values ? values[field] === 'on' : fallback);
+/** Un cupo de por defecto: su número, o vacío (sin tope) si no tiene. */
+const quotaText = (value: number | null | undefined) => (typeof value === 'number' ? String(value) : '');
 
-export function PlanConditionsFields({ kind, values, defaults, errors, hidden }: Props) {
+export function PlanConditionsFields({ kind, values, defaults, errors, hidden, seatsHint }: Props) {
   const personal = kind === 'personal';
   return (
     <div className="plan-conditions" hidden={hidden}>
@@ -42,6 +48,7 @@ export function PlanConditionsFields({ kind, values, defaults, errors, hidden }:
             ? <p className="plan-conditions__fixed">1 · es de una persona</p>
             // `required` solo a la vista: oculto (plan Free), el navegador frenaría el envío sin decir por qué.
             : <input id="seats" name="seats" type="number" min={1} step={1} required={!hidden} defaultValue={pick(values, 'seats', String(defaults.seats))} />}
+          {seatsHint && !personal && <small>{seatsHint}</small>}
           <FieldError message={errors.seats} />
         </div>
         <div className="field">
@@ -63,7 +70,7 @@ export function PlanConditionsFields({ kind, values, defaults, errors, hidden }:
           {QUOTA_RESOURCES.map((resource) => (
             <div className="field" key={resource}>
               <label htmlFor={quotaField(resource)}>{QUOTA_LABELS[resource]}</label>
-              <input id={quotaField(resource)} name={quotaField(resource)} type="number" min={0} step={1} placeholder="sin tope" defaultValue={pick(values, quotaField(resource), '')} />
+              <input id={quotaField(resource)} name={quotaField(resource)} type="number" min={0} step={1} placeholder="sin tope" defaultValue={pick(values, quotaField(resource), quotaText(defaults.quotas[resource]))} />
               <FieldError message={errors[quotaField(resource)]} />
             </div>
           ))}

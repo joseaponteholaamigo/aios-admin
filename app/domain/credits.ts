@@ -109,7 +109,3 @@ export type CreditLogFilters = {
 };
 
 export type CreditLogPage = { rows: CreditLogRow[]; page: PageInfo };
-
-/** Los asientos nuevos de una empresa, con el porqué que queda en la auditoría. */
-export type SeatsChange = { seats: number; reason: string };
-export type SeatsChanged = { before: number | null; after: number };

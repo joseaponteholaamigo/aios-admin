@@ -127,8 +127,8 @@ describe('las empresas', () => {
       { origen: 'cuenta', fecha: '2026-10-01T00:00:00Z', actor: null, que: 'alta', motivo: null, detalle: { presetId: 'pro' } },
     ] }));
     expect(await api.getCompanyHistory('t', 'acme-000001')).toEqual({ kind: 'ok', value: [
-      { source: 'audit', at: '2026-10-05T00:00:00Z', actor: 'equipo:jose', what: 'empresas.prueba', reason: 'probar', channel: 'api', detail: null, before: null, after: { x: 1 } },
-      { source: 'account', at: '2026-10-01T00:00:00Z', actor: null, what: 'alta', reason: null, channel: null, detail: { presetId: 'pro' }, before: null, after: null },
+      { source: 'audit', at: '2026-10-05T00:00:00Z', actor: 'equipo:jose', what: 'empresas.prueba', kind: null, reason: 'probar', channel: 'api', detail: null, before: null, after: { x: 1 } },
+      { source: 'account', at: '2026-10-01T00:00:00Z', actor: null, what: 'alta', kind: null, reason: null, channel: null, detail: { presetId: 'pro' }, before: null, after: null },
     ] });
   });
 

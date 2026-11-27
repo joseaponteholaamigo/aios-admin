@@ -1,9 +1,9 @@
-// La traducción de las escrituras de M2b entre el panel y el backend (`POST /v1/admin/clientes` y
-// `POST /v1/admin/clientes/{id}/personas`): el pedido a sus nombres en español, y la respuesta y
-// cada rechazo de vuelta a los del panel.
+// La traducción de las escrituras entre el panel y el backend (`POST /v1/admin/clientes`,
+// `POST /v1/admin/clientes/{id}/personas` y sus acciones): el pedido a sus nombres en español, y la
+// respuesta y cada rechazo de vuelta a los del panel. Los rechazos de todas las escrituras están aquí.
 import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, PlanConditions, Quotas, WriteRejection } from '../../domain/account-creation';
 import type { AccountKind } from '../../domain/companies';
-import type { PersonAction, PersonActionDone } from '../../domain/person-actions';
+import type { PersonAction, PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
 import { ApiContractError, asRecord, num, numOrNull, str, strOrNull, type Log } from './api-reading';
 import { toSeatStatus } from './client-users-mapping';
 import { CODE_FIELD_FROM_API } from './codes-mapping';
@@ -15,16 +15,20 @@ const KIND_TO_API: Record<AccountKind, string> = { company: 'empresa', personal:
 const CONTENT_TO_API = { all: 'todo', free: 'free', none: 'nada' } as const;
 const QUOTA_TO_API = { radar: 'radar', projects: 'proyectos', skills: 'skills', chains: 'cadenas' } as const;
 
-function quotasToApi(quotas: Quotas): Record<string, number | null> {
+/** Los cupos en los nombres del backend. Un recurso que no está no viaja: hereda el del plan. */
+export function quotasToApi(quotas: Quotas): Record<string, number | null> {
   return Object.fromEntries(Object.entries(quotas).map(([resource, value]) => [QUOTA_TO_API[resource as keyof Quotas], value ?? null]));
 }
 
+/** Las condiciones de un Personalizado sin los cupos: cada escritura decide si los manda. */
+export const conditionsWithoutQuotasToApi = (c: PlanConditions) => ({
+  contenido: CONTENT_TO_API[c.content], asientos: c.seats, equipo: c.team, horarios: c.schedules, hasta: c.endsOn,
+});
+
+/** Al crear, sin cupos no viajan: la cuenta nueva toma los de su plan. */
 function conditionsToApi(c: PlanConditions) {
   const quotas = quotasToApi(c.quotas);
-  return {
-    contenido: CONTENT_TO_API[c.content], asientos: c.seats, equipo: c.team, horarios: c.schedules, hasta: c.endsOn,
-    ...(Object.keys(quotas).length ? { cupos: quotas } : {}),
-  };
+  return { ...conditionsWithoutQuotasToApi(c), ...(Object.keys(quotas).length ? { cupos: quotas } : {}) };
 }
 
 /** El cuerpo de `POST /v1/admin/clientes`. */
@@ -104,6 +108,19 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'invitacion-aceptada': () => ({ code: 'invitation-accepted' }),
   conflicto: () => ({ code: 'conflict' }),
   'pool-no-responde': () => ({ code: 'pool-unavailable' }),
+  // Cambiar el rol, revocar y reenviar desde el panel (spec «Editar cuentas y personas»), con los nombres de «Mi equipo».
+  'ya-revocado': () => ({ code: 'already-revoked' }),
+  'ya-entro': () => ({ code: 'already-joined' }),
+  'en-pausa': () => ({ code: 'seat-paused' }),
+  'correo-no-disponible': () => ({ code: 'email-unavailable' }),
+  'reenvio-limitado': (b) => ({ code: 'resend-limited', retryAt: strOrNull(b.reintentarEl) }),
+  // Cambiar el plan (la misma spec).
+  'cuenta-revocada': () => ({ code: 'account-revoked' }),
+  'falta-confirmar': () => ({ code: 'needs-confirmation' }),
+  // Las reglas de acceso de una empresa (spec «Reglas de acceso»): una clave fuera del catálogo o con dos acciones, y
+  // lo que falta publicar para calcularlas (`error`: qué). `no-es-personalizado`, `falta-confirmar` y `conflicto`, arriba.
+  'acceso-rechazado': (b) => ({ code: 'access-rejected', rejections: strings(b.rechazos) }),
+  'sin-catalogo': (b) => ({ code: 'no-catalog', ...withMessage(b) }),
 };
 
 /**
@@ -130,7 +147,27 @@ export function toInvitedPerson(body: unknown): InvitedPerson {
 }
 
 /** Cada acción sobre una persona, como va en la ruta del backend (`…/personas/<acción>`). */
-const PERSON_ACTION_TO_API: Record<PersonAction, string> = { 'reset-mfa': 'restablecer-mfa', 'delete-login': 'borrar-login', 'delete-person': 'borrar' };
+const PERSON_ACTION_TO_API: Record<PersonAction, string> = {
+  'reset-mfa': 'restablecer-mfa', 'delete-login': 'borrar-login', 'delete-person': 'borrar',
+  'change-role': 'cambiar-rol', 'resend-invitation': 'reenviar-invitacion', revoke: 'revocar',
+};
+
+/** El motivo, solo si se escribió uno: sin él, el backend pone el suyo. */
+const reasonToApi = (reason: string) => (reason ? { motivo: reason } : {});
+
+/**
+ * El cuerpo de una acción sobre una persona: siempre el correo, nunca en la URL (CA-8). «Cambiar rol» manda solo lo
+ * que cambió (`rol: null` es sin rol); revocar, su motivo.
+ */
+export function toBackendPersonAction(request: PersonActionRequest) {
+  const correo = request.email;
+  if (request.action === 'change-role') {
+    const { role, isAdmin } = request.change;
+    return { correo, ...(role !== undefined ? { rol: role } : {}), ...(isAdmin !== undefined ? { admin: isAdmin } : {}), ...reasonToApi(request.reason) };
+  }
+  if (request.action === 'revoke') return { correo, ...reasonToApi(request.reason) };
+  return { correo };
+}
 
 /** La ruta de una acción sobre una persona. Sin el correo: va en el cuerpo (CA-8). */
 export const personActionPath = (companyId: string, action: PersonAction) =>
@@ -138,13 +175,16 @@ export const personActionPath = (companyId: string, action: PersonAction) =>
 
 const NOTICE_EMAIL: Record<string, 'sent' | 'not-sent'> = { enviado: 'sent', 'no-enviado': 'not-sent' };
 
-/** Lo que responde una acción sobre una persona. */
+const noticeEmailOf = (value: unknown) => (typeof value === 'string' ? NOTICE_EMAIL[value] ?? null : null);
+
+/**
+ * Lo que responde una acción sobre una persona. Destrabar y borrar traen el estado de la persona y el correo de aviso;
+ * reenviar, si salió el correo de la invitación; cambiar el rol y revocar, la ficha de la persona, que aquí no hace falta.
+ */
 export function toPersonActionDone(action: PersonAction, body: unknown): PersonActionDone {
   const b = asRecord(body, 'la acción sobre la persona');
+  if (action === 'resend-invitation') return { action, appUnlinked: null, noticeEmail: noticeEmailOf(b.correoDeInvitacion) };
+  if (action === 'change-role' || action === 'revoke') return { action, appUnlinked: null, noticeEmail: null };
   const state = asRecord(b.estado, 'el estado de la persona');
-  return {
-    action,
-    appUnlinked: typeof state.appDesvinculada === 'boolean' ? state.appDesvinculada : null,
-    noticeEmail: typeof b.correoDeAviso === 'string' ? NOTICE_EMAIL[b.correoDeAviso] ?? null : null,
-  };
+  return { action, appUnlinked: typeof state.appDesvinculada === 'boolean' ? state.appDesvinculada : null, noticeEmail: noticeEmailOf(b.correoDeAviso) };
 }

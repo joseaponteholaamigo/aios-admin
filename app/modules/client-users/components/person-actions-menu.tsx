@@ -5,11 +5,11 @@
 import { useId, useRef, type ToggleEvent } from 'react';
 import { Link } from 'react-router';
 import type { PersonAction } from '../../../domain/person-actions';
-import { personActionMenuLabel } from '../person-action-labels';
+import { personActionMenuLabel } from '../../../shared/person-actions/person-action-labels';
 import './person-actions-menu.css';
 
-/** Lo que mide la lista abierta, para abrirla hacia arriba si abajo no cabe. */
-const LIST_HEIGHT_PX = 150;
+/** Lo que mide la lista abierta con todas sus acciones, para abrirla hacia arriba si abajo no cabe. */
+const LIST_HEIGHT_PX = 240;
 const GAP_PX = 4;
 
 type PersonActionsMenuProps = {

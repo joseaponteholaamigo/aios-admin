@@ -1,0 +1,3 @@
+/* El «Cambiar» del tope de la voz: los enlaces del panel heredan el color, y este tiene que verse. */
+.company-account-card .facts a { color: var(--accent-ink); font-weight: 600; }
+.company-account-card .facts a:hover { text-decoration: underline; }

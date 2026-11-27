@@ -1,0 +1,5 @@
+/* Una casilla del catálogo: la casilla, el nombre visible, el identificador y la insignia en una línea que se parte. */
+.access-choice { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink); cursor: pointer; padding: 6px 0; }
+.access-choice input { width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+.access-choice__title { font-weight: 600; }
+.access-choice__id { color: var(--muted); }

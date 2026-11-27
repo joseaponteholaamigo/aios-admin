@@ -112,6 +112,11 @@ export type CustomConditions = {
 };
 
 export type CompanyFile = Company & {
+  /**
+   * Tiene una suscripción de Stripe que cobra, o que puede volver a cobrar (spec «Editar cuentas y personas»). Mientras
+   * tanto no cambia de plan desde el panel. `paysWithStripe` dice solo si tiene cliente de Stripe.
+   */
+  stripeCanCharge: boolean;
   effectivePlan: EffectivePlan | null;
   /** Las condiciones de un Personalizado; `null` en los demás planes. */
   conditions: CustomConditions | null;
@@ -120,11 +125,20 @@ export type CompanyFile = Company & {
   accessPending: string | null;
 };
 
+/**
+ * Un evento de la historia que el panel sabe nombrar en palabras (spec «Revocar y reactivar una cuenta», CA-15). La
+ * bitácora del cliente y la auditoría del equipo anotan cada uno con su propio nombre técnico; los dos llegan aquí igual.
+ */
+export type HistoryEventKind = 'account-revoked' | 'account-reactivated';
+
 export type CompanyHistoryEvent = {
   source: 'account' | 'audit';
   at: string;
   actor: string | null;
+  /** El nombre técnico del evento, tal cual. */
   what: string;
+  /** Qué es, si el panel lo sabe nombrar; `null` en los demás. */
+  kind: HistoryEventKind | null;
   reason: string | null;
   channel: string | null;
   detail: unknown;

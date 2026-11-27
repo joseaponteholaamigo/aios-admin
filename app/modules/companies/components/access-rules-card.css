@@ -1,0 +1,3 @@
+/* Las reglas de empresa de hoy: el nombre visible arriba, el identificador debajo, y «Volver a la base» al final. */
+.access-rules__name { display: block; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.access-rules__reset { text-align: right; }

@@ -6,6 +6,8 @@
 - **Repos:** `aios-backend` (worktree `aios-backend-superadmin`) y `aios-admin`, los dos en la rama `superadmin_v2`.
 - **Despliegue:** solo el stack `AiosAdministrator` y el panel. No toca `AiosBackend` ni ENSŌ.
 
+> **Cambio del 2026-11-19 (Jose):** el superadmin ya no pide haber escrito el código hace menos de 15 minutos («MFA reciente»). Basta la sesión; el código se pide solo al entrar, porque el pool del equipo exige MFA. El backend ya no responde `mfa-reciente` y el panel no manda `max_age` ni `acr_values`. Los criterios de esta spec ya están al día; lo que dice de la opción B es historia.
+
 ## Objetivo
 
 El superadministrador da de alta desde el panel a las personas del equipo ENSŌ, decide a qué módulos entra cada una y con qué nivel, y les quita o les destraba el acceso sin abrir una terminal ni la consola de AWS. Hoy el alta solo existe por comando (`npm run equipo -- alta`) y la página «Equipo ensō» es de solo lectura.
@@ -50,7 +52,7 @@ El superadministrador da de alta desde el panel a las personas del equipo ENSŌ,
 ## Criterios de aceptación
 
 ### CA-1: Dar de alta a una persona [backend]
-- **Dado** un superadministrador con MFA reciente
+- **Dado** un superadministrador
 - **Cuando** pide `POST /v1/admin/equipo` con `{ correo: "Nati@Beenso.com", nombre: "Nati", permisos: { empresas: "ver", codigos: "editar" }, motivo: "entra a soporte", clave }`
 - **Entonces**:
   - responde 201 con la persona: `actor`, `correo: "nati@beenso.com"`, `nombre`, `superadmin: false`, `estado: "activa"`, los `permisos` pedidos e `invitacion: "pendiente"`;
@@ -111,14 +113,12 @@ El superadministrador da de alta desde el panel a las personas del equipo ENSŌ,
   - queda un evento `equipo.retirar` con los permisos que tenía en `antes`;
   - un alta nueva con el mismo correo crea otra cuenta, con otro `sub`, y la fila retirada sigue como estaba.
 
-### CA-10: Todo esto es del superadministrador, con MFA reciente y motivo [backend]
+### CA-10: Todo esto es del superadministrador [backend]
 - **Dado** las cinco acciones, el alta y el detalle
-- **Cuando** las pide una persona activa que no es superadministradora (aunque tenga `editar` en todos los módulos), o un superadministrador cuyo último código tiene más de 15 minutos, o un superadministrador sin motivo
-- **Entonces**:
-  - la primera recibe 403;
-  - la segunda, 401 con `codigo: "mfa-reciente"` (solo las que escriben: el detalle y la lista no piden MFA);
-  - la tercera, 422 `sin-motivo`;
-  - en ninguno de los tres casos se toca la tabla ni el pool.
+- **Cuando** las pide una persona activa que no es superadministradora (aunque tenga `editar` en todos los módulos)
+- **Entonces** recibe 403, y no se toca la tabla ni el pool.
+- **Y** no se pide MFA reciente: un superadministrador que escribió su código hace horas puede hacerlas (2026-11-19).
+- **Y** el motivo es opcional: sin él, el evento lleva el motivo por defecto (desde el 2026-11-17).
 
 ### CA-11: Cada función toca solo el pool que le toca [backend]
 - **Dado** la plantilla sintetizada de `AiosAdministrator`
@@ -196,10 +196,8 @@ El superadministrador da de alta desde el panel a las personas del equipo ENSŌ,
 - **Cuando** carga
 - **Entonces** ve sus datos y su historia, sin editor ni acciones, con el texto «Tus permisos y tu acceso los cambia otro superadministrador».
 
-### CA-21: Pedir el código otra vez [panel]
-- **Dado** una acción que el backend rechaza con `mfa-reciente`
-- **Cuando** el panel muestra el rechazo
-- **Entonces** trae «Ingresar el código» (`FormRejection`), y al volver deja al superadministrador en la misma página, con lo que había escrito.
+### CA-21: Pedir el código otra vez [panel] — retirado el 2026-11-19
+- Ya no aplica: el backend no rechaza con `mfa-reciente`, así que el panel no muestra «Ingresar el código». Si la sesión vence, el panel manda al login.
 
 ### CA-22: Solo el superadministrador [panel]
 - **Dado** las rutas nuevas (`team/new`, `team/:sub` y sus acciones)

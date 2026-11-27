@@ -17,9 +17,11 @@ type CapExceptionsCardProps = {
   onlySome: boolean;
   /** El último intento que no se hizo, de cualquiera de los formularios: cada uno toma solo el suyo. */
   attempt: VoiceAttempt | null;
+  /** La cuenta que trae la dirección, para el formulario de la excepción. */
+  prefilledAccountId: string | null;
 };
 
-export function CapExceptionsCard({ exceptions, generalUsd, maxUsd, onlySome, attempt }: CapExceptionsCardProps) {
+export function CapExceptionsCard({ exceptions, generalUsd, maxUsd, onlySome, attempt, prefilledAccountId }: CapExceptionsCardProps) {
   const location = useLocation();
   const failedRemoval = attempt?.intent === 'remove-exception' ? attempt : null;
   const [removing, setRemoving] = useState<string | null>(failedRemoval?.values.accountId ?? null);
@@ -35,7 +37,7 @@ export function CapExceptionsCard({ exceptions, generalUsd, maxUsd, onlySome, at
       <div className="card-b">
         <FilterNotice onlySome={onlySome} />
         <CapExceptionsTable exceptions={exceptions} onRemove={(exception, button) => { trigger.current = button; setRemoving(exception.accountId); }} />
-        <CapExceptionForm maxUsd={maxUsd} attempt={attempt?.intent === 'exception' ? attempt : null} />
+        <CapExceptionForm maxUsd={maxUsd} attempt={attempt?.intent === 'exception' ? attempt : null} prefilledAccountId={prefilledAccountId} />
       </div>
       {chosen && (
         <RemoveExceptionDialog

@@ -13,7 +13,7 @@ import type { PersonActionDone } from '../app/domain/person-actions';
 import { sessionContext } from '../app/middleware/session.server';
 import { teamMemberContext } from '../app/middleware/permissions.server';
 import type { ActiveSession } from '../app/shared/session/session.server';
-import { personActionNotice, personActionNoticeParams } from '../app/modules/client-users/person-action-labels';
+import { personActionNotice, personActionNoticeParams } from '../app/shared/person-actions/person-action-labels';
 
 const personAction = vi.fn();
 const getCompanyPeople = vi.fn();
@@ -21,7 +21,7 @@ vi.mock('../app/shared/api/admin-write-api-service.server', () => ({ getAdminWri
 vi.mock('../app/shared/api/admin-read-api-service.server', () => ({ getAdminReadApi: () => ({ getCompanyPeople }) }));
 const { action, loader } = await import('../app/modules/client-users/routes/company-people');
 const { PeoplePanel } = await import('../app/modules/client-users/components/people-panel');
-const { PersonActionDialog } = await import('../app/modules/client-users/components/person-action-dialog');
+const { PersonActionDialog } = await import('../app/shared/person-actions/person-action-dialog');
 
 const superadmin: TeamMember = { actor: 'equipo:sub-jose', email: null, name: null, isSuperadmin: true, status: 'active', permissions: {} };
 const conTodo: TeamMember = { ...superadmin, isSuperadmin: false, permissions: { clientUsers: 'edit', companies: 'edit' } };
@@ -80,27 +80,30 @@ describe('la acción de la página de personas', () => {
     expect(personAction).not.toHaveBeenCalled();
   });
 
-  test('⛔ el loader da las acciones solo al superadministrador, no a quien tiene todos los módulos (CA-9)', async () => {
+  test('⛔ el loader distingue al superadministrador de quien tiene todos los módulos (CA-9)', async () => {
     getCompanyPeople.mockResolvedValue({ kind: 'ok', value: { company: { id: COMPANY, name: 'Acme' } } });
     const pedir = (member: TeamMember) => loader({ request: new Request(`https://dxxxx.cloudfront.net/client-users/${COMPANY}`), context: contexto(member), params: { companyId: COMPANY } } as never);
 
-    expect([(await pedir(superadmin)).canActOnPeople, (await pedir(conTodo)).canActOnPeople]).toEqual([true, false]);
+    expect([(await pedir(superadmin)).actor.superadmin, (await pedir(conTodo)).actor.superadmin]).toEqual([true, false]);
   });
 });
 
-/** Sin permisos de créditos: estos casos miran solo las acciones del superadministrador. */
+/** Sin permisos de créditos: estos casos miran solo las acciones sobre la persona. */
 const SIN_CREDITOS = { canSee: false, canLoad: false };
+const SUPERADMIN = { superadmin: true, editUsers: true };
+const NADIE = { superadmin: false, editUsers: false };
 
 describe('lo que se ve', () => {
-  test('⛔ el menú de acciones aparece solo para el superadministrador (CA-9)', () => {
-    const panel = (canAct: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal: false, canAct, lastAttempt: null, credits: SIN_CREDITOS }));
+  test('⛔ destrabar y borrar aparecen solo para el superadministrador; sin ninguna acción, no hay menú (CA-9)', () => {
+    const panel = (actor: typeof SUPERADMIN) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal: false, actor, lastAttempt: null, credits: SIN_CREDITOS }));
 
-    expect(panel(true)).toContain('Restablecer verificación en dos pasos');
-    expect(panel(false)).not.toContain('Acciones');
+    expect(panel(SUPERADMIN)).toContain('Restablecer verificación en dos pasos');
+    expect(panel({ superadmin: false, editUsers: true })).not.toContain('Restablecer verificación en dos pasos');
+    expect(panel(NADIE)).not.toContain('Acciones');
   });
 
   test('⛔ en una cuenta personal no se ofrece borrar a su única persona: se ofrece borrar la cuenta (CB-4)', () => {
-    const panel = (personal: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal, canAct: true, lastAttempt: null, credits: SIN_CREDITOS }));
+    const panel = (personal: boolean) => render(createElement(PeoplePanel, { people: [PERSONA] as never, roles: [], companyId: COMPANY, companyName: 'Acme', personal, actor: SUPERADMIN, lastAttempt: null, credits: SIN_CREDITOS }));
 
     expect(panel(true)).not.toContain('Borrar persona');
     expect(panel(true)).toContain(`href="/companies/${COMPANY}/delete"`);

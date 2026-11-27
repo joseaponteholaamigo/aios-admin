@@ -1,0 +1,7 @@
+/* El paso 1 de las reglas de acceso: la acción, el catálogo, el motivo y los botones al final. */
+.access-change__body { display: grid; gap: 16px; }
+.access-change__action { border: 0; padding: 0; margin: 0; display: flex; gap: 8px 24px; flex-wrap: wrap; align-items: center; }
+.access-change__action legend { font-size: 12px; font-weight: 600; color: var(--ink-2); padding: 0 0 6px; }
+.access-change__option { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); cursor: pointer; }
+.access-change__option input { width: 16px; height: 16px; accent-color: var(--accent); }
+.access-change__buttons { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

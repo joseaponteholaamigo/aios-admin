@@ -1,9 +1,9 @@
 // Los últimos movimientos de créditos de una persona, en su diálogo de «Créditos» (CA-23): qué gastó,
 // qué se le cargó o compró, y qué se le venció sin usar.
-import type { CreditMovement } from '../../../domain/credits';
-import { KIND_LABELS, conceptLabel, formatCredits, statusLabel } from '../../../shared/labels/credit-labels';
-import { badgeClass } from '../../../shared/ui/badge';
-import { formatDateTime } from '../../../shared/ui/format';
+import type { CreditMovement } from '../../domain/credits';
+import { KIND_LABELS, conceptLabel, formatCredits, statusLabel } from '../labels/credit-labels';
+import { badgeClass } from '../ui/badge';
+import { formatDateTime } from '../ui/format';
 
 /** Cuánto movió: lo cobrado de un gasto (o lo reservado si sigue en curso), o los créditos de un lote. */
 const amountOf = (m: CreditMovement) => (m.kind === 'spend' ? (m.status === 'in-progress' ? m.reserved : m.charged) : m.credits);

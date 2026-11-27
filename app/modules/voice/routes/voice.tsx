@@ -2,7 +2,8 @@
 // que rige para toda cuenta, y las excepciones por cuenta. Solo el superadministrador (`route-table.ts`);
 // el backend lo vuelve a pedir. Cada cambio lleva un motivo y queda en la auditoría con el antes y el
 // después. Al guardar vuelve aquí con el aviso; un rechazo se queda en el formulario que lo mandó, con lo
-// escrito.
+// escrito. `?account=<id>` llega desde la ficha de una cuenta y la deja puesta en el formulario de la
+// excepción (spec «Editar cuentas y personas», CA-2).
 import { redirect, useSearchParams } from 'react-router';
 import type { Route } from './+types/voice';
 import { toAdminApi } from '../../../shared/api/admin-action.server';
@@ -13,7 +14,7 @@ import { DoneNotice } from '../../../shared/ui/done-notice';
 import { FormRejection } from '../../../shared/ui/form-rejection';
 import { CapExceptionsCard } from '../components/cap-exceptions-card';
 import { GeneralCapCard } from '../components/general-cap-card';
-import { readVoiceCapChange, valuesOf, type VoiceAttempt } from '../voice-form-data';
+import { prefilledAccount, readVoiceCapChange, valuesOf, type VoiceAttempt } from '../voice-form-data';
 import { voiceCapNotice, voiceCapNoticeParams } from '../voice-labels';
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -46,7 +47,10 @@ export default function Voice({ loaderData, actionData }: Route.ComponentProps) 
       {attempt?.intent === null && attempt.rejection && <FormRejection rejection={attempt.rejection} />}
       <div className="grid">
         <GeneralCapCard general={caps.general} maxUsd={caps.maxUsd} attempt={attempt?.intent === 'general' ? attempt : null} />
-        <CapExceptionsCard exceptions={caps.exceptions} generalUsd={caps.general.usd} maxUsd={caps.maxUsd} onlySome={caps.onlySome} attempt={attempt} />
+        <CapExceptionsCard
+          exceptions={caps.exceptions} generalUsd={caps.general.usd} maxUsd={caps.maxUsd} onlySome={caps.onlySome} attempt={attempt}
+          prefilledAccountId={prefilledAccount(params)}
+        />
       </div>
     </>
   );

@@ -1,0 +1,4 @@
+/* El antes y el después de un evento: una línea por campo, debajo de quién y por qué. Va en un `span`
+   (el detalle de la línea de tiempo lo es), así que cada línea se pone en bloque aquí. */
+.company-history__change { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+.company-history__change .mono { font-size: 11px; color: var(--ink-2); overflow-wrap: anywhere; }

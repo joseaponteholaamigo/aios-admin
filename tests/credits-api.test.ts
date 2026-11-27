@@ -1,5 +1,5 @@
-// La traducción de los créditos y de los asientos entre el panel y el backend (spec «Créditos por
-// persona» de aios-tower).
+// La traducción de los créditos entre el panel y el backend (spec «Créditos por persona» de aios-tower).
+// El cambio de asientos ahora es parte de «Cambiar plan»: lo prueba `tests/change-plan.test.ts`.
 //
 // EL DEFECTO QUE PREVIENE. Un nombre de campo mal traducido muestra cero créditos o una fecha vacía;
 // un correo en la URL queda en los registros de acceso; un rechazo sin traducir rompe el formulario.
@@ -62,17 +62,6 @@ describe('las lecturas', () => {
 });
 
 describe('las escrituras', () => {
-  test('⛔ los asientos van por PATCH, y bajar por debajo de los usados llega como rechazo con cuántos hay (CB-9)', async () => {
-    const ok = fetchAnswering(() => Response.json({ tenantId: 'acme-1a2b3c', asientos: { antes: 5, despues: 8 } }));
-    const api = createAdminWriteApi({ baseUrl: 'https://api.example', fetchImpl: ok.fetchImpl, log: () => {} });
-    expect(await api.changeSeats('t', 'acme-1a2b3c', { seats: 8, reason: 'contrato' })).toEqual({ kind: 'ok', value: { before: 5, after: 8 } });
-    expect(ok.seen[0]).toEqual({ url: 'https://api.example/v1/admin/clientes/acme-1a2b3c/condiciones', method: 'PATCH', body: { asientos: 8, motivo: 'contrato' } });
-
-    const lleno = fetchAnswering(() => Response.json({ error: 'hay 5', codigo: 'asientos-en-uso', usados: 5 }, { status: 409 }));
-    const r = await createAdminWriteApi({ baseUrl: 'https://api.example', fetchImpl: lleno.fetchImpl, log: () => {} }).changeSeats('t', 'acme-1a2b3c', { seats: 3, reason: 'x' });
-    expect(r).toEqual({ kind: 'rejected', rejection: { code: 'seats-in-use', used: 5 }, createdAccountId: null });
-  });
-
   test('⛔ la carga lleva el correo y la clave en el cuerpo, y devuelve cuánto se cargó y cuándo vence', async () => {
     const lote = { id: 'lot_1', origen: 'carga', nombre: 'Carga de ENSŌ', creditos: 11000, saldo: 11000, acreditado: '2026-11-12T14:00:00Z', vence: '2026-12-12T14:00:00Z' };
     const { fetchImpl, seen } = fetchAnswering(() => Response.json({ tenantId: 'acme-1a2b3c', correo: 'luis@acme.com', lote }, { status: 201 }));
@@ -85,12 +74,10 @@ describe('las escrituras', () => {
     expect(r).toEqual({ kind: 'ok', value: { credits: 11000, expiresAt: '2026-12-12T14:00:00Z' } });
   });
 
-  test('los rechazos nuevos se traducen: cuenta personal, no Personalizado y otra operación en curso', async () => {
-    for (const [codigo, code] of [['cuenta-personal', 'personal-account'], ['no-es-personalizado', 'not-custom'], ['ocupado', 'busy']] as const) {
-      const status = codigo === 'ocupado' ? 503 : 409;
-      const { fetchImpl } = fetchAnswering(() => Response.json({ error: 'no', codigo }, { status }));
-      const r = await createAdminWriteApi({ baseUrl: 'https://api.example', fetchImpl, log: () => {} }).changeSeats('t', 'x-1', { seats: 2, reason: 'x' });
-      expect(r).toEqual({ kind: 'rejected', rejection: { code }, createdAccountId: null });
-    }
+  test('otra operación con los créditos de la misma persona llega como rechazo, para volver a intentar', async () => {
+    const { fetchImpl } = fetchAnswering(() => Response.json({ error: 'no', codigo: 'ocupado' }, { status: 503 }));
+    const r = await createAdminWriteApi({ baseUrl: 'https://api.example', fetchImpl, log: () => {} })
+      .loadCredits('t', 'x-1', { email: 'luis@acme.com', credits: 10, reason: '', key: 'carga-0001' });
+    expect(r).toEqual({ kind: 'rejected', rejection: { code: 'busy' }, createdAccountId: null });
   });
 });

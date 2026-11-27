@@ -25,6 +25,7 @@ const cuenta = (extra: Partial<Company> = {}): Company => ({
 
 const ficha = (extra: Partial<CompanyFile> = {}): CompanyFile => ({
   ...cuenta(),
+  stripeCanCharge: false,
   effectivePlan: { tier: 'pro', preset: 'pro', flags: { collaboration: false, scheduling: true }, quotas: {}, seats: 1, managesSeats: false },
   conditions: null, access: null, accessPending: 'falta publicar', ...extra,
 });
@@ -35,7 +36,9 @@ function render<P extends object>(Component: ComponentType<P>, props: P) {
   return renderToStaticMarkup(createElement(Stub, { initialEntries: ['/'] }));
 }
 
-const fileOf = (file: CompanyFile, canSeePeople = true) => render(Company_ as ComponentType<object>, { loaderData: { file, history: [], canSeePeople } });
+const fileOf = (file: CompanyFile, canSeePeople = true) => render(Company_ as ComponentType<object>, {
+  loaderData: { file, history: [], canSeePeople, voiceCap: null, personActions: [], credits: { canSee: false, canLoad: false } },
+});
 
 describe('la tabla de cuentas personales', () => {
   test('CA-21 · cada fila dice el correo de su persona, su plan, de dónde salió y cuándo entró, no el nombre inventado', () => {

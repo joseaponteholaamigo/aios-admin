@@ -6,7 +6,8 @@
 // tope», o el «mover» encendido sin que nadie oprimiera el botón, que borra una cuenta.
 import { describe, expect, test } from 'vitest';
 import { PRO_CONDITIONS } from '../app/domain/account-creation';
-import { PRO_ENDS_ON_FIELD, readNewAccount } from '../app/modules/companies/new-account-form-data';
+import { readNewAccount } from '../app/modules/companies/new-account-form-data';
+import { PRO_ENDS_ON_FIELD } from '../app/modules/companies/plan-conditions-form-data';
 
 const KEY = 'clave-de-prueba-0001';
 

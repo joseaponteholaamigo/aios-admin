@@ -2,7 +2,7 @@
 import {
   ACCOUNT_ORIGINS, type AccessRule, type AccountCounts, type AccountOrigin, type AccountPerson, type CompaniesPage, type CompaniesSearch,
   type Company, type CompanyAccess, type CompanyFile, type CompanyHistoryEvent, type ContentBase, type CustomConditions, type EffectivePlan,
-  type IndexCounts, type KindCount, type OriginCount, type PersonalAccountsPage, type Quotas,
+  type HistoryEventKind, type IndexCounts, type KindCount, type OriginCount, type PersonalAccountsPage, type Quotas,
 } from '../../domain/companies';
 import { isCursor } from '../../domain/pagination';
 import { ApiContractError, asArray, asRecord, num, numOrNull, str, strOrNull, warnUnknownFields, type Log } from './api-reading';
@@ -13,7 +13,7 @@ const CONTENT_FROM_API: Record<string, ContentBase> = { todo: 'everything', free
 const ACTION_FROM_API: Record<string, AccessRule['action']> = { dar: 'grant', quitar: 'remove' };
 const QUOTA_FROM_API: Record<string, string> = { radar: 'radar', proyectos: 'projects', skills: 'skills', cadenas: 'chains' };
 
-const toContent = (value: unknown): ContentBase | null => CONTENT_FROM_API[String(value)] ?? null;
+export const toContent = (value: unknown): ContentBase | null => CONTENT_FROM_API[String(value)] ?? null;
 const boolOrNull = (value: unknown) => (typeof value === 'boolean' ? value : null);
 
 /** Los cupos con sus nombres en inglés. `null` es «sin tope» (`SIN_TOPE` del backend); un cupo que el panel no conoce queda en el log. */
@@ -29,7 +29,7 @@ function toQuotas(raw: unknown, log: Log): Quotas {
 }
 
 const COMPANY_FIELDS = ['id', 'nombre', 'tipo', 'persona', 'nacidaDe', 'plan', 'estado', 'vencimiento', 'aviso', 'asientos', 'admins', 'pagaPorStripe', 'creadaEl'] as const;
-const FILE_FIELDS = [...COMPANY_FIELDS, 'planEfectivo', 'condiciones', 'acceso', 'accesoPendiente'] as const;
+const FILE_FIELDS = [...COMPANY_FIELDS, 'stripePuedeCobrar', 'planEfectivo', 'condiciones', 'acceso', 'accesoPendiente'] as const;
 
 const EXPIRED_BY: Record<string, Company['expiry']['expiredBy']> = { suscripcion: 'subscription', fecha: 'date' };
 
@@ -182,7 +182,7 @@ function toEffectivePlan(raw: unknown, log: Log): EffectivePlan | null {
   };
 }
 
-function toConditions(raw: unknown, log: Log): CustomConditions | null {
+export function toConditions(raw: unknown, log: Log): CustomConditions | null {
   if (!raw || typeof raw !== 'object') return null;
   const c = raw as Record<string, unknown>;
   return {
@@ -211,6 +211,8 @@ export function toCompanyFile(body: unknown, log: Log): CompanyFile {
   warnUnknownFields(r, FILE_FIELDS, 'la ficha de una empresa', log);
   return {
     ...toCompanyFields(r, log),
+    // Sin el dato (un backend anterior), no se frena aquí: si cobra, el backend rechaza el cambio de plan igual.
+    stripeCanCharge: r.stripePuedeCobrar === true,
     effectivePlan: toEffectivePlan(r.planEfectivo, log),
     conditions: toConditions(r.condiciones, log),
     access: toAccess(r.acceso),
@@ -218,14 +220,25 @@ export function toCompanyFile(body: unknown, log: Log): CompanyFile {
   };
 }
 
+/**
+ * Los eventos que la historia nombra en palabras (spec «Revocar y reactivar una cuenta», CA-15): el de la bitácora del
+ * cliente (firmado «equipo-enso», con un motivo genérico) y el de la auditoría del equipo (con el motivo real).
+ */
+const HISTORY_KIND_FROM_API = new Map<string, HistoryEventKind>([
+  ['revocado', 'account-revoked'], ['empresas.revocar', 'account-revoked'],
+  ['reactivado', 'account-reactivated'], ['empresas.reactivar', 'account-reactivated'],
+]);
+
 export function toCompanyHistory(body: unknown): CompanyHistoryEvent[] {
   return asArray(asRecord(body, 'la historia').historia, 'historia').map((raw) => {
     const e = asRecord(raw, 'un evento de la historia');
+    const what = str(e.que, 'evento.que');
     return {
       source: e.origen === 'auditoria' ? 'audit' : 'account',
       at: str(e.fecha, 'evento.fecha'),
       actor: strOrNull(e.actor),
-      what: str(e.que, 'evento.que'),
+      what,
+      kind: HISTORY_KIND_FROM_API.get(what) ?? null,
       reason: strOrNull(e.motivo),
       channel: strOrNull(e.canal),
       detail: e.detalle ?? null,
