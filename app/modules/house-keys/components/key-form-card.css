@@ -1,0 +1,9 @@
+/* El formulario de la clave y, separado por una línea, «Quitar la clave». El botón de quitar es rojo por fuera:
+   corta el proveedor para todos. `.btn.` delante: `.adm button { color: inherit }` pesa más que una sola clase. */
+.key-form-card { display: grid; gap: 16px; }
+.key-form { display: grid; gap: 12px; }
+.key-form__check { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); cursor: pointer; }
+.key-form__check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.key-form__actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.key-form-card__remove { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.btn.key-form-card__remove-open { color: var(--bad); border-color: var(--bad); }

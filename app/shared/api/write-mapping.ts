@@ -121,6 +121,10 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   // lo que falta publicar para calcularlas (`error`: qué). `no-es-personalizado`, `falta-confirmar` y `conflicto`, arriba.
   'acceso-rechazado': (b) => ({ code: 'access-rejected', rejections: strings(b.rechazos) }),
   'sin-catalogo': (b) => ({ code: 'no-catalog', ...withMessage(b) }),
+  // Las claves de la casa (spec «Compartir referentes» de aios-tower): el proveedor rechazó la clave nueva (422, el
+  // secreto no cambió), o el servicio no es uno que el backend administre (404).
+  'clave-rechazada': () => ({ code: 'key-rejected' }),
+  'servicio-desconocido': () => ({ code: 'unknown-service' }),
 };
 
 /**

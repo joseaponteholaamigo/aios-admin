@@ -76,6 +76,8 @@ export function rejectionMessage(rejection: WriteRejection): string {
     case 'invitation-accepted': return 'Ya entró con su invitación: si no puede entrar, restablece su MFA.';
     case 'conflict': return 'Otro cambio llegó primero: recarga la página y repítelo.';
     case 'pool-unavailable': return 'El login del equipo no respondió y no se creó nada: vuelve a intentarlo.';
+    case 'key-rejected': return 'El proveedor rechazó esa clave. No se cambió nada.';
+    case 'unknown-service': return 'Ese servicio no está en Claves de la casa.';
     case 'already-revoked': return 'Esta persona ya tenía el acceso revocado: recarga la página para ver cómo quedó.';
     case 'already-joined': return 'Esta persona ya entró a ENSŌ: no hay invitación que reenviar.';
     case 'seat-paused': return 'Esta persona está en pausa porque el plan de la cuenta es de una sola persona: su invitación no se reenvía.';

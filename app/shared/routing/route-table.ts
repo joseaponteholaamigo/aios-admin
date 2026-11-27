@@ -100,6 +100,13 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
     path: 'voice', file: 'modules/voice/routes/voice.tsx', access: 'superadmin',
     menu: { label: 'Tope de la voz', group: 'business', icon: 'voz' },
   },
+  {
+    // Las claves de la casa (spec «Compartir referentes» de aios-tower, D14 a D21): la lista de servicios y la
+    // página de cada uno. Solo el superadministrador, como su ruta en el backend (D15); no es un módulo que se asigne.
+    path: 'house-keys', file: 'modules/house-keys/routes/house-keys.tsx', access: 'superadmin',
+    menu: { label: 'Claves de la casa', group: 'business', icon: 'key' },
+  },
+  { path: 'house-keys/:service', file: 'modules/house-keys/routes/house-key.tsx', access: 'superadmin' },
   { path: 'auth/login', file: 'modules/auth/routes/login.tsx', access: 'public' },
   { path: 'auth/callback', file: 'modules/auth/routes/callback.tsx', access: 'public' },
   { path: 'auth/logout', file: 'modules/auth/routes/logout.tsx', access: 'public' },

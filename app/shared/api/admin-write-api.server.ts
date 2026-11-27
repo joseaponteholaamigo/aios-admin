@@ -13,6 +13,7 @@ import type { CreditLoad, LoadedLot } from '../../domain/credits';
 import type { PlanChange, PlanChangeResult } from '../../domain/plan-change';
 import type { CodeAction, NewCode, RegistrationCode } from '../../domain/codes';
 import type { VoiceCapChange, VoiceCapChanged } from '../../domain/voice-cap';
+import type { HouseKeyChangeRequest, HouseKeyService } from '../../domain/house-keys';
 import type { CreatedTeamMember, NewTeamMember, PermissionsChange, TeamAction, TeamPerson } from '../../domain/team';
 import { codePath, toBackendCodeAction, toBackendNewCode, toWrittenCode } from './codes-mapping';
 import {
@@ -25,6 +26,7 @@ import { accountStatusPath, toAccountStatusResult, toBackendStatusChange } from 
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
+import { houseKeyPath, toBackendHouseKeyChange } from './house-keys-mapping';
 import { VOICE_CAP_PATH, toBackendVoiceCapChange, toVoiceCapChanged } from './voice-cap-mapping';
 import {
   personActionPath, toBackendAccount, toBackendPerson, toBackendPersonAction, toCreatedAccount, toInvitedPerson, toPersonActionDone, toWriteRejection,
@@ -63,6 +65,11 @@ export type AdminWriteApi = {
   changeCodeState(token: string, code: string, action: CodeAction, reason: string | null): Promise<WriteResult<RegistrationCode>>;
   /** Cambiar el tope general de la voz, o poner o quitar la excepción de una cuenta. Solo el superadministrador (CA-33). */
   changeVoiceCap(token: string, change: VoiceCapChange): Promise<WriteResult<VoiceCapChanged>>;
+  /**
+   * Poner, cambiar o quitar la clave de la casa de un servicio, o encender o apagar su proveedor. Solo el
+   * superadministrador, con motivo. Lo que queda lo vuelve a leer la página: la respuesta no se usa.
+   */
+  changeHouseKey(token: string, service: HouseKeyService, change: HouseKeyChangeRequest): Promise<WriteResult<null>>;
   /** Dar de alta a una persona del equipo ENSŌ: con la misma clave, dos veces es una (spec «Equipo ENSŌ», CA-2). */
   createTeamMember(token: string, member: NewTeamMember): Promise<WriteResult<CreatedTeamMember>>;
   /** Cambiar los permisos (y la marca de superadministrador) de una persona del equipo. */
@@ -127,6 +134,8 @@ export function createAdminWriteApi({
     changeCodeState: (token, code, action, reason) => post(`${codePath(code)}/estado`, token, toBackendCodeAction(action, reason), toWrittenCode),
     // La cuenta de una excepción va en el cuerpo, como en el resto de las escrituras con datos de un cliente.
     changeVoiceCap: (token, change) => post(VOICE_CAP_PATH, token, toBackendVoiceCapChange(change), toVoiceCapChanged, 'PUT'),
+    // La clave va solo en el cuerpo, nunca en la ruta ni en un log. La respuesta se descarta: la página vuelve a leer.
+    changeHouseKey: (token, service, change) => post(houseKeyPath(service), token, toBackendHouseKeyChange(change), () => null, 'PUT'),
     createTeamMember: (token, member) => post('/v1/admin/equipo', token, toBackendNewTeamMember(member), (b) => toCreatedTeamMember(b, log)),
     changeTeamPermissions: (token, sub, change) =>
       post(teamPermissionsPath(sub), token, toBackendPermissionsChange(change), (b) => toChangedTeamPerson(b, log), 'PUT'),
