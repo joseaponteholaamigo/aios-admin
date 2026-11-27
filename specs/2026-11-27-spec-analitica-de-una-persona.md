@@ -61,6 +61,7 @@ Respuesta 200:
 
 - `cambio` solo viene en `retirar` y `devolver`: `false` si ya estaba así (no escribe ni anota nada).
 - `cambiadaEl`: la última vez que cambió su analítica, o `null`.
+- En cada aceptación, `aceptadoEl`, `registradoEl`, `donde` y `nombreDeclarado` pueden venir en `null` (una aceptación vieja, o sin nombre escrito); el panel muestra «—».
 
 Rechazos: `no-existe` 404 (la cuenta no existe o está fuera del filtro, o ese correo no tiene asiento en ella), `invalido` 422, `asiento-revocado` 409 (cambiar la analítica de alguien que ya no entra).
 
