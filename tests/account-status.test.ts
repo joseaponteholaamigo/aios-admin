@@ -83,7 +83,7 @@ function render<P extends object>(Component: ComponentType<P>, props: P, at = `/
 const renderFile = (file: CompanyFile, statusAction: AccountStatusOffer | null = accountStatusOffer(file)) => render(companyRoute.default as ComponentType<object>, {
   loaderData: {
     file, history: [], canSeePeople: false, canDelete: statusAction !== null, canChangePlan: false, planBlock: planChangeBlock(file),
-    statusAction, voiceCap: null, personActions: [], credits: { canSee: false, canLoad: false },
+    statusAction, voiceCap: null, personActions: [], credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false },
   },
 });
 

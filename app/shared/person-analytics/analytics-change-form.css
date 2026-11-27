@@ -1,0 +1,7 @@
+/* Dejar de compartir o volver a compartir, debajo de la prueba de los términos. El recordatorio de lo que no se borra
+   va con el tono de aviso, para que no se lea como letra chica. */
+.analytics-change-form { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.analytics-change-form > p { font-size: 13.5px; color: var(--ink-2); }
+.analytics-change-form > .analytics-change-form__reminder { padding: 10px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--ink); font-size: 13px; }
+.field .analytics-change-form__reason { min-height: 72px; font-family: var(--sans); font-size: 13.5px; }
+.analytics-change-form__buttons { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }

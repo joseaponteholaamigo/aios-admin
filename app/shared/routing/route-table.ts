@@ -72,6 +72,9 @@ export const ROUTE_TABLE: readonly RouteEntry[] = [
   // Consumo; cargarle créditos, de Empresas. Las dos solo responden a un POST, con el correo en el cuerpo.
   { path: 'client-users/:companyId/credits', file: 'modules/client-users/routes/person-credits.tsx', access: { module: 'usage', level: 'view' } },
   { path: 'client-users/:companyId/credits/load', file: 'modules/client-users/routes/person-credits-load.tsx', access: { module: 'companies', level: 'edit' } },
+  // El diálogo «Analítica y términos» de una persona (spec «Analítica de una persona», decisión 1): ver pide «ver» en
+  // Usuarios; su `action` vuelve a pedir «editar» para dejar de compartir o volver a compartir. Solo responde a un POST.
+  { path: 'client-users/:companyId/analytics', file: 'modules/client-users/routes/person-analytics.tsx', access: { module: 'clientUsers', level: 'view' } },
   { path: 'team', file: 'modules/team/routes/team.tsx', access: 'superadmin', menu: { label: 'Equipo ensō', group: 'administration', icon: 'people' } },
   // Dar de alta, ver y administrar a una persona del equipo (spec «Equipo ENSŌ»): solo el superadministrador.
   { path: 'team/new', file: 'modules/team/routes/team-new.tsx', access: 'superadmin' },

@@ -1,0 +1,3 @@
+/* Si la persona comparte su uso, arriba de la prueba de los términos. */
+.analytics-overview__status { font-size: 15px; color: var(--ink); }
+.analytics-overview__loading { color: var(--muted); font-size: 13px; }

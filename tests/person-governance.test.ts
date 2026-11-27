@@ -90,7 +90,7 @@ describe('CA-24 · qué ofrece el menú de cada persona', () => {
   test('el menú de la tabla muestra «Reenviar invitación» solo en la persona invitada', () => {
     const html = render(createElement(PeoplePanel, {
       people: [persona(), persona({ email: 'eva@acme.com', status: 'invited' })], roles: ROLES, companyId: COMPANY, companyName: 'Acme',
-      personal: false, actor: EDITORA, lastAttempt: null, credits: { canSee: false, canLoad: false },
+      personal: false, actor: EDITORA, lastAttempt: null, credits: { canSee: false, canLoad: false }, analytics: { canSee: false, canChange: false },
     }));
     expect(html.match(/>Cambiar rol</g)).toHaveLength(2);
     expect(html.match(/>Reenviar invitación</g)).toHaveLength(1);
