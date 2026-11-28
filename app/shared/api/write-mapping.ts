@@ -124,6 +124,10 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   'plan-de-equipo': () => ({ code: 'team-plan' }),
   'varias-personas': () => ({ code: 'several-people' }),
   moviendo: () => ({ code: 'moving' }),
+  // Las claves de la casa (spec «Compartir referentes» de aios-tower): el proveedor rechazó la clave nueva (422, el
+  // secreto no cambió), o el servicio no es uno que el backend administre (404).
+  'clave-rechazada': () => ({ code: 'key-rejected' }),
+  'servicio-desconocido': () => ({ code: 'unknown-service' }),
 };
 
 /**

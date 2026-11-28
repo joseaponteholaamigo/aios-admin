@@ -14,6 +14,7 @@ import type { ClientUsersPage, CompanyPeople, DataCheckup, PeopleSearch } from '
 import type { AccountKind, CompaniesPage, CompaniesSearch, CompanyFile, CompanyHistoryEvent, ListPlan, PersonalAccountsPage } from '../../domain/companies';
 import type { TeamPerson } from '../../domain/team';
 import type { VoiceCaps } from '../../domain/voice-cap';
+import type { HouseKeyDetail, HouseKeyService, HouseKeyStatus } from '../../domain/house-keys';
 import { companyAccessPath, toCompanyAccessReading, toUnpublishedAccess } from './access-rules-mapping';
 import { AdminApiUnavailableError } from './admin-api.server';
 import { ApiContractError, type Log } from './api-reading';
@@ -25,6 +26,7 @@ import { toDeletionPreview, toPendingDeletions } from './deletion-mapping';
 import { housePath, toHouseReview } from './house-mapping';
 import { creditLogFiltersToApi, toCreditLogPage, toPersonCredits } from './credits-mapping';
 import { teamPersonPath, toTeamPeople, toTeamPersonBody } from './team-mapping';
+import { HOUSE_KEYS_PATH, houseKeyPath, toHouseKeyDetail, toHouseKeys } from './house-keys-mapping';
 import { VOICE_CAP_PATH, toVoiceCaps } from './voice-cap-mapping';
 
 const TIMEOUT_MS = 5000;
@@ -34,6 +36,13 @@ const TIMEOUT_MS = 5000;
  * ver pocas: necesita más que el resto. Por debajo de los 10 s que tiene su Lambda.
  */
 const CHECKUP_TIMEOUT_MS = 9000;
+
+/**
+ * Las claves de la casa traen el saldo, que la función de admin le pide a `Casa`, y `Casa` a ScrapeCreators: dos
+ * Lambdas y un proveedor. Le cabe más que a una lectura, por debajo de los 10 s de su Lambda. Si `Casa` no
+ * responde, el backend manda `saldo: null` y la página dice que no se pudo leer.
+ */
+const HOUSE_KEYS_TIMEOUT_MS = 9000;
 
 /**
  * Lo que respondió el backend, en lo que el panel hace con cada cosa: el dato, «no existe» (o la
@@ -87,6 +96,10 @@ export type AdminReadApi = {
   getCode(token: string, code: string): Promise<ApiResult<CodeDetail>>;
   /** El tope de la voz: el general y las excepciones de las cuentas visibles. Solo el superadministrador (CA-33). */
   getVoiceCaps(token: string): Promise<ApiResult<VoiceCaps>>;
+  /** Las claves de la casa: cada servicio, si su clave está puesta y en qué termina, y su saldo. Solo el superadministrador. */
+  listHouseKeys(token: string): Promise<ApiResult<HouseKeyStatus[]>>;
+  /** La clave de la casa de un servicio, con el historial de la clave y del interruptor. Solo el superadministrador. */
+  getHouseKey(token: string, service: HouseKeyService): Promise<ApiResult<HouseKeyDetail>>;
 };
 
 const STATUS_RESULT: Record<number, ApiResult<never>['kind']> = { 400: 'invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found', 422: 'invalid' };
@@ -171,5 +184,8 @@ export function createAdminReadApi({
     listCodes: (token) => send('/v1/admin/codigos', token, toCodes),
     getCode: (token, code) => send(codePath(code), token, toCodeDetail),
     getVoiceCaps: (token) => send(VOICE_CAP_PATH, token, toVoiceCaps),
+    listHouseKeys: (token) => send(HOUSE_KEYS_PATH, token, (b) => toHouseKeys(b, log), { timeoutMs: HOUSE_KEYS_TIMEOUT_MS }),
+    getHouseKey: (token, service) =>
+      send(houseKeyPath(service), token, (b) => toHouseKeyDetail(b, service, log), { timeoutMs: HOUSE_KEYS_TIMEOUT_MS }),
   };
 }

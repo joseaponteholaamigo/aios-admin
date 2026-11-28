@@ -1,0 +1,4 @@
+/* El estado de la clave: los datos arriba y, separado por una línea, el formulario del interruptor. */
+.key-status { display: grid; gap: 16px; }
+.key-status__switch { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.key-status__actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
