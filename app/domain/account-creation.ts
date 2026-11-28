@@ -112,6 +112,11 @@ export type WriteRejection =
    */
   | { code: 'already-in-team'; sub: string | null }
   | { code: 'self-action' | 'invitation-accepted' | 'conflict' | 'pool-unavailable' }
+  /**
+   * Las claves de la casa (spec «Compartir referentes» de aios-tower): el proveedor rechazó la clave nueva al
+   * probarla, y no se cambió nada; o el servicio no es uno que el backend administre.
+   */
+  | { code: 'key-rejected' | 'unknown-service' }
   /** La API no respondió a tiempo, o respondió un 5xx: no se sabe si se hizo. */
   | { code: 'unavailable' };
 
