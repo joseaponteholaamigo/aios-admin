@@ -8,6 +8,7 @@ import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, WriteRejecti
 import type { AccessChange, AccessChangeResult } from '../../domain/access-rules';
 import type { AccountDeletion, DeletedAccount } from '../../domain/account-deletion';
 import type { AccountStatusChange, AccountStatusResult } from '../../domain/account-status';
+import type { AccountTypeChange, AccountTypeResult } from '../../domain/account-type';
 import type { HouseChange, HouseChangeResult } from '../../domain/house';
 import type { PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
 import type { AnalyticsRequest, PersonAnalytics } from '../../domain/person-analytics';
@@ -25,6 +26,7 @@ import { toBackendLoad, toLoadedLot } from './credits-mapping';
 import { planChangePath, toBackendPlanChange, toPlanChangeResult } from './plan-change-mapping';
 import { companyAccessPath, toAccessChangeResult, toBackendAccessChange } from './access-rules-mapping';
 import { accountStatusPath, toAccountStatusResult, toBackendStatusChange } from './account-status-mapping';
+import { accountTypePath, toAccountTypeResult, toBackendTypeChange } from './account-type-mapping';
 import { housePath, toBackendHouseChange, toHouseChangeResult } from './house-mapping';
 import { personAnalyticsPath, toBackendAnalyticsRequest, toPersonAnalytics } from './person-analytics-mapping';
 import { toBackendDeletion, toDeletedAccount } from './deletion-mapping';
@@ -61,6 +63,8 @@ export type AdminWriteApi = {
   changeAccess(token: string, companyId: string, change: AccessChange): Promise<WriteResult<AccessChangeResult>>;
   /** Revocar o reactivar una cuenta entera: ver qué pasaría, o hacerlo. Solo el superadministrador (spec «Revocar y reactivar una cuenta»). */
   changeAccountStatus(token: string, companyId: string, change: AccountStatusChange): Promise<WriteResult<AccountStatusResult>>;
+  /** Pasar una empresa a cuenta personal, o al revés: ver qué cambia, o hacerlo. Solo el superadministrador (spec «Pasar una empresa a cuenta personal, y al revés»). */
+  changeAccountType(token: string, companyId: string, change: AccountTypeChange): Promise<WriteResult<AccountTypeResult>>;
   /** Quitar la pausa de la casa de una cuenta, o descongelar un lote de una de sus personas. Solo el superadministrador (spec «Reanudar la casa»). */
   changeHouse(token: string, companyId: string, change: HouseChange): Promise<WriteResult<HouseChangeResult>>;
   /** Ver la analítica de una persona de esa cuenta y la prueba de sus términos, o dejar de compartir o volver a compartir (spec «Analítica de una persona»). */
@@ -136,6 +140,7 @@ export function createAdminWriteApi({
     changePlan: (token, companyId, change) => post(planChangePath(companyId), token, toBackendPlanChange(change), (b) => toPlanChangeResult(b, log), 'PATCH'),
     changeAccess: (token, companyId, change) => post(companyAccessPath(companyId), token, toBackendAccessChange(change), (b) => toAccessChangeResult(b, log)),
     changeAccountStatus: (token, companyId, change) => post(accountStatusPath(companyId), token, toBackendStatusChange(change), toAccountStatusResult),
+    changeAccountType: (token, companyId, change) => post(accountTypePath(companyId), token, toBackendTypeChange(change), toAccountTypeResult),
     // El correo de quien tiene el lote va en el cuerpo, como en las acciones sobre una persona: nunca en la URL.
     changeHouse: (token, companyId, change) => post(housePath(companyId), token, toBackendHouseChange(change), toHouseChangeResult),
     // El correo va en el cuerpo, como en las acciones sobre una persona: nunca en la URL. Ver también va por POST.

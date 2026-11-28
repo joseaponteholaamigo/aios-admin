@@ -236,11 +236,30 @@ const HISTORY_KIND_FROM_API = new Map<string, HistoryEventKind>([
 /** La bitácora del cliente anota `analitica` en las dos direcciones: cuál fue lo dice `detalle.retirada`. */
 const ANALYTICS_EVENT = 'analitica';
 
-function historyKindOf(what: string, detail: unknown): HistoryEventKind | null {
-  if (what !== ANALYTICS_EVENT) return HISTORY_KIND_FROM_API.get(what) ?? null;
-  const withdrawn = (detail as { retirada?: unknown } | null)?.retirada;
+/**
+ * El cambio de tipo de una cuenta (spec «Pasar una empresa a cuenta personal, y al revés», CA-15) también va en las dos
+ * direcciones: la bitácora del cliente anota `tipo-de-cuenta` con el tipo nuevo en `detalle.a` (desde el panel, el
+ * comando o un cambio de plan), y la auditoría del equipo, `empresas.cambiar-tipo` con él en `despues.tipo`.
+ */
+const TYPE_EVENT = 'tipo-de-cuenta';
+const TYPE_AUDIT = 'empresas.cambiar-tipo';
+const TYPE_KIND_FROM_API = new Map<unknown, HistoryEventKind>([['personal', 'account-to-personal'], ['empresa', 'account-to-company']]);
+
+const fieldOf = (value: unknown, field: string): unknown =>
+  (value && typeof value === 'object' ? (value as Record<string, unknown>)[field] : undefined);
+
+function analyticsKind(detail: unknown): HistoryEventKind | null {
+  const withdrawn = fieldOf(detail, 'retirada');
   if (withdrawn === true) return 'analytics-withdrawn';
   return withdrawn === false ? 'analytics-restored' : null;
+}
+
+/** Qué es el evento, si el panel lo sabe nombrar. Uno sin dirección no se adivina: queda sin nombre en palabras. */
+function historyKindOf(what: string, detail: unknown, after: unknown): HistoryEventKind | null {
+  if (what === ANALYTICS_EVENT) return analyticsKind(detail);
+  if (what === TYPE_EVENT) return TYPE_KIND_FROM_API.get(fieldOf(detail, 'a')) ?? null;
+  if (what === TYPE_AUDIT) return TYPE_KIND_FROM_API.get(fieldOf(after, 'tipo')) ?? null;
+  return HISTORY_KIND_FROM_API.get(what) ?? null;
 }
 
 export function toCompanyHistory(body: unknown): CompanyHistoryEvent[] {
@@ -252,7 +271,7 @@ export function toCompanyHistory(body: unknown): CompanyHistoryEvent[] {
       at: str(e.fecha, 'evento.fecha'),
       actor: strOrNull(e.actor),
       what,
-      kind: historyKindOf(what, e.detalle ?? null),
+      kind: historyKindOf(what, e.detalle ?? null, e.despues ?? null),
       reason: strOrNull(e.motivo),
       channel: strOrNull(e.canal),
       detail: e.detalle ?? null,

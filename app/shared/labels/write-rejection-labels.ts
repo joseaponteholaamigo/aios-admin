@@ -93,5 +93,10 @@ export function rejectionMessage(rejection: WriteRejection): string {
       return rejection.message
         ? `No se puede calcular el acceso: ${rejection.message}.`
         : 'No se puede calcular el acceso: falta publicar el catálogo o la receta del plan.';
+    case 'team-plan':
+      return 'Su plan admite más de una persona, y una cuenta personal es de una sola. Primero cámbiale el plan a uno de una persona con «Cambiar plan»; después vuelve a intentarlo.';
+    case 'several-people':
+      return 'Tiene más de una persona con asiento (las invitadas y las que están en espera también cuentan), y una cuenta personal es de una sola. Primero revoca los asientos que sobran desde «Ver sus personas».';
+    case 'moving': return 'Su persona se está moviendo a una empresa: cuando termine, esta cuenta se borra. No hay nada que cambiar.';
   }
 }

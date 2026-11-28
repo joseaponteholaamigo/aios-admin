@@ -1,0 +1,11 @@
+/* El diálogo que pasa una empresa a cuenta personal, o al revés. Lo que puede borrar la cuenta va en el tono de aviso,
+   para que no se lea como letra chica. No corta el acceso a nadie: «Guardar» es el botón principal de siempre. */
+.account-type-dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+.account-type-dialog::backdrop { background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.account-type-dialog__form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.account-type-dialog__title { font-size: 18px; font-weight: 650; overflow-wrap: anywhere; }
+.account-type-dialog__form > p { font-size: 14px; color: var(--ink-2); }
+.account-type-dialog__facts { display: flex; flex-direction: column; gap: 6px; margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); list-style: disc; overflow-wrap: anywhere; }
+.account-type-dialog__facts > .account-type-dialog__warn { padding: 6px 10px; border-radius: 10px; background: var(--warn-soft); color: var(--ink); }
+.field .account-type-dialog__reason { min-height: 72px; font-family: var(--sans); font-size: 13.5px; }
+.account-type-dialog__buttons { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }

@@ -16,6 +16,9 @@ export const toSeatStatus = (value: unknown): SeatStatus => SEAT_STATUS_FROM_API
 /** El tipo de una cuenta: solo `personal` la hace personal, como en el backend. */
 export const toAccountKind = (value: unknown): AccountKind => (value === 'personal' ? 'personal' : 'company');
 
+/** El tipo de una cuenta en el nombre del backend: lo usan las listas, crear una cuenta y cambiarle el tipo. */
+export const ACCOUNT_KIND_TO_API: Record<AccountKind, string> = { company: 'empresa', personal: 'personal' };
+
 const PEOPLE_FIELDS = ['cliente', 'empresa', 'roles', 'personas', 'revocadas', 'bitacora'] as const;
 
 const toCounts = (raw: unknown): ItemCounts => {

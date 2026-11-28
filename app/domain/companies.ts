@@ -130,7 +130,8 @@ export type CompanyFile = Company & {
  * bitácora del cliente y la auditoría del equipo anotan cada uno con su propio nombre técnico; los dos llegan aquí igual.
  */
 export type HistoryEventKind =
-  | 'account-revoked' | 'account-reactivated' | 'analytics-withdrawn' | 'analytics-restored' | 'house-pause-lifted' | 'house-lot-unfrozen';
+  | 'account-revoked' | 'account-reactivated' | 'analytics-withdrawn' | 'analytics-restored' | 'house-pause-lifted' | 'house-lot-unfrozen'
+  | 'account-to-personal' | 'account-to-company';
 
 export type CompanyHistoryEvent = {
   source: 'account' | 'audit';

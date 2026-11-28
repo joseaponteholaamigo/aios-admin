@@ -2,16 +2,14 @@
 // `POST /v1/admin/clientes/{id}/personas` y sus acciones): el pedido a sus nombres en español, y la
 // respuesta y cada rechazo de vuelta a los del panel. Los rechazos de todas las escrituras están aquí.
 import type { CreatedAccount, InvitedPerson, NewAccount, NewPerson, PlanConditions, Quotas, WriteRejection } from '../../domain/account-creation';
-import type { AccountKind } from '../../domain/companies';
 import type { PersonAction, PersonActionDone, PersonActionRequest } from '../../domain/person-actions';
 import { ApiContractError, asRecord, num, numOrNull, str, strOrNull, type Log } from './api-reading';
-import { toSeatStatus } from './client-users-mapping';
+import { ACCOUNT_KIND_TO_API, toSeatStatus } from './client-users-mapping';
 import { CODE_FIELD_FROM_API } from './codes-mapping';
 import { TEAM_FIELD_FROM_API } from './team-mapping';
 import { toDeletionSite } from './deletion-mapping';
 import { toCompany } from './companies-mapping';
 
-const KIND_TO_API: Record<AccountKind, string> = { company: 'empresa', personal: 'personal' };
 const CONTENT_TO_API = { all: 'todo', free: 'free', none: 'nada' } as const;
 const QUOTA_TO_API = { radar: 'radar', projects: 'proyectos', skills: 'skills', chains: 'cadenas' } as const;
 
@@ -35,7 +33,7 @@ function conditionsToApi(c: PlanConditions) {
 export function toBackendAccount(a: NewAccount) {
   return {
     // El Pro del panel (sin suscripción) es un Personalizado con las condiciones de Pro (`PRO_CONDITIONS`): el backend no tiene otro plan sin Stripe.
-    nombre: a.name, tipo: KIND_TO_API[a.kind], plan: a.plan === 'free' ? 'free' : 'personalizado',
+    nombre: a.name, tipo: ACCOUNT_KIND_TO_API[a.kind], plan: a.plan === 'free' ? 'free' : 'personalizado',
     ...(a.conditions ? { condiciones: conditionsToApi(a.conditions) } : {}),
     admin: a.adminEmail, clave: a.key,
     ...(a.moveFromPersonal ? { moverDesdeCuentaPersonal: true } : {}),
@@ -121,6 +119,11 @@ const REJECTIONS: Record<string, (b: Record<string, unknown>) => WriteRejection>
   // lo que falta publicar para calcularlas (`error`: qué). `no-es-personalizado`, `falta-confirmar` y `conflicto`, arriba.
   'acceso-rechazado': (b) => ({ code: 'access-rejected', rejections: strings(b.rechazos) }),
   'sin-catalogo': (b) => ({ code: 'no-catalog', ...withMessage(b) }),
+  // Pasar una empresa a cuenta personal, o al revés (spec «Pasar una empresa a cuenta personal, y al revés»). La vista
+  // previa también los responde. `no-existe`, `invalido` y `conflicto`, arriba.
+  'plan-de-equipo': () => ({ code: 'team-plan' }),
+  'varias-personas': () => ({ code: 'several-people' }),
+  moviendo: () => ({ code: 'moving' }),
   // Las claves de la casa (spec «Compartir referentes» de aios-tower): el proveedor rechazó la clave nueva (422, el
   // secreto no cambió), o el servicio no es uno que el backend administre (404).
   'clave-rechazada': () => ({ code: 'key-rejected' }),

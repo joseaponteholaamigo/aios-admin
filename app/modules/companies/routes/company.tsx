@@ -7,9 +7,11 @@
 // la revoca o la reactiva desde aquí (spec «Revocar y reactivar una cuenta», CA-11 a CA-14). La tarjeta «Persona» abre
 // «Analítica y términos» de su persona (spec «Analítica de una persona», CA-10). El superadministrador ve si la cuenta
 // tiene los servicios de ENSŌ en pausa o créditos congelados, y lo deshace (spec «Reanudar la casa de una cuenta», CA-10).
+// También pasa una empresa a cuenta personal, o al revés (spec «Pasar una empresa a cuenta personal, y al revés», CA-11).
 import { Link, redirect, useSearchParams, type ShouldRevalidateFunctionArgs } from 'react-router';
 import type { Route } from './+types/company';
 import { accountStatusOffer } from '../../../domain/account-status';
+import { accountTypeTarget } from '../../../domain/account-type';
 import { can } from '../../../domain/permissions';
 import { PERSONAL_ACCOUNT_ACTIONS } from '../../../domain/person-actions';
 import { analyticsAccessOf } from '../../../domain/person-analytics';
@@ -26,6 +28,8 @@ import { isAnalyticsView } from '../../../shared/person-analytics/person-analyti
 import { DoneNotice } from '../../../shared/ui/done-notice';
 import { isStatusPreview } from '../account-status-form-data';
 import { STATUS_ACTION_TEXTS, STATUS_BLOCK_REASONS, statusChangedNotice } from '../account-status-labels';
+import { isTypePreview } from '../account-type-form-data';
+import { typeChangedNotice } from '../account-type-labels';
 import { accountTitle, badgeClass, createdNotice, planLabel, statusLabel } from '../company-labels';
 import { CompanyAccessCard } from '../components/company-access-card';
 import { CompanyAccountCard, type VoiceCapView } from '../components/company-account-card';
@@ -35,6 +39,7 @@ import { CompanyPersonActions } from '../components/company-person-actions';
 import { CompanyPersonCard } from '../components/company-person-card';
 import { CompanyPlanCard } from '../components/company-plan-card';
 import { CompanyStatusAction, STATUS_BLOCK_REASON_ID } from '../components/company-status-action';
+import { CompanyTypeAction } from '../components/company-type-action';
 import { CompanyUnavailableActions, type UnavailableAction } from '../components/company-unavailable-actions';
 import { houseChangedNotice } from '../house-labels';
 import { loadHouseView } from '../house-loading.server';
@@ -64,6 +69,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     canDelete: superadmin,
     // Revocarla o reactivarla, también solo el superadministrador (spec «Revocar y reactivar una cuenta», decisión 1).
     statusAction: superadmin ? accountStatusOffer(file) : null,
+    // Pasarla al otro tipo, también solo el superadministrador (spec «Pasar una empresa a cuenta personal, y al revés», decisión 2).
+    typeTarget: superadmin ? accountTypeTarget(file.kind) : null,
     // Cambiar el plan: «editar» en Empresas, el permiso que antes cambiaba los asientos (decisión 2).
     canChangePlan: member ? can(member, 'companies', 'edit') : false,
     planBlock: planChangeBlock(file),
@@ -89,9 +96,12 @@ export async function action({ request, context, params }: Route.ActionArgs): Pr
   return redirect(`/companies/${encodeURIComponent(params.companyId)}?${personActionNoticeParams(outcome.value)}`);
 }
 
-/** La vista previa de revocar o reactivar y ver la analítica de su persona solo leen: la ficha no se vuelve a pedir por ellas. */
+/**
+ * La vista previa de revocar o reactivar, la de cambiar el tipo y ver la analítica de su persona solo leen: la ficha no
+ * se vuelve a pedir por ellas.
+ */
 export function shouldRevalidate({ formData, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
-  return isStatusPreview(formData) || isAnalyticsView(formData) ? false : defaultShouldRevalidate;
+  return isStatusPreview(formData) || isTypePreview(formData) || isAnalyticsView(formData) ? false : defaultShouldRevalidate;
 }
 
 /** Los botones desactivados de la ficha, con su porqué. */
@@ -105,7 +115,7 @@ function unavailableActions({ canChangePlan, planBlock, statusAction }: Pick<Rou
 }
 
 export default function Company({ loaderData, actionData }: Route.ComponentProps) {
-  const { file, history, canSeePeople, canDelete, canChangePlan, planBlock, statusAction, voiceCap, house, personActions, credits, analytics } = loaderData;
+  const { file, history, canSeePeople, canDelete, canChangePlan, planBlock, statusAction, typeTarget, voiceCap, house, personActions, credits, analytics } = loaderData;
   const [params] = useSearchParams();
   const [plan, status] = [planLabel(file.plan), statusLabel(file)];
   const personal = file.kind === 'personal';
@@ -124,19 +134,20 @@ export default function Company({ loaderData, actionData }: Route.ComponentProps
             <span className={badgeClass(plan.tone)}>{plan.text}</span> <span className={badgeClass(status.tone)}>{status.text}</span>
           </>
         }
-        actions={(canSeePeople && !personal) || canDelete || canChangePlan || statusAction ? (
+        actions={(canSeePeople && !personal) || canDelete || canChangePlan || statusAction || typeTarget ? (
           <>
             {canSeePeople && !personal && <Link className="btn" to={`/client-users/${file.id}`}>Ver sus personas</Link>}
             {canChangePlan && (planBlock
               ? <button type="button" className="btn" disabled aria-describedby="plan-block-reason">Cambiar plan</button>
               : <Link className="btn" to={`/companies/${file.id}/plan`}>Cambiar plan</Link>)}
+            {typeTarget && <CompanyTypeAction target={typeTarget} companyId={file.id} companyTitle={accountTitle(file)} />}
             {statusAction && <CompanyStatusAction offer={statusAction} companyId={file.id} companyTitle={accountTitle(file)} />}
             {canDelete && <Link className="btn" to={`/companies/${file.id}/delete`}>Borrar cuenta</Link>}
           </>
         ) : undefined}
       />
       <CompanyUnavailableActions actions={unavailableActions({ canChangePlan, planBlock, statusAction })} />
-      <DoneNotice text={createdNotice(params) ?? planSavedNotice(params) ?? statusChangedNotice(params) ?? houseChangedNotice(params) ?? personActionNotice(params)} />
+      <DoneNotice text={createdNotice(params) ?? planSavedNotice(params) ?? statusChangedNotice(params) ?? typeChangedNotice(params) ?? houseChangedNotice(params) ?? personActionNotice(params)} />
       <div className="grid g-main">
         <div className="grid">
           <CompanyHouseCard view={house} companyId={file.id} companyTitle={accountTitle(file)} />
